@@ -1,0 +1,391 @@
+// components/locations/LocationArticleFeed.tsx
+'use client';
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { useFeed } from '../../lib/reader/hooks/useFeed';
+import { ArticleCard, ProposalCard } from '../cards';
+import CommunityCard from '../cards/types/CommunityCard';
+import PortfolioCard from '../cards/types/PortfolioCard';
+import { getColorPlaceholder } from '../../lib/utils/placeholderUtils';
+import { getArticleCardType } from '../../lib/reader/adapters/articleTransformers';
+import { urlOptimizer } from '../../lib/locations/seo/urlOptimizer';
+
+// Helper for parsing location
+function parseLocation(locationString: string): { city: string; state: string } | undefined {
+  if (!locationString) return undefined;
+  
+  const parts = locationString.split(',').map((part: string) => part.trim());
+  if (parts.length >= 2) {
+    return { city: parts[0], state: parts[1] };
+  }
+  return { city: locationString, state: '' };
+}
+
+// Helper for truncating wallet address
+function truncateAddress(address: string): string {
+  return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+}
+
+interface LocationArticleFeedProps {
+  city: string;
+  state: string;
+  category?: string;
+  filters?: {
+    recency?: 'all' | 'latest' | 'week' | 'month';
+    engagement?: 'all' | 'most-tipped' | 'trending';
+    contentType?: 'all' | 'articles' | 'proposals' | 'community';
+    category?: string; // ✅ Add this line
+  };
+  onArticleSelect?: (articleId: string) => void;
+}
+
+const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({ 
+  city, 
+  state, 
+  category,
+  filters = { recency: 'all', engagement: 'all', contentType: 'all' },
+  onArticleSelect 
+}) => {
+  const router = useRouter();
+  
+  // Use the existing useFeed hook with location filtering
+  const {
+    articles,
+    proposals,
+    isLoading,
+    error,
+  } = useFeed();
+
+  // Filter content by location and category
+  const filteredArticles = React.useMemo(() => {
+    let filtered = articles.filter(article => {
+      // Location filtering
+      const articleLocation = parseLocation(article.location);
+      const matchesCity = articleLocation?.city.toLowerCase() === city.toLowerCase();
+      const matchesState = articleLocation?.state.toLowerCase() === state.toLowerCase();
+      
+      if (!matchesCity || !matchesState) return false;
+      
+      // Category filtering
+      if (category && article.category.toLowerCase() !== category.toLowerCase()) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Apply additional filters
+    if (filters.recency && filters.recency !== 'all') {
+      const now = new Date();
+      const filterDate = new Date();
+      
+      switch (filters.recency) {
+        case 'latest':
+          filterDate.setHours(now.getHours() - 24);
+          break;
+        case 'week':
+          filterDate.setDate(now.getDate() - 7);
+          break;
+        case 'month':
+          filterDate.setMonth(now.getMonth() - 1);
+          break;
+      }
+      
+      filtered = filtered.filter(article => 
+        new Date(article.createdAt) >= filterDate
+      );
+    }
+
+    // Apply engagement filtering
+    if (filters.engagement && filters.engagement !== 'all') {
+      switch (filters.engagement) {
+        case 'most-tipped':
+          filtered = filtered.sort((a, b) => 
+            b.readerMetrics.tipAmount - a.readerMetrics.tipAmount
+          );
+          break;
+        case 'trending':
+          filtered = filtered.sort((a, b) => 
+            b.readerMetrics.viewCount - a.readerMetrics.viewCount
+          );
+          break;
+      }
+    }
+
+    return filtered;
+  }, [articles, city, state, category, filters]);
+
+  // Filter proposals by location
+  const filteredProposals = React.useMemo(() => {
+    return proposals.filter(proposal => {
+      const proposalLocation = parseLocation(proposal.location);
+      const matchesCity = proposalLocation?.city.toLowerCase() === city.toLowerCase();
+      const matchesState = proposalLocation?.state.toLowerCase() === state.toLowerCase();
+      
+      return matchesCity && matchesState;
+    });
+  }, [proposals, city, state]);
+
+  const handleArticleClick = (article: any) => {
+    try {
+      const geographicUrl = urlOptimizer.buildGeographicUrl(article);
+      if (geographicUrl) {
+        router.push(geographicUrl);
+      } else {
+        // Fallback for non-geographic articles
+        if (onArticleSelect) {
+          onArticleSelect(article.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error navigating to article:', error);
+      if (onArticleSelect) {
+        onArticleSelect(article.id);
+      }
+    }
+  };
+
+  // Render individual article based on type
+  const renderArticle = (article: any) => {
+    const cardType = getArticleCardType(article);
+    const commonProps = {
+      id: article.id,
+      title: article.title,
+      summary: article.summary,
+      imageUrl: getColorPlaceholder(article),
+      createdAt: article.createdAt,
+      location: parseLocation(article.location),
+      category: article.category,
+      tags: article.tags,
+      onClick: () => handleArticleClick(article)
+    };
+
+    switch (cardType) {
+      case 'community':
+        return (
+          <CommunityCard
+            key={article.id}
+            {...commonProps}
+            submitter={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              stats: {
+                curated: 5, // From blockchain in future
+                reliability: 85 // From blockchain in future
+              }
+            }}
+            sourceUrl={article.originalUrl || '#'}
+            sourceName={article.publicationName || 'External Source'}
+            sharedAt={article.createdAt}
+            voting={{
+              upvotes: 8, // From blockchain voting contract
+              downvotes: 2, // From blockchain voting contract
+              percentage: 80 // Calculated from blockchain data
+            }}
+            distribution={{
+              submitter: 0.045,
+              platform: 0.025,
+              total: 0.070
+            }}
+            contentHash={article.contentHash}
+            onUpvote={() => console.log('Upvote', article.id)}
+            onDownvote={() => console.log('Downvote', article.id)}
+          />
+        );
+
+      case 'portfolio':
+        return (
+          <PortfolioCard
+            key={article.id}
+            {...commonProps}
+            author={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              stats: {
+                articlesPublished: 12, // From blockchain ProfileNFT
+                credibility: 92 // From blockchain reputation system
+              }
+            }}
+            originalUrl={article.originalUrl || '#'}
+            publicationName={article.publicationName || 'Unknown Publication'}
+            originalAuthor={article.originalAuthor}
+            originalPublishDate={article.originalPublishDate || article.createdAt}
+            verifiedAt={article.createdAt}
+            portfolioType={article.portfolioType || 'verification'}
+            distribution={{
+              author: 0.045,
+              platform: 0.025,
+              total: 0.070
+            }}
+            contentHash={article.contentHash}
+          />
+        );
+
+      case 'article':
+      default:
+        const isEncrypted = article.articleType === 'native';
+        const displaySummary = isEncrypted && !article.hasAccess 
+          ? article.summary 
+          : article.summary;
+
+        return (
+          <ArticleCard
+            key={article.id}
+            {...commonProps}
+            summary={displaySummary}
+            author={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              type: article.authorType,
+              stats: {
+                written: 8, // From blockchain ProfileNFT
+                proposed: 3 // From blockchain ProposalRegistry
+              }
+            }}
+            proposer={article.proposalId ? {
+              name: "Community Proposal",
+              id: article.proposalId
+            } : undefined}
+            contentHash={article.contentHash}
+            isVerified={Boolean(article.contentHash)}
+            metrics={{
+              views: article.readerMetrics.viewCount,
+              comments: article.readerMetrics.commentCount,
+              tips: article.readerMetrics.tipAmount,
+              reactions: {}, // From blockchain ChainReactions contract
+              supporters: 0 // From blockchain engagement data
+            }}
+            distribution={{
+              author: 0.045,
+              platform: 0.025,
+              proposer: article.proposalId ? 0.030 : 0
+            }}
+          />
+        );
+    }
+  };
+
+  // Determine what content to display
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)'
+        }}>
+          Loading {city} articles from blockchain...
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)',
+          color: 'var(--color-typewriter-red)'
+        }}>
+          Error loading {city} content: {error}
+        </div>
+      );
+    }
+
+    const hasArticles = filteredArticles.length > 0;
+    const hasProposals = filteredProposals.length > 0;
+    const showProposals = filters.contentType === 'all' || filters.contentType === 'proposals';
+    const showArticles = filters.contentType === 'all' || filters.contentType === 'articles' || filters.contentType === 'community';
+
+    if (!hasArticles && !hasProposals) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)'
+        }}>
+          <h3 style={{
+            fontFamily: 'var(--font-headlines)',
+            marginBottom: '1rem'
+          }}>
+            No {city} Content Found
+          </h3>
+          <p style={{ color: 'var(--color-digital-silver)' }}>
+            No articles or proposals have been published for {city}, {state} yet.
+            {category && ` Try viewing all ${city} content instead of filtering by ${category}.`}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {/* Display location-filtered articles */}
+        {showArticles && filteredArticles.map(renderArticle)}
+        
+        {/* Display location-filtered proposals */}
+        {showProposals && filteredProposals.map(proposal => (
+          <ProposalCard
+            key={proposal.id}
+            id={proposal.id}
+            title={proposal.title}
+            summary={proposal.summary}
+            imageUrl={getColorPlaceholder(proposal)}
+            proposer={{
+              name: proposal.proposerName || truncateAddress(proposal.proposer),
+              id: proposal.proposer,
+              stats: {
+                written: 2, // From blockchain ProfileNFT
+                proposed: 5 // From blockchain ProposalRegistry
+              }
+            }}
+            createdAt={proposal.createdAt}
+            location={parseLocation(proposal.location)}
+            category={proposal.category}
+            tags={proposal.tags || []}
+            status='active'
+            funding={{
+              amount: proposal.fundingAmount,
+              goal: proposal.fundingGoal,
+              percentage: (proposal.fundingAmount / proposal.fundingGoal) * 100
+            }}
+            metrics={{
+              reactions: {}, // From blockchain ChainReactions
+              supporters: 0, // From blockchain engagement
+              journalistInterest: 0 // From blockchain journalist registry
+            }}
+            distribution={{
+              proposer: 0.060,
+              platform: 0.040,
+              futureAuthor: 0
+            }}
+            contentHash=""
+            onClick={() => handleArticleClick(proposal)}
+          />
+        ))}
+        
+        {/* Content summary */}
+        <div style={{
+          padding: '1rem',
+          marginTop: '2rem',
+          backgroundColor: 'var(--color-parchment)',
+          borderRadius: '4px',
+          textAlign: 'center',
+          fontSize: '0.9rem',
+          color: 'var(--color-digital-silver)'
+        }}>
+          Showing {filteredArticles.length} articles and {filteredProposals.length} proposals for {city}, {state}
+          {category && ` in ${category}`}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      {renderContent()}
+    </div>
+  );
+};
+
+export default LocationArticleFeed;

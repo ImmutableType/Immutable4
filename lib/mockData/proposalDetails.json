@@ -1,0 +1,32 @@
+{
+    "prop-001": {
+      "id": "prop-001",
+      "title": "Investigation into Local Housing Development",
+      "summary": "Looking into the recent approval of a controversial housing development and its potential environmental impact.",
+      "description": "## Background\nA large housing development was recently approved on the western edge of Miami, in an area previously designated as protected wetlands. The approval process happened quickly and with minimal public input.\n\n## Investigation Goals\n- Review the approval documentation and timeline\n- Interview environmental experts about potential impacts\n- Speak with local residents about their concerns\n- Investigate potential connections between developers and city officials\n- Explore alternatives that could balance housing needs with environmental protection\n\n## Potential Impact\nThis investigation could bring transparency to development decisions that affect both our environment and housing availability in Miami. It may also establish a precedent for how future developments in sensitive areas are handled.",
+      "proposer": "0x1234...5678",
+      "proposerName": "MiamiWatchdog",
+      "createdAt": "2025-04-21T15:30:00Z",
+      "location": "Miami",
+      "category": "Environment",
+      "status": "active",
+      "voteCount": 23,
+      "fundingAmount": 0.5,
+      "fundingGoal": 2.5,
+      "imageUrl": "/images/proposals/housing.jpg",
+      "tags": ["environment", "housing", "development", "wetlands", "local government"],
+      "journalistInterest": 2,
+      "timeline": "2-3 weeks",
+      "contentFormat": "Written article with supporting photography",
+      "updates": [
+        {
+          "date": "2025-04-22T10:15:00Z",
+          "content": "Added additional research links on wetland preservation laws."
+        },
+        {
+          "date": "2025-04-23T16:40:00Z",
+          "content": "Two journalists have expressed interest in covering this story."
+        }
+      ]
+    }
+  }

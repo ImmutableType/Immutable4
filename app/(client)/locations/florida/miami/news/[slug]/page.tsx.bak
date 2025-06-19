@@ -1,0 +1,48 @@
+// app/(client)/locations/florida/miami/news/[slug]/page.tsx
+'use client'
+import React from 'react';
+import { notFound } from 'next/navigation';
+import { useArticleDetail } from '../../../../../../../lib/reader/hooks/useArticleDetail';
+import { urlOptimizer } from '../../../../../../../lib/locations/seo/urlOptimizer';
+
+interface ArticlePageProps {
+  params: {
+    slug: string;
+  };
+}
+
+export default function ArticlePage({ params }: ArticlePageProps) {
+  // Extract the article ID from the slug
+  const articleId = urlOptimizer.extractIdFromSlug(params.slug);
+  // Use the existing hook to fetch article details
+  const { article, isLoading, error } = useArticleDetail(articleId);
+  
+  if (isLoading) return <div>Loading article...</div>;
+  if (error) return <div>Error loading article: {error}</div>;
+  if (!article) return notFound();
+  
+  return (
+    <article className="article-container">
+      <h1 className="article-title">{article.title}</h1>
+      
+      <div className="article-metadata">
+        <span className="article-author">By: {article.authorName || article.author}</span>
+        <span className="article-date">Published: {new Date(article.createdAt).toLocaleDateString()}</span>
+      </div>
+      
+      {article.imageUrl && (
+        <div className="article-hero-image">
+          <img 
+            src={article.imageUrl} 
+            alt={article.title}
+            loading="eager"
+            width={1280}
+            height={640}
+          />
+        </div>
+      )}
+      
+      <div className="article-content" dangerouslySetInnerHTML={{ __html: article.content }} />
+    </article>
+  );
+}

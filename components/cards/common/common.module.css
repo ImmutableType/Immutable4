@@ -1,0 +1,70 @@
+/* Action icons */
+.actionIcon {
+    width: 32px;
+    height: 32px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+  }
+  
+  .actionIcon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .tooltip {
+    position: relative;
+  }
+  
+  .tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-right: 8px;
+    font-family: var(--font-ui, 'Inter', sans-serif);
+  }
+  
+  .verificationBadge {
+    background-color: var(--color-verification-green);
+    color: white;
+  }
+  
+  .proposalBadge {
+    background-color: var(--color-blockchain-blue);
+    color: white;
+  }
+  
+  /* Location tag */
+  .locationTag {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-blockchain-blue);
+    font-weight: 500;
+  }
+  
+  .locationTag svg {
+    margin-right: 4px;
+  }

@@ -1,0 +1,22 @@
+{
+  "address": "0x6018f8E6F53057b4aF5155BA97C4ef4AB416532C",
+  "abi": [
+    "constructor(address)",
+    "event EmojiCreditContractSet(address indexed)",
+    "event GMSaid(address indexed,uint256 indexed,uint256)",
+    "function currentStreak(address) view returns (uint256)",
+    "function dailyGMCount(uint256) view returns (uint256)",
+    "function dailyGMUsers(uint256,uint256) view returns (address)",
+    "function emojiCreditContract() view returns (address)",
+    "function getCurrentDay() view returns (uint256)",
+    "function getTodaysGMCount() view returns (uint256)",
+    "function getUserStats(address) view returns (uint256,uint256,bool)",
+    "function hasSaidGM(address,uint256) view returns (bool)",
+    "function hasUserSaidGMToday(address) view returns (bool)",
+    "function lastGMDay(address) view returns (uint256)",
+    "function profileNFT() view returns (address)",
+    "function sayGM()",
+    "function setEmojiCreditContract(address)",
+    "function totalGMs(address) view returns (uint256)"
+  ]
+}

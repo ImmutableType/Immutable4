@@ -1,0 +1,29 @@
+{
+  "title": "ImmutableType Development Roadmap",
+  "sections": [
+    {
+      "heading": "Our Journey",
+      "content": "Our mission to decentralize journalism is unfolding in carefully planned phases. Here's where we've been and where we're headed next:"
+    },
+    {
+      "heading": "Phase 1: Foundation (Completed)",
+      "content": "February - March 2025: Established core architecture and basic publishing functionality on the Flow EVM testnet. Key milestones included smart contract deployment for article publishing, basic reader interface, IPFS integration for content storage, and publisher authentication."
+    },
+    {
+      "heading": "Phase 2: Community Building (Current)",
+      "content": "April - May 2025: Expanding platform capabilities to serve geographic communities and improve user experience. Key milestones include location-based content organization, enhanced navigation with content categories, journalist profiles and verification, mobile-responsive design improvements, and educational resources."
+    },
+    {
+      "heading": "Phase 3: Economic Model",
+      "content": "June - July 2025: Implementing sustainable economic mechanisms to support journalists and quality content. Key milestones include direct tipping system for journalists, community-based funding for story proposals, subscription model for premium content, revenue sharing mechanisms, and enhanced analytics for publishers."
+    },
+    {
+      "heading": "Phase 4: Governance & Scaling",
+      "content": "August - December 2025: Establishing community governance and expanding platform reach. Key milestones include decentralized governance for content standards, migration to Flow EVM mainnet, multi-language support, advanced search and discovery features, and cross-platform integrations."
+    },
+    {
+      "heading": "Get Involved",
+      "content": "We're building ImmutableType in the open and welcome contributions from developers, journalists, and community members. Join us in reshaping the future of journalism through blockchain technology."
+    }
+  ]
+}

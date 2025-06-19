@@ -1,0 +1,486 @@
+// components/profile/ProfileHeader.tsx
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ethers } from 'ethers';
+import { Profile } from '../../lib/profile/types/profile';
+import { useWallet } from '../../lib/hooks/useWallet';
+
+// Publisher token contract details
+const PUBLISHER_TOKEN_ADDRESS = '0x8b351Bc93799898a201E796405dBC30Aad49Ee21';
+const PUBLISHER_TOKEN_ABI = [
+  "function hasValidCredential(address journalist) external view returns (bool)"
+];
+
+interface ProfileHeaderProps {
+  profile: Profile;
+  isOwner: boolean;
+  membershipTokenId?: string;
+  tokenImageUrl?: string;
+}
+
+const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, membershipTokenId, tokenImageUrl }) => {
+  const { provider, address: currentUserAddress, isConnected } = useWallet();
+  const [hasPublisherToken, setHasPublisherToken] = useState(false);
+  const [isTipping, setIsTipping] = useState(false);
+  const [tipAmount, setTipAmount] = useState('1.0');
+  const [showTipDialog, setShowTipDialog] = useState(false);
+
+  // Check if profile owner has publisher token
+  useEffect(() => {
+    async function checkPublisherToken() {
+      if (!profile?.walletAddress) return;
+      
+      try {
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const contract = new ethers.Contract(
+          PUBLISHER_TOKEN_ADDRESS,
+          PUBLISHER_TOKEN_ABI,
+          provider
+        );
+        
+        const hasCredential = await contract.hasValidCredential(profile.walletAddress);
+        setHasPublisherToken(hasCredential);
+      } catch (error) {
+        console.error('Error checking publisher token:', error);
+      }
+    }
+    
+    checkPublisherToken();
+  }, [profile?.walletAddress]);
+
+  // Format wallet address for display (0x1234...5678)
+  const formatAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
+  // Calculate member since date
+  const getMemberSince = () => {
+    if (!profile.createdAt) return null;
+    const date = new Date(profile.createdAt);
+    const month = date.toLocaleString('en-US', { month: 'long' });
+    const year = date.getFullYear();
+    return `${month} ${year}`;
+  };
+
+  // Determine verification text based on tokens
+  const getVerificationText = () => {
+    if (hasPublisherToken) {
+      return 'Verified Local Journalist';
+    } else if (membershipTokenId) {
+      return 'Verified Local';
+    }
+    return null;
+  };
+
+  // Handle tipping
+  const handleTip = async () => {
+    if (!provider || !isConnected || !currentUserAddress) {
+      alert('Please connect your wallet to send tips');
+      return;
+    }
+
+    try {
+      setIsTipping(true);
+      const signer = await provider.getSigner();
+      
+      // Convert tip amount to wei
+      const tipAmountWei = ethers.parseEther(tipAmount);
+      
+      // Send transaction
+      const tx = await signer.sendTransaction({
+        to: profile.walletAddress,
+        value: tipAmountWei,
+      });
+      
+      // Wait for confirmation
+      await tx.wait();
+      
+      alert(`Successfully sent ${tipAmount} FLOW!`);
+      setShowTipDialog(false);
+      setTipAmount('1.0');
+    } catch (error: any) {
+      console.error('Tipping error:', error);
+      alert(error.message || 'Failed to send tip');
+    } finally {
+      setIsTipping(false);
+    }
+  };
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      marginBottom: '1rem',
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: '1.5rem',
+        marginBottom: '1rem',
+      }}>
+        {/* Avatar - Fixed z-index and display actual token image */}
+        <div style={{
+          width: '100px',
+          height: '100px',
+          borderRadius: '50%',
+          overflow: 'hidden',
+          backgroundColor: 'var(--color-digital-silver)',
+          flexShrink: 0,
+          marginTop: '-50px',
+          border: '4px solid var(--color-white)',
+          position: 'relative',
+          zIndex: 10,
+        }}>
+          {tokenImageUrl ? (
+            <img 
+              src={tokenImageUrl}
+              alt={membershipTokenId || 'Profile'}
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover' 
+              }}
+            />
+          ) : (
+            // Fallback pattern if no token image
+            <svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id={`gradient-${profile.walletAddress}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: `#${profile.walletAddress.slice(2, 8)}`, stopOpacity: 1 }} />
+                  <stop offset="50%" style={{ stopColor: `#${profile.walletAddress.slice(8, 14)}`, stopOpacity: 1 }} />
+                  <stop offset="100%" style={{ stopColor: `#${profile.walletAddress.slice(14, 20)}`, stopOpacity: 1 }} />
+                </linearGradient>
+              </defs>
+              <rect width="100" height="100" fill={`url(#gradient-${profile.walletAddress})`} />
+              <circle cx="50" cy="50" r="30" fill="rgba(255,255,255,0.2)" />
+              <circle cx="50" cy="50" r="20" fill="rgba(0,0,0,0.1)" />
+              {membershipTokenId && (
+                <text x="50" y="55" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold">
+                  {membershipTokenId}
+                </text>
+              )}
+            </svg>
+          )}
+        </div>
+
+        {/* Profile Info and Action Buttons */}
+        <div style={{ 
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            width: '100%',
+          }}>
+            <h1 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.8rem',
+              margin: 0,
+            }}>
+              {profile.displayName || formatAddress(profile.walletAddress)}
+            </h1>
+            
+            {/* Action Buttons */}
+            <div style={{
+              display: 'flex',
+              gap: '0.5rem',
+            }}>
+              {isOwner ? (
+                <Link href={`/profile/${profile.id}/edit`}>
+                  <button style={{
+                    backgroundColor: 'transparent',
+                    color: 'var(--color-black)',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 500,
+                    padding: '0.5rem 1rem',
+                    border: '1px solid var(--color-digital-silver)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--color-parchment)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  >
+                    Edit Profile
+                  </button>
+                </Link>
+              ) : (
+                // Tipping button for non-owners with better icon
+                <button style={{
+                  backgroundColor: 'var(--color-typewriter-red)',
+                  color: 'var(--color-white)',
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 500,
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#8C1A17';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-typewriter-red)';
+                }}
+                onClick={() => setShowTipDialog(true)}
+                >
+                  {/* Coffee cup icon - universal tipping symbol */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                    <line x1="6" y1="1" x2="6" y2="4"></line>
+                    <line x1="10" y1="1" x2="10" y2="4"></line>
+                    <line x1="14" y1="1" x2="14" y2="4"></line>
+                  </svg>
+                  Support
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            fontSize: '0.9rem',
+            fontFamily: 'var(--font-ui)',
+            color: 'var(--color-black)',
+            opacity: 0.7,
+            flexWrap: 'wrap',
+          }}>
+            {/* Wallet Address */}
+            <span>{formatAddress(profile.walletAddress)}</span>
+            
+            {/* Separator */}
+            <span>•</span>
+            
+            {/* Profile ID - Updated text */}
+            <span>Profile ID #{profile.id}</span>
+            
+            {/* Membership Token ID - Enhanced display */}
+            {membershipTokenId && (
+              <>
+                <span>•</span>
+                <span style={{ 
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.125rem 0.5rem',
+                  backgroundColor: 'rgba(179, 33, 30, 0.1)',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  color: 'var(--color-typewriter-red)',
+                  opacity: 1,
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                  Membership ID #{membershipTokenId}
+                </span>
+              </>
+            )}
+            
+            {/* Member Since */}
+            {getMemberSince() && (
+              <>
+                <span>•</span>
+                <span>Member since {getMemberSince()}</span>
+              </>
+            )}
+            
+            {/* Verification Badge - Updated text */}
+            {getVerificationText() && (
+              <>
+                <span>•</span>
+                <span className="verification-indicator" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                  </svg>
+                  {getVerificationText()}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Location */}
+          {profile.location && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-ui)',
+              color: 'var(--color-black)',
+              opacity: 0.7,
+              marginTop: '0.25rem',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.25rem' }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span>{profile.location}</span>
+            </div>
+          )}
+
+          {/* Bio */}
+          {profile.bio && (
+            <p style={{
+              margin: '0.5rem 0 0 0',
+              fontSize: '0.95rem',
+              lineHeight: '1.5',
+              fontFamily: 'var(--font-body)',
+            }}>
+              {profile.bio}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Metrics */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'start',
+        gap: '2rem',
+        margin: '0.75rem 0 1rem 0',
+        fontFamily: 'var(--font-ui)',
+        borderBottom: '1px solid var(--color-digital-silver)',
+        paddingBottom: '1rem',
+      }}>
+        <div>
+          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.articlesPublished}</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Articles</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.proposalsCreated}</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Proposals</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.proposalsFunded}</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Funded</span>
+        </div>
+        <div>
+          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.totalTipsReceived}</span>
+          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Tips Received</span>
+        </div>
+      </div>
+
+      {/* Tip Dialog */}
+      {showTipDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: 'var(--color-white)',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+          }}>
+            <h3 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.5rem',
+              margin: '0 0 1rem 0',
+            }}>
+              Support {profile.displayName || formatAddress(profile.walletAddress)}
+            </h3>
+            
+            <p style={{
+              fontSize: '0.95rem',
+              marginBottom: '1.5rem',
+            }}>
+              Send FLOW directly to support this creator
+            </p>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}>
+                Amount (FLOW)
+              </label>
+              <input
+                type="number"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+                min="0.1"
+                step="0.1"
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  fontSize: '1rem',
+                }}
+              />
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '0.5rem',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => setShowTipDialog(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'transparent',
+                  color: 'var(--color-black)',
+                  border: '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTip}
+                disabled={isTipping || !tipAmount || parseFloat(tipAmount) <= 0}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'var(--color-typewriter-red)',
+                  color: 'var(--color-white)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: isTipping ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  opacity: isTipping ? 0.7 : 1,
+                }}
+              >
+                {isTipping ? 'Sending...' : `Send ${tipAmount} FLOW`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProfileHeader;

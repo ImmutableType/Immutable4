@@ -1,0 +1,9 @@
+{
+  "contractName": "ProfileNFT",
+  "address": "0x0c4141ec0d87fA1B7820E5AF277024251d392F05",
+  "network": "flowTestnet",
+  "deployer": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+  "deployedAt": "2025-05-28T18:26:58.229Z",
+  "membershipTokenAddress": "0xC90bE82B23Dca9453445b69fB22D5A90402654b2",
+  "publisherCredentialsAddress": "0x8b351Bc93799898a201E796405dBC30Aad49Ee21"
+}

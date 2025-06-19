@@ -1,0 +1,367 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+interface IEncryptedArticles {
+    // ✅ FIXED: Correct interface matching actual return values (14 fields, no tags array)
+    function articles(uint256 articleId) external view returns (
+        uint256 id,                    // 1
+        string memory title,           // 2
+        string memory encryptedContent,// 3
+        string memory summary,         // 4
+        address author,                // 5
+        string memory location,        // 6
+        string memory category,        // 7
+        uint256 publishedAt,          // 8
+        uint256 nftCount,             // 9  ← We need this
+        uint256 nftPrice,             // 10
+        uint256 journalistRetained,   // 11
+        uint256 readerLicenseRatio,   // 12 ← We need this
+        uint8 creationSource,         // 13
+        uint256 proposalId            // 14
+    );
+    function getNFTHolders(uint256 articleId) external view returns (address[] memory);
+}
+
+contract ReaderLicenseAMM is ERC1155, Ownable {
+    // Constants
+    address public constant TREASURY = 0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2;
+    uint256 public constant REGENERATION_THRESHOLD = 50; // 50% consumed triggers regeneration
+    uint256 public constant BASE_PRICE = 0.01 ether; // 0.01 FLOW
+    uint256 public constant MAX_PRICE = 1 ether; // 1.00 FLOW
+    uint256 public constant GAS_REIMBURSEMENT = 0.005 ether; // 0.005 FLOW per regeneration call
+
+    // Revenue split percentages
+    uint256 public constant SELLER_PERCENTAGE = 70;
+    uint256 public constant CREATOR_PERCENTAGE = 20;
+    uint256 public constant PLATFORM_PERCENTAGE = 10;
+
+    // Contract references
+    IEncryptedArticles public immutable ENCRYPTED_ARTICLES;
+
+    // Structs
+    struct LicenseInfo {
+        uint256 articleId;
+        uint256 editionNumber;
+        uint256 totalGenerated;
+        uint256 activeLicenses;
+        uint256 lastRegenerationTime;
+    }
+
+    struct AccessInfo {
+        uint256 expiryTime;
+        bool hasAccess;
+    }
+
+    struct PurchaseRecord {
+        uint256 timestamp;
+        uint256 price;
+        address buyer;
+        address seller;
+    }
+
+    // State variables
+    uint256 private _licenseTypeIdCounter;
+    
+    // articleId => LicenseInfo
+    mapping(uint256 => LicenseInfo) public licenseInfo;
+    
+    // articleId => address => license balance
+    mapping(uint256 => mapping(address => uint256)) public licenseBalances;
+    
+    // articleId => address => AccessInfo
+    mapping(uint256 => mapping(address => AccessInfo)) public accessInfo;
+    
+    // articleId => day => purchase count
+    mapping(uint256 => mapping(uint256 => uint256)) public dailyPurchases;
+    
+    // articleId => PurchaseRecord[]
+    mapping(uint256 => PurchaseRecord[]) public purchaseHistory;
+    
+    // articleId => total licenses ever created
+    mapping(uint256 => uint256) public totalLicensesEverGenerated;
+    
+    // Gas pool for regeneration costs
+    uint256 public gasPool;
+
+    // Events
+    event LicenseMinted(uint256 indexed articleId, address indexed holder, uint256 count, uint256 editionNumber);
+    event LicensePurchased(uint256 indexed articleId, address indexed buyer, address indexed seller, uint256 price);
+    event LicenseBurned(uint256 indexed articleId, address indexed user, uint256 expiryTime);
+    event LicenseRegenerated(uint256 indexed articleId, uint256 count, uint256 totalActive);
+    event AccessGranted(uint256 indexed articleId, address indexed user, uint256 expiryTime);
+
+    constructor(address _encryptedArticles) ERC1155("") Ownable(msg.sender) {
+        ENCRYPTED_ARTICLES = IEncryptedArticles(_encryptedArticles);
+    }
+
+    // Mint initial licenses to NFT holder (called by EncryptedArticles contract)
+    function mintLicensesToHolder(
+        uint256 _articleId, 
+        address _holder, 
+        uint256 _count, 
+        uint256 _editionNumber
+    ) external {
+        require(msg.sender == address(ENCRYPTED_ARTICLES), "Only EncryptedArticles contract can mint");
+        
+        // Update license info
+        licenseInfo[_articleId].articleId = _articleId;
+        licenseInfo[_articleId].totalGenerated += _count;
+        licenseInfo[_articleId].activeLicenses += _count;
+        
+        // Update total ever generated
+        totalLicensesEverGenerated[_articleId] += _count;
+        
+        // Mint licenses to holder
+        licenseBalances[_articleId][_holder] += _count;
+        _mint(_holder, _articleId, _count, "");
+        
+        emit LicenseMinted(_articleId, _holder, _count, _editionNumber);
+    }
+
+    // ✅ FIXED: Calculate current price based on supply-scaled bonding curve with time decay
+    function getCurrentPrice(uint256 _articleId) public view returns (uint256) {
+        uint256 totalSupply = totalLicensesEverGenerated[_articleId];
+        require(totalSupply > 0, "No licenses exist for this article");
+        
+        // ✅ FIXED: Destructure 14 values correctly (positions 9 and 12)
+        (, , , , , , , , uint256 nftCount, , , uint256 readerLicenseRatio, ,) = ENCRYPTED_ARTICLES.articles(_articleId);
+        //  1  2  3  4  5  6  7  8        9         10 11         12          13 14
+        
+        uint256 maxTotalLicenses = nftCount * readerLicenseRatio;
+        require(maxTotalLicenses > 0, "Invalid license configuration");
+        
+        // Calculate base price using supply-scaled bonding curve
+        uint256 priceRange = MAX_PRICE - BASE_PRICE; // 0.99 FLOW
+        uint256 priceIncrement = maxTotalLicenses > 1 ? priceRange / (maxTotalLicenses - 1) : 0;
+        uint256 bondingPrice = BASE_PRICE + ((totalSupply - 1) * priceIncrement);
+        
+        // Apply time decay
+        uint256 decayedPrice = applyTimeDecay(_articleId, bondingPrice);
+        
+        return decayedPrice > MAX_PRICE ? MAX_PRICE : decayedPrice;
+    }
+
+    // ✅ FIXED: Apply time decay based on zero-sale days
+    function applyTimeDecay(uint256 _articleId, uint256 _currentPrice) internal view returns (uint256) {
+        // ✅ FIXED: Get publishedAt from position 8 (14-value destructuring)
+        (, , , , , , , uint256 publishedAt, , , , , ,) = ENCRYPTED_ARTICLES.articles(_articleId);
+        //  1  2  3  4  5  6  7        8            9  10 11 12 13 14
+        
+        uint256 daysSincePublish = (block.timestamp - publishedAt) / 86400;
+        uint256 zeroSaleDays = 0;
+        
+        // Count consecutive days with zero sales (starting from most recent)
+        uint256 currentDay = block.timestamp / 86400;
+        for (uint256 i = 0; i < daysSincePublish && i < 30; i++) {
+            if (dailyPurchases[_articleId][currentDay - i] == 0) {
+                zeroSaleDays++;
+            } else {
+                break; // Stop at first day with sales
+            }
+        }
+        
+        // 1% decay per zero-sale day, max 30% decay
+        uint256 decayPercent = zeroSaleDays > 30 ? 30 : zeroSaleDays;
+        uint256 decayAmount = (_currentPrice * decayPercent) / 100;
+        
+        return _currentPrice > decayAmount ? _currentPrice - decayAmount : 0.001 ether; // Floor at 0.001 FLOW
+    }
+
+    // Purchase license from another holder
+    function buyLicense(uint256 _articleId, address _seller) external payable {
+        require(licenseBalances[_articleId][_seller] > 0, "Seller has no licenses");
+        
+        uint256 currentPrice = getCurrentPrice(_articleId);
+        uint256 estimatedGas = GAS_REIMBURSEMENT;
+        uint256 totalCost = currentPrice + estimatedGas;
+        
+        require(msg.value >= totalCost, "Insufficient payment");
+        
+        // Calculate revenue splits from license price only
+        uint256 sellerAmount = (currentPrice * SELLER_PERCENTAGE) / 100;
+        uint256 creatorAmount = (currentPrice * CREATOR_PERCENTAGE) / 100;
+        uint256 platformAmount = currentPrice - sellerAmount - creatorAmount;
+        
+        // ✅ FIXED: Get author from position 5 (14-value destructuring)
+        (, , , , address author, , , , , , , , ,) = ENCRYPTED_ARTICLES.articles(_articleId);
+        //  1  2  3  4       5      6  7  8  9  10 11 12 13 14
+        
+        // Transfer license
+        licenseBalances[_articleId][_seller]--;
+        licenseBalances[_articleId][msg.sender]++;
+        _safeTransferFrom(_seller, msg.sender, _articleId, 1, "");
+        
+        // Process payments
+        payable(_seller).transfer(sellerAmount);
+        payable(author).transfer(creatorAmount);
+        payable(TREASURY).transfer(platformAmount);
+        
+        // Add gas contribution to pool
+        gasPool += estimatedGas;
+        
+        // Update purchase tracking
+        uint256 today = block.timestamp / 86400;
+        dailyPurchases[_articleId][today]++;
+        purchaseHistory[_articleId].push(PurchaseRecord({
+            timestamp: block.timestamp,
+            price: currentPrice,
+            buyer: msg.sender,
+            seller: _seller
+        }));
+        
+        // Refund excess
+        if (msg.value > totalCost) {
+            payable(msg.sender).transfer(msg.value - totalCost);
+        }
+        
+        emit LicensePurchased(_articleId, msg.sender, _seller, currentPrice);
+        
+        // Check if regeneration needed
+        if (shouldRegenerate(_articleId)) {
+            _regenerateLicenses(_articleId);
+        }
+    }
+
+    // Burn license for 7-day article access
+    function burnLicenseForAccess(uint256 _articleId) external {
+        require(licenseBalances[_articleId][msg.sender] > 0, "No license to burn");
+        require(!hasActiveAccess(_articleId, msg.sender), "Already has active access");
+        
+        // Burn the license
+        licenseBalances[_articleId][msg.sender]--;
+        licenseInfo[_articleId].activeLicenses--;
+        _burn(msg.sender, _articleId, 1);
+        
+        // Grant 7-day access
+        uint256 expiryTime = block.timestamp + 7 days;
+        accessInfo[_articleId][msg.sender] = AccessInfo({
+            expiryTime: expiryTime,
+            hasAccess: true
+        });
+        
+        emit LicenseBurned(_articleId, msg.sender, expiryTime);
+        emit AccessGranted(_articleId, msg.sender, expiryTime);
+        
+        // Check if regeneration needed
+        if (shouldRegenerate(_articleId)) {
+            _regenerateLicenses(_articleId);
+        }
+    }
+
+    // Check if regeneration is needed (50% threshold)
+    function shouldRegenerate(uint256 _articleId) public view returns (bool) {
+        uint256 totalGenerated = licenseInfo[_articleId].totalGenerated;
+        uint256 activeLicenses = licenseInfo[_articleId].activeLicenses;
+        
+        if (totalGenerated == 0) return false;
+        
+        uint256 consumedPercentage = ((totalGenerated - activeLicenses) * 100) / totalGenerated;
+        return consumedPercentage >= REGENERATION_THRESHOLD;
+    }
+
+    // Regenerate licenses (anyone can call, gas reimbursed)
+    function regenerateLicenses(uint256 _articleId) external {
+        require(shouldRegenerate(_articleId), "Regeneration not needed");
+        require(gasPool >= GAS_REIMBURSEMENT, "Insufficient gas pool");
+        
+        _regenerateLicenses(_articleId);
+        
+        // Reimburse caller for gas
+        gasPool -= GAS_REIMBURSEMENT;
+        payable(msg.sender).transfer(GAS_REIMBURSEMENT);
+    }
+
+    // Internal regeneration logic
+    function _regenerateLicenses(uint256 _articleId) internal {
+        uint256 totalGenerated = licenseInfo[_articleId].totalGenerated;
+        uint256 activeLicenses = licenseInfo[_articleId].activeLicenses;
+        uint256 deltaToRegenerate = totalGenerated - activeLicenses;
+        
+        if (deltaToRegenerate == 0) return;
+        
+        // Get NFT holders for round-robin distribution
+        address[] memory nftHolders = ENCRYPTED_ARTICLES.getNFTHolders(_articleId);
+        require(nftHolders.length > 0, "No NFT holders");
+        
+        // Distribute licenses round-robin
+        for (uint256 i = 0; i < deltaToRegenerate; i++) {
+            address recipient = nftHolders[i % nftHolders.length];
+            licenseBalances[_articleId][recipient]++;
+            _mint(recipient, _articleId, 1, "");
+        }
+        
+        // Update license info
+        licenseInfo[_articleId].activeLicenses += deltaToRegenerate;
+        licenseInfo[_articleId].lastRegenerationTime = block.timestamp;
+        totalLicensesEverGenerated[_articleId] += deltaToRegenerate;
+        
+        emit LicenseRegenerated(_articleId, deltaToRegenerate, licenseInfo[_articleId].activeLicenses);
+    }
+
+    // Check if user has active access to article
+    function hasActiveAccess(uint256 _articleId, address _user) public view returns (bool) {
+        AccessInfo memory access = accessInfo[_articleId][_user];
+        return access.hasAccess && block.timestamp < access.expiryTime;
+    }
+
+    // Get encrypted article content (only for users with active access)
+    function getEncryptedContent(uint256 _articleId) external view returns (string memory) {
+        require(hasActiveAccess(_articleId, msg.sender), "No active access to this article");
+        
+        // ✅ FIXED: Get encryptedContent from position 3 (14-value destructuring)
+        (, , string memory encryptedContent, , , , , , , , , , ,) = ENCRYPTED_ARTICLES.articles(_articleId);
+        //  1  2                3              4  5  6  7  8  9  10 11 12 13 14
+        return encryptedContent;
+    }
+
+    // Get article summary (public)
+    function getArticleSummary(uint256 _articleId) external view returns (string memory) {
+        // ✅ FIXED: Get summary from position 4 (14-value destructuring)
+        (, , , string memory summary, , , , , , , , , ,) = ENCRYPTED_ARTICLES.articles(_articleId);
+        //  1  2  3             4       5  6  7  8  9  10 11 12 13 14
+        return summary;
+    }
+
+    // Get license holders for an article
+    function getLicenseHolders(uint256 _articleId) external view returns (address[] memory, uint256[] memory) {
+        address[] memory nftHolders = ENCRYPTED_ARTICLES.getNFTHolders(_articleId);
+        uint256[] memory balances = new uint256[](nftHolders.length);
+        
+        for (uint256 i = 0; i < nftHolders.length; i++) {
+            balances[i] = licenseBalances[_articleId][nftHolders[i]];
+        }
+        
+        return (nftHolders, balances);
+    }
+
+    // Get purchase history for an article
+    function getPurchaseHistory(uint256 _articleId) external view returns (PurchaseRecord[] memory) {
+        return purchaseHistory[_articleId];
+    }
+
+    // Emergency functions
+    function emergencyWithdrawGasPool() external onlyOwner {
+        uint256 amount = gasPool;
+        gasPool = 0;
+        payable(owner()).transfer(amount);
+    }
+
+    // Required ERC1155 overrides
+    function uri(uint256 tokenId) public view override returns (string memory) {
+        // ✅ FIXED: Get title, summary, location from correct positions (14-value destructuring)
+        (, string memory title, , string memory summary, , string memory location, , , , , , , ,) = ENCRYPTED_ARTICLES.articles(tokenId);
+        //  1             2      3              4       5              6        7  8  9  10 11 12 13 14
+        
+        return string(abi.encodePacked(
+            '{"name": "Reader License - ', title, '",',
+            '"description": "', summary, '",',
+            '"attributes": [',
+                '{"trait_type": "Location", "value": "', location, '"},',
+                '{"trait_type": "License Type", "value": "Reader Access"}',
+            ']}'
+        ));
+    }
+}

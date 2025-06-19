@@ -1,0 +1,18 @@
+{
+  "address": "0xF2Da11169CE742Ea0B75B7207E774449e26f8ee1",
+  "deployer": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+  "deploymentTime": "2025-06-09T15:06:39.705Z",
+  "network": "flow-evm-testnet",
+  "contractName": "PortfolioArticles",
+  "contractPath": "contracts/content/PortfolioArticles.sol",
+  "constructorArgs": [
+    "0x8b351Bc93799898a201E796405dBC30Aad49Ee21",
+    "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2"
+  ],
+  "config": {
+    "portfolioArticleFee": "1000000000000000000",
+    "maxPostsPerDay": 10,
+    "publisherTokenContract": "0x8b351Bc93799898a201E796405dBC30Aad49Ee21",
+    "treasuryWallet": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2"
+  }
+}

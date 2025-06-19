@@ -1,0 +1,52 @@
+// lib/profile/hooks/useProfile.ts
+import { useState, useEffect } from 'react';
+import { Profile } from '../types/profile';
+import { mockProfileService } from '../services/mockProfileService';
+
+export function useProfile(id: string, walletAddress?: string) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const response = await mockProfileService.getProfile(id, walletAddress);
+        
+        if (isMounted) {
+          setProfile(response.profile);
+          setIsOwner(response.isOwner);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error(`Failed to fetch profile with ID ${id}`));
+          setProfile(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (id) {
+      fetchProfile();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id, walletAddress]);
+
+  return {
+    profile,
+    isOwner,
+    isLoading,
+    error
+  };
+}

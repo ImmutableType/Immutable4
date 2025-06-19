@@ -1,0 +1,59 @@
+// lib/hooks/useHasMembershipToken.ts
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import { useWallet } from './useWallet';
+
+const MEMBERSHIP_TOKEN_ADDRESS = '0xC90bE82B23Dca9453445b69fB22D5A90402654b2';
+const MEMBERSHIP_TOKEN_ABI = [
+  "function balanceOf(address owner) external view returns (uint256)"
+];
+
+export function useHasMembershipToken() {
+  const { address, isConnected } = useWallet();
+  const [hasMembershipToken, setHasMembershipToken] = useState(false);
+  const [membershipTokenId, setMembershipTokenId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function checkMembership() {
+      if (!isConnected || !address) {
+        setHasMembershipToken(false);
+        setMembershipTokenId(null);
+        return;
+      }
+
+      setIsLoading(true);
+      
+      try {
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const contract = new ethers.Contract(
+          MEMBERSHIP_TOKEN_ADDRESS,
+          MEMBERSHIP_TOKEN_ABI,
+          provider
+        );
+        
+        const balance = await contract.balanceOf(address);
+        const hasToken = balance > 0n;
+        
+        setHasMembershipToken(hasToken);
+        
+        if (hasToken) {
+          // For now, we can't get the specific token ID without enumeration
+          // So we'll just indicate they have a token
+          setMembershipTokenId('IT**');
+        }
+        
+        console.log(`Membership token balance for ${address}:`, balance.toString());
+      } catch (error) {
+        console.error('Error checking membership token:', error);
+        setHasMembershipToken(false);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    checkMembership();
+  }, [address, isConnected]);
+
+  return { hasMembershipToken, membershipTokenId, isLoading };
+}

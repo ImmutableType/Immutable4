@@ -1,0 +1,272 @@
+// File: lib/reader/services/mockReaderService.ts
+import { Article } from '../types/article';
+import { FeedFilters, FeedSortOptions, ProposalSummary } from '../types/feed';
+import { ArticleMetrics, TipTransaction, VoteAction } from '../types/engagement';
+
+// Import mock data
+// Note: In a real implementation, these would be fetched from an API or blockchain
+const articleData: Article[] = require('../mockData/articles.json');
+const articleDetailsData: Record<string, Article> = require('../mockData/articleDetails.json');
+const engagementData: {
+  votes: Record<string, {
+    count: {
+      up: number;
+      down: number;
+      emoji: Record<string, number>;
+    };
+    users: Record<string, {
+      type: 'up' | 'down' | 'emoji';
+      emoji?: string;
+      timestamp: string;
+    }>;
+  }>;
+  tips: Record<string, {
+    total: number;
+    count: number;
+    transactions: Array<{
+      id: string;
+      sender: string;
+      amount: number;
+      timestamp: string;
+      message?: string;
+    }>;
+  }>;
+} = require('../mockData/engagement.json');
+
+// Add a delay to simulate network requests
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Mock reader service
+export const mockReaderService = {
+  // Get list of articles with optional filtering
+  getArticles: async (filters?: Partial<FeedFilters>): Promise<Article[]> => {
+    await delay(500);
+    
+    let articles = [...articleData];
+    
+    if (filters) {
+      if (filters.category) {
+        articles = articles.filter(article => article.category === filters.category);
+      }
+      
+      if (filters.location) {
+        articles = articles.filter(article => article.location.includes(filters.location as string));
+      }
+      
+      if (filters.tag) {
+        articles = articles.filter(article => article.tags.includes(filters.tag as string));
+      }
+      
+      if (filters.authorType) {
+        articles = articles.filter(article => article.authorType === filters.authorType);
+      }
+      
+      if (filters.dateRange) {
+        const { start, end } = filters.dateRange;
+        articles = articles.filter(article => {
+          const articleDate = new Date(article.createdAt);
+          return articleDate >= new Date(start) && articleDate <= new Date(end);
+        });
+      }
+    }
+    
+    return articles;
+  },
+  
+  // Get a specific article by ID
+  getArticleById: async (id: string): Promise<Article | null> => {
+    await delay(300);
+    
+    const articleDetail = articleDetailsData[id];
+    return articleDetail || null;
+  },
+  
+  // Get articles and proposals for a unified feed
+  getFeed: async (
+    filters?: Partial<FeedFilters>,
+    sort?: Partial<FeedSortOptions>,
+    proposals?: ProposalSummary[]
+  ): Promise<{articles: Article[], proposals: ProposalSummary[]}> => {
+    await delay(700);
+    
+    let articles = await mockReaderService.getArticles(filters);
+    
+    // Default sorting by date (newest first)
+    const sortField = sort?.field || 'date';
+    const sortDirection = sort?.direction || 'desc';
+    
+    articles = articles.sort((a, b) => {
+      if (sortField === 'date') {
+        return sortDirection === 'desc' 
+          ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      
+      if (sortField === 'popularity') {
+        return sortDirection === 'desc'
+          ? b.readerMetrics.viewCount - a.readerMetrics.viewCount
+          : a.readerMetrics.viewCount - b.readerMetrics.viewCount;
+      }
+      
+      if (sortField === 'funding') {
+        return sortDirection === 'desc'
+          ? b.readerMetrics.tipAmount - a.readerMetrics.tipAmount
+          : a.readerMetrics.tipAmount - b.readerMetrics.tipAmount;
+      }
+      
+      return 0;
+    });
+    
+    // For demonstration, filter proposals here
+    // In a real implementation, this would likely be done by another service
+    let filteredProposals = proposals || [];
+    
+    if (filters) {
+      if (filters.category) {
+        filteredProposals = filteredProposals.filter(
+          proposal => proposal.category === filters.category
+        );
+      }
+      
+      if (filters.location) {
+        filteredProposals = filteredProposals.filter(
+          proposal => proposal.location.includes(filters.location as string)
+        );
+      }
+      
+      if (filters.tag) {
+        filteredProposals = filteredProposals.filter(
+          proposal => proposal.tags.includes(filters.tag as string)
+        );
+      }
+    }
+    
+    // Filter by content type if specified
+    if (filters?.contentType === 'articles') {
+      return { articles, proposals: [] };
+    } else if (filters?.contentType === 'proposals') {
+      return { articles: [], proposals: filteredProposals };
+    }
+    
+    return { articles, proposals: filteredProposals };
+  },
+  
+  // Get engagement metrics for an article
+  getArticleMetrics: async (articleId: string): Promise<ArticleMetrics | null> => {
+    await delay(200);
+    
+    const article = articleData.find(a => a.id === articleId);
+    if (!article) return null;
+    
+    const votes = engagementData.votes[articleId];
+    const tips = engagementData.tips[articleId];
+    
+    if (!votes || !tips) return null;
+    
+    return {
+      articleId,
+      viewCount: article.readerMetrics.viewCount,
+      uniqueViewers: Math.floor(article.readerMetrics.viewCount * 0.7), // Approximate
+      tipTotal: tips.total,
+      tipCount: tips.count,
+      commentCount: article.readerMetrics.commentCount,
+      votes: votes.count
+    };
+  },
+  
+  // Simulate a user voting on an article
+  addVote: async (
+    articleId: string,
+    userId: string,
+    voteType: 'up' | 'down' | 'emoji',
+    emoji?: string
+  ): Promise<VoteAction> => {
+    await delay(400);
+    
+    const vote: VoteAction = {
+      id: `vote-${Date.now()}`,
+      articleId,
+      voter: userId,
+      voteType,
+      emoji: voteType === 'emoji' ? emoji : undefined,
+      timestamp: new Date().toISOString()
+    };
+    
+    // In a real implementation, this would update the vote counts
+    return vote;
+  },
+  
+  // Simulate a user tipping an article
+  addTip: async (
+    articleId: string,
+    userId: string,
+    amount: number,
+    message?: string
+  ): Promise<TipTransaction> => {
+    await delay(600);
+    
+    const tip: TipTransaction = {
+      id: `tip-${Date.now()}`,
+      articleId,
+      sender: userId,
+      amount,
+      timestamp: new Date().toISOString(),
+      message
+    };
+    
+    // In a real implementation, this would update the tip counts
+    return tip;
+  },
+  
+  // Check if a user has interacted with an article
+  getUserEngagement: async (articleId: string, userId: string): Promise<{
+    hasVoted: boolean;
+    hasTipped: boolean;
+    userVote?: VoteAction;
+    userTip?: TipTransaction;
+  }> => {
+    await delay(300);
+    
+    // Safely access the votes data with proper type checking
+    const votes = engagementData.votes?.[articleId];
+    const tips = engagementData.tips?.[articleId];
+    
+    // Safely check if the user has voted
+    const userVote = votes?.users?.[userId];
+    
+    // Safely check if the user has tipped
+    const userTip = tips?.transactions?.find(t => t.sender === userId);
+    
+    return {
+      hasVoted: !!userVote,
+      hasTipped: !!userTip,
+      userVote: userVote ? {
+        id: `vote-${userId}-${articleId}`,
+        articleId,
+        voter: userId,
+        voteType: userVote.type,
+        emoji: userVote.emoji,
+        timestamp: userVote.timestamp
+      } : undefined,
+      userTip: userTip ? {
+        // Transform the userTip to match our TipTransaction interface
+        id: userTip.id,
+        articleId: articleId, // Add the articleId property
+        sender: userTip.sender,
+        amount: userTip.amount,
+        timestamp: userTip.timestamp,
+        message: userTip.message
+      } : undefined
+    };
+  },
+  
+  // Increment view count for an article
+  recordView: async (articleId: string, userId: string): Promise<void> => {
+    await delay(100);
+    // In a real implementation, this would update the view count
+    console.log(`View recorded for article ${articleId} by user ${userId}`);
+  }
+};
+
+// Export for use in components
+export default mockReaderService;

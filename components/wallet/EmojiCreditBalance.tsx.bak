@@ -1,0 +1,104 @@
+// components/wallet/EmojiCreditBalance.tsx
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useWallet } from '../../lib/hooks/useWallet';
+import { emojiTokenService } from '../../lib/blockchain/contracts/EmojiTokenService';
+import { EmojiPurchaseButton } from '../emoji/EmojiPurchaseButton';
+import { EmojiPurchaseModal } from '../emoji/EmojiPurchaseModal';
+
+export function EmojiCreditBalance() {
+  const { address, isConnected } = useWallet();
+  const [balance, setBalance] = useState<string>('0');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+
+  const fetchBalance = async () => {
+    if (!isConnected || !address) {
+      setBalance('0');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await emojiTokenService.initialize();
+      const userBalance = await emojiTokenService.getBalance(address);
+      setBalance(Math.floor(parseFloat(userBalance)).toLocaleString('en-US'));
+    } catch (error) {
+      console.error('Error fetching EMOJI balance:', error);
+      setBalance('0');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBalance();
+    
+    // Refresh balance every 30 seconds
+    const interval = setInterval(fetchBalance, 30000);
+    
+    return () => clearInterval(interval);
+  }, [address, isConnected]);
+
+  const handlePurchaseSuccess = (result: any) => {
+    console.log('Purchase successful:', result);
+    // Refresh balance after successful purchase
+    setTimeout(() => {
+      fetchBalance();
+    }, 2000); // Wait 2 seconds for blockchain to update
+  };
+
+  const handlePurchaseClick = () => {
+    setShowPurchaseModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowPurchaseModal(false);
+  };
+
+  if (!isConnected) return null;
+
+  return (
+    <>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        padding: '12px',
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: '8px',
+        marginBottom: '12px'
+      }}>
+        {/* Balance Display */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '20px' }}>🎯</span>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+              {isLoading ? '...' : balance}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>$EMOJI</div>
+          </div>
+        </div>
+
+        {/* Purchase Button */}
+        <EmojiPurchaseButton
+          onClick={handlePurchaseClick}
+          variant="secondary"
+          className="w-full text-xs"
+        />
+      </div>
+
+      {/* Purchase Modal */}
+      <EmojiPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={handleModalClose}
+        onSuccess={handlePurchaseSuccess}
+      />
+    </>
+  );
+}

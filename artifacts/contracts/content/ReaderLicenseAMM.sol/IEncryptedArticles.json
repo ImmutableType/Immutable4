@@ -1,0 +1,114 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IEncryptedArticles",
+  "sourceName": "contracts/content/ReaderLicenseAMM.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "articleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "articles",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "encryptedContent",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "summary",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "author",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "location",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "category",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "publishedAt",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nftCount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "nftPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "journalistRetained",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "readerLicenseRatio",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "creationSource",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "articleId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getNFTHolders",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

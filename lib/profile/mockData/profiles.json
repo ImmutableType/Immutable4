@@ -1,0 +1,72 @@
+
+{
+    "profiles": [
+      {
+        "id": "0",
+        "walletAddress": "0x0000000000000000000000000000000000000000",
+        "displayName": "ImmutableType Protocol",
+        "bio": "The official profile of the ImmutableType platform.",
+        "avatarUrl": "ipfs://QmYqA8GiZ4oQSoTSGzMjzkX5YQ1Wgwy3pUK2WFdMzXcswi",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "isVerified": true,
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": true,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 0,
+          "proposalsCreated": 0,
+          "proposalsFunded": 0,
+          "articlesPublished": 24,
+          "totalTipsReceived": 1250,
+          "totalTipsSent": 0
+        }
+      },
+      {
+        "id": "1",
+        "walletAddress": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        "displayName": "DamonClarke",
+        "bio": "Founder of ImmutableType. Web3 journalism advocate and blockchain enthusiast.",
+        "avatarUrl": "ipfs://QmT7fTvs8Tk8mUJUvvPDDeEhHoGD6HkFQYgWXKXZNUvCbP",
+        "createdAt": "2025-01-02T12:30:45Z",
+        "isVerified": true,
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": true,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 137,
+          "proposalsCreated": 15,
+          "proposalsFunded": 42,
+          "articlesPublished": 31,
+          "totalTipsReceived": 875,
+          "totalTipsSent": 430
+        }
+      },
+      {
+        "id": "2",
+        "walletAddress": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+        "displayName": "MiamiTech",
+        "bio": "Community journalist focused on Miami's growing tech scene.",
+        "avatarUrl": "ipfs://QmWj41SW4JJpvQHQHCbXFQVV6hdYfYiVKjnzYQmZMKcwwL",
+        "createdAt": "2025-01-15T09:22:18Z",
+        "isVerified": true,
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": false,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 98,
+          "proposalsCreated": 7,
+          "proposalsFunded": 12,
+          "articlesPublished": 14,
+          "totalTipsReceived": 320,
+          "totalTipsSent": 85
+        }
+      }
+    ],
+    "total": 3
+  }

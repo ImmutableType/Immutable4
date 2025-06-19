@@ -1,0 +1,67 @@
+
+{
+    "activities": [
+      {
+        "id": "act-001",
+        "profileId": "1",
+        "type": "create",
+        "timestamp": "2025-04-27T14:22:10Z",
+        "contentId": "proposal-042",
+        "contentType": "proposal",
+        "contentTitle": "Investigation into Miami's Climate Resilience Plans",
+        "details": "Created a proposal for in-depth reporting on climate initiatives"
+      },
+      {
+        "id": "act-002",
+        "profileId": "1",
+        "type": "fund",
+        "timestamp": "2025-04-26T11:15:32Z",
+        "contentId": "proposal-038",
+        "contentType": "proposal",
+        "contentTitle": "The Rise of Miami's Tech Ecosystem",
+        "amount": 50,
+        "details": "Contributed 50 FLOW to fund this proposal"
+      },
+      {
+        "id": "act-003",
+        "profileId": "1",
+        "type": "read",
+        "timestamp": "2025-04-25T19:45:11Z",
+        "contentId": "article-127",
+        "contentType": "article",
+        "contentTitle": "How Web3 is Reshaping Local Journalism"
+      },
+      {
+        "id": "act-004",
+        "profileId": "1",
+        "type": "tip",
+        "timestamp": "2025-04-24T16:30:45Z",
+        "contentId": "article-119",
+        "contentType": "article",
+        "contentTitle": "Analysis: Florida's Blockchain Legislation",
+        "amount": 25,
+        "details": "Tipped author 25 FLOW for excellent reporting"
+      },
+      {
+        "id": "act-005",
+        "profileId": "1",
+        "type": "vote",
+        "timestamp": "2025-04-24T10:12:18Z",
+        "contentId": "proposal-037",
+        "contentType": "proposal",
+        "contentTitle": "Miami's Affordable Housing Crisis",
+        "details": "Upvoted proposal with 5 emoji credits"
+      },
+      {
+        "id": "act-006",
+        "profileId": "1",
+        "type": "comment",
+        "timestamp": "2025-04-23T21:05:27Z",
+        "contentId": "article-116",
+        "contentType": "article",
+        "contentTitle": "Decentralized Media: One Year Later",
+        "details": "Great analysis! I would love to see more on the economic sustainability aspect."
+      }
+    ],
+    "total": 6
+  }

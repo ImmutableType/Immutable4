@@ -1,0 +1,13 @@
+{
+  "address": "0xbA1bba49FD1A6B949844CEFddc94d182272A19b8",
+  "contractName": "TippingContract",
+  "version": "v1",
+  "network": "flow-evm-testnet",
+  "deployedAt": "2025-06-06T03:00:59.398Z",
+  "constructorArgs": [
+    "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+    "0x0c4141ec0d87fA1B7820E5AF277024251d392F05",
+    "0x572F036576D1D9F41876e714D47f69CEa6933c36"
+  ],
+  "notes": "Initial deployment with 1 FLOW minimum tip and 1.9% fee structure"
+}

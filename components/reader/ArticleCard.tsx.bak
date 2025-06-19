@@ -1,0 +1,180 @@
+// File: components/reader/ArticleCard.tsx
+import React from 'react';
+import Link from 'next/link';
+import { Article } from '../../lib/reader/types/article';
+
+interface ArticleCardProps {
+  article: Article;
+  onClick?: (articleId: string) => void;
+}
+
+const ArticleCard: React.FC<ArticleCardProps> = ({ article, onClick }) => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick(article.id);
+    }
+  };
+
+  // Format date for display
+  const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
+  // Truncate wallet address for display
+  const truncatedWallet = article.author.substring(0, 6) + '...' + article.author.substring(article.author.length - 4);
+
+  return (
+    <div 
+      style={{
+        padding: '1.5rem',
+        marginBottom: '1rem',
+        backgroundColor: 'var(--color-white)',
+        border: '1px solid var(--color-digital-silver)',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+      onClick={handleClick}
+    >
+      {/* Article Header */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div style={{ 
+            color: 'var(--color-typewriter-red)', 
+            fontFamily: 'var(--font-ui)', 
+            fontSize: '0.8rem',
+            fontWeight: 500 
+          }}>
+            {article.category}
+          </div>
+          <div style={{ 
+            color: 'var(--color-digital-silver)', 
+            fontFamily: 'var(--font-ui)', 
+            fontSize: '0.8rem' 
+          }}>
+            {formattedDate}
+          </div>
+        </div>
+        <h2 style={{ 
+          fontFamily: 'var(--font-headlines)', 
+          fontSize: '1.4rem', 
+          margin: '0 0 0.5rem 0' 
+        }}>
+          {article.title}
+        </h2>
+      </div>
+
+      {/* Article Summary */}
+      <div style={{ 
+        fontFamily: 'var(--font-body)', 
+        fontSize: '1rem', 
+        marginBottom: '1rem',
+        color: 'var(--color-black)',
+        lineHeight: 1.5
+      }}>
+        {article.summary}
+      </div>
+
+      {/* Article Footer */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderTop: '1px solid var(--color-digital-silver)',
+        paddingTop: '0.75rem',
+        marginTop: '0.75rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ 
+            backgroundColor: 'var(--color-parchment)', 
+            borderRadius: '50%', 
+            width: '24px', 
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: '0.5rem'
+          }}>
+            {article.authorName ? article.authorName.charAt(0).toUpperCase() : '?'}
+          </div>
+          <div style={{ 
+            fontFamily: 'var(--font-ui)', 
+            fontSize: '0.85rem',
+            fontWeight: 500
+          }}>
+            {article.authorName || truncatedWallet}
+            <span style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: 'normal',
+              opacity: 0.7,
+              marginLeft: '0.5rem'
+            }}>
+              {article.authorType}
+            </span>
+          </div>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          fontFamily: 'var(--font-ui)', 
+          fontSize: '0.8rem', 
+          color: 'var(--color-digital-silver)'
+        }}>
+          <div style={{ marginRight: '0.75rem' }}>
+            {article.readerMetrics.viewCount} views
+          </div>
+          <div style={{ marginRight: '0.75rem' }}>
+            {article.readerMetrics.commentCount} comments
+          </div>
+          <div>
+            {article.readerMetrics.tipAmount} ETH tips
+          </div>
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        marginTop: '0.75rem' 
+      }}>
+        {article.tags.map((tag, index) => (
+          <div key={index} style={{ 
+            backgroundColor: 'var(--color-parchment)',
+            color: 'var(--color-black)',
+            borderRadius: '4px',
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.75rem',
+            fontFamily: 'var(--font-ui)',
+            marginRight: '0.5rem',
+            marginBottom: '0.5rem'
+          }}>
+            {tag}
+          </div>
+        ))}
+      </div>
+
+      {/* Location */}
+      <div style={{ 
+        fontSize: '0.75rem',
+        fontFamily: 'var(--font-ui)',
+        color: 'var(--color-digital-silver)',
+        marginTop: '0.5rem'
+      }}>
+        {article.location}
+      </div>
+    </div>
+  );
+};
+
+export default ArticleCard;

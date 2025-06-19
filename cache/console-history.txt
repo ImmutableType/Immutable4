@@ -1,0 +1,148 @@
+console.log("Total supply:", totalSupply.toString())
+const totalSupply = await amm.totalLicensesEverGenerated(8)
+const amm = await ethers.getContractAt("ReaderLicenseAMM", "0x2792Fc09ee569c9f98ab219c226E3f9523e8929F")
+console.log("Data length:", articleData.length)
+console.log("Article data:", articleData)
+const articleData = await articles.articles(8)
+const articles = await ethers.getContractAt("EncryptedArticles", "0xd99aB3390aAF8BC69940626cdbbBf22F436c6753")
+.exit
+});
+  tipsReceived: Number(stats[5])
+  tipsGiven: Number(stats[4]),
+  emojiReceived: ethers.formatEther(stats[3]),
+  flowReceived: ethers.formatEther(stats[2]),
+  emojiGiven: ethers.formatEther(stats[1]),
+  flowGiven: ethers.formatEther(stats[0]),
+console.log("Your tip stats:", {
+const stats = await contract.getAddressTipStats(deployer.address);
+const [deployer] = await ethers.getSigners();
+console.log("Treasury address:", treasury);
+const treasury = await contract.getTreasuryAddress();
+console.log("Platform fee:", Number(fee) / 100, "%");
+const fee = await contract.getPlatformFeePercentage();
+console.log("Minimum tip:", ethers.formatEther(minTip), "FLOW");
+const minTip = await contract.getMinimumTipAmount();
+const contract = await ethers.getContractAt("TippingContract", "0xbA1bba49FD1A6B949844CEFddc94d182272A19b8");
+.exit
+console.log("Can update now?", canUpdate); // Should be true!
+const canUpdate = await leaderboard.canUpdateSnapshot();
+console.log("✅ Reset successful!");
+await leaderboard.forceSnapshotReset();
+const leaderboard = await ethers.getContractAt("LeaderboardAggregatorV4", "0x5001A51d7479a9cd91Ac4CBEB81931f197F63d56");
+console.log("✅ Minter role granted to V4");
+await emojiToken.grantRole(MINTER_ROLE, "0x5001A51d7479a9cd91Ac4CBEB81931f197F63d56");
+const MINTER_ROLE = await emojiToken.MINTER_ROLE();
+const emojiToken = await ethers.getContractAt("EmojiToken", "0x572F036576D1D9F41876e714D47f69CEa6933c36");
+.exit
+console.log("Next update available at (Miami time):", nextUpdateMiamiTime.toLocaleString('en-US', {timeZone: 'America/New_York'}));
+const nextUpdateMiamiTime = new Date(nextMidnightUTC * 1000);
+console.log("Hours until next update available:", hoursUntilUpdate.toFixed(2));
+const hoursUntilUpdate = (nextMidnightUTC - now) / 3600;
+const nextMidnightUTC = (currentDay + 1) * 86400;
+const currentDay = Math.floor(now / 86400);
+const now = Math.floor(Date.now() / 1000);
+console.log("Next update available at (Miami time):", nextUpdateMiamiTime.toLocaleString('en-US', {timeZone: 'America/New_York'}));
+const nextUpdateMiamiTime = new Date(nextMidnightUTC * 1000);
+// Convert to Miami time
+console.log("Hours until next update available:", hoursUntilUpdate.toFixed(2));
+console.log("Contract current day:", currentDay);
+console.log("Current Unix timestamp:", now);
+const hoursUntilUpdate = (nextMidnightUTC - now) / 3600;
+const nextMidnightUTC = (currentDay + 1) * 86400; // Next UTC midnight
+const currentDay = Math.floor(now / 86400); // Contract's day calculation
+const now = Math.floor(Date.now() / 1000); // Current Unix timestamp
+// Check the current UTC time vs contract day calculation
+const tx = await leaderboard.updateLeaderboardSnapshot();
+}
+    console.log("Update failed:", error.message);
+} catch (error) {
+    console.log("Update successful! TX:", tx.hash);
+    const tx = await leaderboard.updateLeaderboardSnapshot();
+try {
+console.log(Object.keys(leaderboard.interface.functions));
+console.log("Contract functions available:");
+// Let's see what functions the contract actually has
+console.log("Can update now?", canUpdateNow);
+const canUpdateNow = await leaderboard.canUpdateSnapshot();
+console.log("New last snapshot day:", newLastSnapshotDay.toString());
+const newLastSnapshotDay = await leaderboard.lastSnapshotDay();
+console.log("✅ Reset command sent");
+await leaderboard.forceSnapshotReset();
+console.log("Can update?", canUpdate);
+const canUpdate = await leaderboard.canUpdateSnapshot();
+console.log("Last snapshot day:", lastSnapshotDay.toString());
+console.log("Current day:", currentDay.toString());
+const lastSnapshotDay = await leaderboard.lastSnapshotDay();
+const currentDay = await leaderboard.getCurrentDay();
+const leaderboard = await ethers.getContractAt("LeaderboardAggregatorV3", "0xbc815e49A70E6445373410DE42F92616651f71E4");
+.exit
+console.log("Can update snapshot:", canUpdate); // Should be true now
+const canUpdate = await leaderboard.canUpdateSnapshot();
+// Check if update is available
+console.log("✅ Snapshot reset - you can now update again!");
+await leaderboard.forceSnapshotReset();
+// Force reset the snapshot day (owner only)
+const leaderboard = await ethers.getContractAt("LeaderboardAggregatorV3", "0xbc815e49A70E6445373410DE42F92616651f71E4");
+// Get the V3 contract
+.exit
+console.log("Can update snapshot:", canUpdate); // Should be false (already updated today)
+const canUpdate = await leaderboard.canUpdateSnapshot();
+// Test if you can update snapshot
+console.log("Your current score:", score.toString()); // Should be 42!
+const score = await leaderboard.calculateUserScore(testAddress);
+// This should work now!
+const testAddress = "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2";
+const leaderboard = await ethers.getContractAt("LeaderboardAggregatorV3", "0xbc815e49A70E6445373410DE42F92616651f71E4");
+// Test the fixed contract
+console.log("✅ Minter role granted to V3");
+await emojiToken.grantRole(MINTER_ROLE, "0xbc815e49A70E6445373410DE42F92616651f71E4");
+const MINTER_ROLE = await emojiToken.MINTER_ROLE();
+const emojiToken = await ethers.getContractAt("EmojiToken", "0x572F036576D1D9F41876e714D47f69CEa6933c36");
+// Grant minter role to V3
+.exit
+console.log("GM Stats[2] (saidToday):", gmStats[2]);
+console.log("GM Stats[1] (streak):", gmStats[1].toString());
+console.log("GM Stats[0] (total):", gmStats[0].toString());
+console.log("GM Stats length:", gmStats.length);
+console.log("GM Stats:", gmStats);
+const gmStats = await gmAction.getUserStats(testAddress);
+const gmAction = await ethers.getContractAt("GMAction", "0xaE76fde8f2fc50968182b76f76341d79249A66F5");
+console.log("Your current score:", score.toString());
+const score = await leaderboard.calculateUserScore(testAddress);
+const testAddress = "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2"; // Your address
+console.log("Points per GM:", gmPoints.toString()); // Should be 10
+console.log("Points per proposal:", proposalPoints.toString()); // Should be 20  
+console.log("Points per article:", articlePoints.toString()); // Should be 250
+const gmPoints = await leaderboard.POINTS_PER_GM();
+const proposalPoints = await leaderboard.POINTS_PER_PROPOSAL();
+const articlePoints = await leaderboard.POINTS_PER_ARTICLE();
+console.log("Can update snapshot:", canUpdate);
+const canUpdate = await leaderboard.canUpdateSnapshot();
+const leaderboard = await ethers.getContractAt("LeaderboardAggregator", "0x4De04f5B4Db487BC8AefF75ca012d289658B25F2");
+console.log("✅ Minter role granted to new leaderboard");
+await emojiToken.grantRole(MINTER_ROLE, "0x4De04f5B4Db487BC8AefF75ca012d289658B25F2");
+const MINTER_ROLE = await emojiToken.MINTER_ROLE();
+// Grant MINTER_ROLE to new leaderboard
+const emojiToken = await ethers.getContractAt("EmojiToken", "0x572F036576D1D9F41876e714D47f69CEa6933c36");
+// Get the EmojiToken contract
+.exit
+exit
+console.log("Last update day:", await contract.lastUpdateDay());exit
+console.log("Current day:", await contract.getCurrentDay());
+console.log("Can update:", await contract.canUpdate());
+const contract = LeaderboardAggregator.attach("0x04F27Ba8DFa6227A2DE2e25C2157879153C371EB");
+const LeaderboardAggregator = await ethers.getContractFactory("LeaderboardAggregator");
+.exit
+console.log("Can update after reset:", await contract.canUpdate());
+await contract.forceUpdateDay();
+console.log("Total profiles:", totalProfiles.toString());
+const totalProfiles = await profileNFT.totalSupply();
+const profileNFT = ProfileNFT.attach("0x0c4141ec0d87fA1B7820E5AF277024251d392F05");
+const ProfileNFT = await ethers.getContractFactory("ProfileNFT");
+console.log("Leaderboard entries:", leaderboard.length);
+const leaderboard = await contract.getLeaderboard();
+console.log("Last update day:", await contract.lastUpdateDay());
+console.log("Current day:", await contract.getCurrentDay());
+console.log("Can update:", await contract.canUpdate());
+const contract = LeaderboardAggregator.attach("0x04F27Ba8DFa6227A2DE2e25C2157879153C371EB");
+const LeaderboardAggregator = await ethers.getContractFactory("LeaderboardAggregator");

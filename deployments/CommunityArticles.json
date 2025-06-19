@@ -1,0 +1,12 @@
+{
+  "address": "0xD3d12E3b86Ed9f8Cdd095E0f90EDF7eE61Eb8611",
+  "contractName": "CommunityArticles",
+  "network": "flow-evm-testnet",
+  "deployedAt": "2025-06-07T19:50:44.991Z",
+  "membershipTokenAddress": "0xC90bE82B23Dca9453445b69fB22D5A90402654b2",
+  "treasuryWallet": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+  "articleFee": "0.009",
+  "maxPostsPerDay": 20,
+  "totalArticles": 0,
+  "notes": "Community article curation with full on-chain storage - DEPLOYED & VERIFIED"
+}

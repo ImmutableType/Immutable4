@@ -1,0 +1,43 @@
+[
+    {
+      "id": "user-001",
+      "address": "0x1234...5678",
+      "displayName": "MiamiWatchdog",
+      "isJournalist": false,
+      "bio": "Concerned citizen interested in environmental protection and government transparency.",
+      "proposals": ["prop-001"],
+      "funded": ["prop-003", "prop-005"],
+      "voted": ["prop-002", "prop-004", "prop-006", "prop-007"]
+    },
+    {
+      "id": "user-002",
+      "address": "0xabcd...efgh",
+      "displayName": "MiamiBusinessGuru",
+      "isJournalist": false,
+      "bio": "Supporting small businesses and local entrepreneurship in Miami.",
+      "proposals": ["prop-002"],
+      "funded": ["prop-004", "prop-008"],
+      "voted": ["prop-001", "prop-005", "prop-007"]
+    },
+    {
+      "id": "user-003",
+      "address": "0x9876...5432",
+      "displayName": "EduAdvocate",
+      "isJournalist": false,
+      "bio": "Working to improve education access and quality in South Florida.",
+      "proposals": ["prop-003"],
+      "funded": ["prop-001", "prop-007"],
+      "voted": ["prop-002", "prop-004", "prop-005", "prop-008"]
+    },
+    {
+      "id": "user-004",
+      "address": "0x5678...90ab",
+      "displayName": "ClimateReporter",
+      "isJournalist": true,
+      "bio": "Journalist covering climate issues in coastal communities. Published in Miami Herald and The Atlantic.",
+      "proposals": ["prop-005"],
+      "funded": ["prop-001", "prop-004"],
+      "voted": ["prop-002", "prop-003", "prop-007"],
+      "interestedIn": ["prop-001", "prop-005"]
+    }
+  ]

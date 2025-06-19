@@ -1,0 +1,61 @@
+
+{
+    "articles": [
+      {
+        "id": "article-001",
+        "title": "The Future of Blockchain in Journalism",
+        "shortDescription": "How decentralized technologies are reshaping media business models",
+        "contentHash": "QmT7fTvs8Tk8mUJUvvPDDeEhHoGD6HkFQYgWXKXZNUvCbP",
+        "authorId": "1",
+        "category": "Technology",
+        "tags": ["blockchain", "journalism", "web3", "decentralization"],
+        "location": "Miami, Florida",
+        "createdAt": "2025-04-25T14:30:22Z",
+        "publishedAt": "2025-04-25T14:35:08Z",
+        "fee": 0.5,
+        "mintType": "native",
+        "transactionHash": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+        "fullContent": "# The Future of Blockchain in Journalism\n\nDecentralized technologies are reshaping media business models in unexpected ways. As traditional revenue streams continue to dry up, blockchain offers new approaches to funding quality journalism.\n\n## Direct Reader Support\n\nMicropayments and tokenized content allow readers to directly support the journalists they value, eliminating the need for intrusive advertising or centralized paywalls.\n\n## Community Governance\n\nDAO structures enable community-driven editorial decisions, where readers have a direct say in what stories get funded and published.\n\n## Verified Sources\n\nOn-chain verification provides readers with confidence in the authenticity of sources and the integrity of content.\n\nThese innovations are just the beginning of what's possible when journalism embraces web3 technologies."
+      },
+      {
+        "id": "article-002",
+        "title": "Miami Tech Scene Continues to Expand",
+        "shortDescription": "New funding and startups flock to South Florida's growing tech hub",
+        "contentHash": "QmWj41SW4JJpvQHQHCbXFQVV6hdYfYiVKjnzYQmZMKcwwL",
+        "authorId": "2",
+        "category": "Local",
+        "tags": ["miami", "tech", "startups", "funding"],
+        "location": "Miami, Florida",
+        "createdAt": "2025-04-26T10:15:30Z",
+        "publishedAt": "2025-04-26T11:20:45Z",
+        "fee": 0.5,
+        "mintType": "portfolio",
+        "transactionHash": "0xf1e2d3c4b5a6987654321abcdef1234567890abcdef1234567890abcdef1234",
+        "originalUrl": "https://miamitechnews.com/expansion-2025/",
+        "publicationName": "Miami Tech Today",
+        "originalPublishDate": "2025-04-26T08:30:00Z",
+        "journalistId": "2"
+      },
+      {
+        "id": "article-003",
+        "title": "Flow Blockchain Adoption Surges Among Developers",
+        "shortDescription": "Developer activity on Flow has increased 300% year over year",
+        "contentHash": "QmNtYsZU5yQVxWzQwV8n1xuGJ8YiYVA6J8LJSu3WCjUXoi",
+        "authorId": "1",
+        "category": "Blockchain",
+        "tags": ["flow", "blockchain", "developers", "web3"],
+        "location": "Miami, Florida",
+        "createdAt": "2025-04-27T09:45:33Z",
+        "publishedAt": "2025-04-27T10:30:15Z",
+        "fee": 0.5,
+        "mintType": "community",
+        "transactionHash": "0xa9b8c7d6e5f4312345678901234567890123456789012345678901234abcdef",
+        "originalUrl": "https://flow.com/blog/developer-growth-2025",
+        "sourceDomain": "flow.com",
+        "originalAuthor": "Flow Team",
+        "proposalCreated": true,
+        "proposalId": "proposal-042"
+      }
+    ],
+    "total": 3
+  }

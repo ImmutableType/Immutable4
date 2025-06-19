@@ -1,0 +1,118 @@
+
+{
+    "profiles": {
+      "0": {
+        "id": "0",
+        "walletAddress": "0x0000000000000000000000000000000000000000",
+        "displayName": "ImmutableType Protocol",
+        "bio": "The official profile of the ImmutableType platform. We're building a decentralized journalism ecosystem on the Flow EVM blockchain, empowering communities to fund, create, and consume trustworthy content.",
+        "avatarUrl": "ipfs://QmYqA8GiZ4oQSoTSGzMjzkX5YQ1Wgwy3pUK2WFdMzXcswi",
+        "createdAt": "2025-01-01T00:00:00Z",
+        "isVerified": true,
+        "creatorStatement": "ImmutableType was created to solve the crisis in local journalism through decentralized funding, community input, and blockchain verification. Our mission is to build a sustainable model for quality journalism that isn't dependent on advertising revenue or corporate interests.",
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": true,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 0,
+          "proposalsCreated": 0,
+          "proposalsFunded": 0,
+          "articlesPublished": 24,
+          "totalTipsReceived": 1250,
+          "totalTipsSent": 0,
+          "articleViews": 12850,
+          "uniqueReaders": 4250
+        }
+      },
+      "1": {
+        "id": "1",
+        "walletAddress": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+        "displayName": "DamonClarke",
+        "bio": "Founder of ImmutableType. Web3 journalism advocate and blockchain enthusiast. Working to build sustainable models for decentralized media.",
+        "avatarUrl": "ipfs://QmT7fTvs8Tk8mUJUvvPDDeEhHoGD6HkFQYgWXKXZNUvCbP",
+        "createdAt": "2025-01-02T12:30:45Z",
+        "isVerified": true,
+        "creatorStatement": "After seeing local newspapers shut down across the country, I became passionate about finding new ways to fund journalism. I believe blockchain technology offers a solution by creating direct connections between readers and journalists, without middlemen taking a cut.",
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": true,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 137,
+          "proposalsCreated": 15,
+          "proposalsFunded": 42,
+          "articlesPublished": 31,
+          "totalTipsReceived": 875,
+          "totalTipsSent": 430,
+          "articleViews": 8950,
+          "uniqueReaders": 2140
+        },
+        "social": {
+          "twitter": "@DamonClarkeWeb3",
+          "github": "damonclarke",
+          "website": "https://damonclarke.eth.xyz"
+        }
+      },
+      "2": {
+        "id": "2",
+        "walletAddress": "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
+        "displayName": "MiamiTech",
+        "bio": "Community journalist focused on Miami's growing tech scene. Covering blockchain startups, VC funding, and the future of tech in South Florida.",
+        "avatarUrl": "ipfs://QmWj41SW4JJpvQHQHCbXFQVV6hdYfYiVKjnzYQmZMKcwwL",
+        "createdAt": "2025-01-15T09:22:18Z",
+        "isVerified": true,
+        "creatorStatement": "I've been covering Miami's tech transformation since 2021. As traditional media cuts back on specialized tech coverage, I'm filling the gap with deep reporting on our local ecosystem. My goal is to connect Miami's tech community through shared stories and insights.",
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": false,
+          "showVoting": true
+        },
+        "metrics": {
+          "articlesRead": 98,
+          "proposalsCreated": 7,
+          "proposalsFunded": 12,
+          "articlesPublished": 14,
+          "totalTipsReceived": 320,
+          "totalTipsSent": 85,
+          "articleViews": 4760,
+          "uniqueReaders": 1085
+        },
+        "social": {
+          "twitter": "@MiamiTechNews",
+          "instagram": "@miamitech.news"
+        }
+      },
+      "3": {
+        "id": "3",
+        "walletAddress": "0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF",
+        "displayName": "ClimateReporter",
+        "bio": "Environmental journalist covering climate resilience in coastal cities. Based in Miami but reporting globally on climate solutions.",
+        "avatarUrl": "ipfs://QmNtYsZU5yQVxWzQwV8n1xuGJ8YiYVA6J8LJSu3WCjUXoi",
+        "createdAt": "2025-02-03T15:12:33Z",
+        "isVerified": true,
+        "creatorStatement": "Climate journalism needs to be local and solutions-focused. I believe in reporting not just on the problems, but on the innovations and adaptations that show promise. My work is funded directly by readers who care about these issues.",
+        "privacySettings": {
+          "showActivity": true,
+          "showFunding": true,
+          "showVoting": false
+        },
+        "metrics": {
+          "articlesRead": 76,
+          "proposalsCreated": 9,
+          "proposalsFunded": 4,
+          "articlesPublished": 11,
+          "totalTipsReceived": 215,
+          "totalTipsSent": 125,
+          "articleViews": 3850,
+          "uniqueReaders": 950
+        },
+        "social": {
+          "twitter": "@ClimateReports",
+          "website": "climate-resilience.xyz"
+        }
+      }
+    }
+  }

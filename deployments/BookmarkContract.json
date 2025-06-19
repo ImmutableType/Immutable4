@@ -1,0 +1,10 @@
+{
+    "address": "0x66f856f960AEF5011FdCc7383B9F81d2515930c9",
+    "contractName": "BookmarkContract", 
+    "network": "flow-evm-testnet",
+    "deployedAt": "2025-01-XX",
+    "profileNFTAddress": "0x0c4141ec0d87fA1B7820E5AF277024251d392F05",
+    "treasuryWallet": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+    "bookmarkFee": "0.001",
+    "notes": "Bookmark system with treasury fees and profile gating - DEPLOYED & TESTED"
+  }

@@ -1,0 +1,289 @@
+// lib/reader/services/unifiedArticleService.ts
+// Unified service for fetching from all article contracts
+
+import { ethers } from 'ethers';
+import { Article } from '../types/article';
+import { FeedFilters } from '../types/feed';
+import { CONTRACT_ADDRESSES, NETWORK_CONFIG } from '../../constants/deployments';
+import { CommunityArticleService } from '../../blockchain/contracts/CommunityArticleService';
+import { PortfolioArticleService } from '../../blockchain/contracts/PortfolioArticleService';
+import { EncryptedArticleService } from '../../blockchain/contracts/EncryptedArticleService';
+import { 
+  transformCommunityArticle, 
+  transformPortfolioArticle, 
+  transformEncryptedArticle 
+} from '../adapters/articleTransformers';
+
+export class UnifiedArticleService {
+  private provider: ethers.Provider;
+  private communityService: CommunityArticleService;
+  private portfolioService: PortfolioArticleService;
+  private encryptedService: EncryptedArticleService;
+
+  constructor() {
+    this.provider = new ethers.JsonRpcProvider(NETWORK_CONFIG.RPC_URL);
+    this.communityService = new CommunityArticleService(CONTRACT_ADDRESSES.COMMUNITY_ARTICLES, this.provider);
+    this.portfolioService = new PortfolioArticleService(CONTRACT_ADDRESSES.PORTFOLIO_ARTICLES, this.provider);
+    this.encryptedService = new EncryptedArticleService(CONTRACT_ADDRESSES.ENCRYPTED_ARTICLES, this.provider);
+  }
+
+  // Fetch community articles
+  private async fetchCommunityArticles(): Promise<Article[]> {
+    try {
+      console.log('Fetching community articles...');
+      const articles: Article[] = [];
+      
+      // Only fetch IDs that actually exist
+      const knownCommunityIds = [1]; // Only ID 1 works
+      
+      for (const i of knownCommunityIds) {
+        try {
+          const article = await this.communityService.getArticle(i);
+          if (article && article.isActive) {
+            articles.push(transformCommunityArticle(article));
+          } else {
+            break; // No more articles
+          }
+        } catch (error) {
+          break; // No more articles or error
+        }
+      }
+      
+      console.log(`Found ${articles.length} community articles`);
+      return articles;
+    } catch (error) {
+      console.debug('Community articles not available:', error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
+  }
+
+  // Fetch portfolio articles
+  private async fetchPortfolioArticles(): Promise<Article[]> {
+    try {
+      console.log('Fetching portfolio articles...');
+      const articles: Article[] = [];
+      
+      // Only fetch IDs that actually exist
+      const knownPortfolioIds = [1]; // Only ID 1 works
+      
+      for (const i of knownPortfolioIds) {
+        try {
+          const article = await this.portfolioService.getArticle(i);
+          if (article && article.isActive) {
+            articles.push(transformPortfolioArticle(article));
+          } else {
+            break; // No more articles
+          }
+        } catch (error) {
+          break; // No more articles or error
+        }
+      }
+      
+      console.log(`Found ${articles.length} portfolio articles`);
+      return articles;
+    } catch (error) {
+      console.debug('Portfolio articles not available:', error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
+  }
+
+  private async fetchEncryptedArticles(): Promise<Article[]> {
+    try {
+      console.log('Fetching encrypted articles...');
+      const articles: Article[] = [];
+      
+      // Check a reasonable range of IDs where articles might exist
+      for (let i = 1; i <= 20; i++) {
+        try {
+          const article = await this.encryptedService.getArticle(i);
+          
+          // Check if this is a real article (not empty struct)
+          if (article && article.id && Number(article.id) > 0 && article.title && article.title.length > 0) {
+            const transformedArticle = transformEncryptedArticle({
+              id: article.id,
+              title: article.title,
+              encryptedContent: article.encryptedContent,
+              summary: article.summary,
+              author: article.author,
+              location: article.location,
+              category: article.category,
+              publishedAt: article.publishedAt,
+              nftCount: article.nftCount,
+              nftPrice: article.nftPrice,
+              readerLicenseRatio: article.readerLicenseRatio,
+              proposalId: article.proposalId,
+              tags: article.tags || []
+            });
+            articles.push(transformedArticle);
+            console.log(`✅ Found encrypted article ${i}: ${article.title}`);
+          }
+        } catch (error) {
+          // Continue checking other IDs
+        }
+      }
+      
+      console.log(`Found ${articles.length} encrypted articles`);
+      return articles;
+    } catch (error) {
+      console.error('Error fetching encrypted articles:', error);
+      return [];
+    }
+  }
+
+
+
+
+
+
+  // Get all articles from all contracts
+  async getAllArticles(filters?: Partial<FeedFilters>): Promise<Article[]> {
+    try {
+      console.log('Fetching articles from all contracts...');
+      await this.debugContract();
+
+      
+      // Fetch from all three contracts in parallel
+      const [communityArticles, portfolioArticles, encryptedArticles] = await Promise.all([
+        this.fetchCommunityArticles(),
+        this.fetchPortfolioArticles(),
+        this.fetchEncryptedArticles()
+      ]);
+
+      // Combine all articles
+      let allArticles = [
+        ...communityArticles,
+        ...portfolioArticles,
+        ...encryptedArticles
+      ];
+
+      console.log(`Total articles found: ${allArticles.length} (Community: ${communityArticles.length}, Portfolio: ${portfolioArticles.length}, Encrypted: ${encryptedArticles.length})`);
+
+      // Apply filters
+      if (filters) {
+        if (filters.contentType === 'articles') {
+          // Only show articles (exclude proposals)
+          allArticles = allArticles.filter(article => !article.proposalId);
+        }
+        
+        if (filters.category) {
+          allArticles = allArticles.filter(article => 
+            article.category.toLowerCase() === filters.category!.toLowerCase()
+          );
+        }
+        
+        if (filters.location) {
+          allArticles = allArticles.filter(article => 
+            article.location.toLowerCase().includes(filters.location!.toLowerCase())
+          );
+        }
+        
+        if (filters.tag) {
+          allArticles = allArticles.filter(article => 
+            article.tags.some(tag => tag.toLowerCase().includes(filters.tag!.toLowerCase()))
+          );
+        }
+        
+        if (filters.authorType) {
+          allArticles = allArticles.filter(article => 
+            article.authorType === filters.authorType
+          );
+        }
+        
+        if (filters.dateRange) {
+          const { start, end } = filters.dateRange;
+          allArticles = allArticles.filter(article => {
+            const articleDate = new Date(article.createdAt);
+            return articleDate >= new Date(start) && articleDate <= new Date(end);
+          });
+        }
+      }
+
+      // Sort by creation date (newest first) by default
+      allArticles.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      return allArticles;
+    } catch (error) {
+      console.debug('Error fetching all articles:', error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
+  }
+
+  // Get article by ID from any contract
+  async getArticleById(id: string): Promise<Article | null> {
+    try {
+      // Parse ID to determine source
+      if (id.startsWith('community_')) {
+        const articleId = id.replace('community_', '');
+        const article = await this.communityService.getArticle(parseInt(articleId));
+        return article ? transformCommunityArticle(article) : null;
+      }
+      
+      if (id.startsWith('portfolio_')) {
+        const articleId = id.replace('portfolio_', '');
+        const article = await this.portfolioService.getArticle(parseInt(articleId));
+        return article ? transformPortfolioArticle(article) : null;
+      }
+      
+      if (id.startsWith('encrypted_')) {
+        const articleId = id.replace('encrypted_', '');
+        const article = await this.encryptedService['contract']['articles'](parseInt(articleId));
+        return article && article.id > 0 ? transformEncryptedArticle(article) : null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.debug(`Article ${id} not found:`, error instanceof Error ? error.message : 'Unknown error');
+      return null;
+    }
+  }
+
+  // Get unique categories from all articles - FIXED Set iteration
+  async getCategories(): Promise<string[]> {
+    const articles = await this.getAllArticles();
+    const categoriesSet = new Set(articles.map(article => article.category));
+    const categories = Array.from(categoriesSet);
+    return categories.filter(category => category && category.trim() !== '');
+  }
+
+  // Get unique locations from all articles - FIXED Set iteration
+  async getLocations(): Promise<string[]> {
+    const articles = await this.getAllArticles();
+    const locationsSet = new Set(articles.map(article => article.location));
+    const locations = Array.from(locationsSet);
+    return locations.filter(location => location && location.trim() !== '');
+}
+
+// Temporary debug method
+async debugContract(): Promise<void> {
+  try {
+    console.log('🔍 DEBUG: Testing contract directly...');
+    const total = await this.encryptedService.getTotalArticles();
+    console.log('🔍 Total articles reported by contract:', total);
+    
+    // Test a few IDs directly
+    for (let i = 1; i <= 10; i++) {
+      try {
+        const article = await this.encryptedService.getArticle(i);
+        if (article && Number(article.id) > 0) {
+          console.log(`🔍 Found article at ID ${i}:`, {
+            id: Number(article.id),
+            title: article.title,
+            author: article.author,
+            location: article.location
+          });
+        }
+      } catch (e) {
+        // Ignore errors for non-existent articles
+      }
+    }
+  } catch (error) {
+    console.error('🔍 Contract debug failed:', error);
+  }
+}
+}
+
+// Create singleton instance
+export const unifiedArticleService = new UnifiedArticleService();
+export default unifiedArticleService;

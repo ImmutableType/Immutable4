@@ -1,0 +1,503 @@
+// app/(client)/profile/[identifier]/publish/portfolio/page.tsx
+'use client'
+
+import React, { useState, use } from 'react';
+import { useRouter } from 'next/navigation';
+import TokenGate from '../../../../../../components/publishing/TokenGate';
+import RealFeePayment from '../../../../../../components/publishing/RealFeePayment';
+import { PortfolioMintingResult } from '../../../../../../lib/publishing/types/transaction';
+
+export default function PortfolioMintPage({ params }: { params: Promise<{ identifier: string }> }) {
+  const router = useRouter();
+  const resolvedParams = use(params);
+  const identifier = resolvedParams.identifier;
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    originalUrl: '',
+    shortDescription: '',
+    category: 'Technology',
+    location: 'Miami, Florida',
+    tags: '',
+    publicationName: '',
+    originalPublishDate: new Date().toISOString().split('T')[0], // Default to today
+  });
+  
+  const [showFeePayment, setShowFeePayment] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [mintingResult, setMintingResult] = useState<PortfolioMintingResult | null>(null);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.title.trim()) {
+      setValidationError('Title is required');
+      return;
+    }
+    
+    if (!formData.originalUrl.trim()) {
+      setValidationError('Original URL is required');
+      return;
+    }
+    
+    if (!formData.shortDescription.trim()) {
+      setValidationError('Description is required');
+      return;
+    }
+    
+    if (!formData.publicationName.trim()) {
+      setValidationError('Publication name is required');
+      return;
+    }
+    
+    // Extract domain from URL
+    try {
+      new URL(formData.originalUrl);
+    } catch (err) {
+      setValidationError('Please enter a valid URL');
+      return;
+    }
+    
+    setValidationError(null);
+    setShowFeePayment(true);
+  };
+  
+  const handleMintingSuccess = (result: PortfolioMintingResult) => {
+    console.log('Portfolio article minted successfully:', result);
+    setMintingResult(result);
+    
+    // Redirect to Portfolio Articles tab after a delay
+    setTimeout(() => {
+      router.push(`/profile/${identifier}?tab=portfolio-articles`);
+    }, 3000);
+  };
+  
+  const handleMintingCancel = () => {
+    setShowFeePayment(false);
+  };
+  
+  return (
+    <div>
+      <TokenGate profileId={identifier} publishingType="portfolio">
+        <h1 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '2rem',
+          marginBottom: '1.5rem',
+        }}>
+          Portfolio Verification
+        </h1>
+        
+        <div style={{
+          backgroundColor: 'var(--color-parchment)',
+          padding: '1.5rem',
+          borderRadius: '4px',
+          marginBottom: '1.5rem',
+        }}>
+          <p style={{
+            fontSize: '0.95rem',
+            margin: 0,
+            lineHeight: '1.5',
+          }}>
+            Mint your published work from other publications to verify your portfolio on the blockchain. This helps establish your reputation as a journalist on ImmutableType.
+          </p>
+        </div>
+        
+        {mintingResult?.success ? (
+          <div style={{
+            backgroundColor: 'rgba(29, 127, 110, 0.1)',
+            borderLeft: '3px solid var(--color-verification-green)',
+            padding: '1.5rem',
+            marginBottom: '1.5rem',
+            borderRadius: '4px',
+          }}>
+            <h3 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.2rem',
+              marginTop: 0,
+              marginBottom: '1rem',
+              color: 'var(--color-verification-green)',
+            }}>
+              Portfolio Article Successfully Published!
+            </h3>
+            
+            <p style={{
+              fontSize: '1rem',
+              margin: '0 0 1rem 0',
+            }}>
+              Your article "{mintingResult.article?.title}" has been verified and minted on the blockchain.
+            </p>
+            
+            {mintingResult.txHash && (
+              <p style={{
+                fontSize: '0.9rem',
+                margin: '0 0 1.5rem 0',
+                opacity: 0.8,
+              }}>
+                Transaction Hash: {mintingResult.txHash.substring(0, 10)}...
+              </p>
+            )}
+            
+            <div style={{
+              textAlign: 'center',
+            }}>
+              <p style={{
+                fontSize: '0.9rem',
+                opacity: 0.7,
+                margin: 0,
+              }}>
+                Redirecting to your Portfolio Articles tab...
+              </p>
+            </div>
+          </div>
+        ) : showFeePayment ? (
+          <RealFeePayment
+            authorId={identifier}
+            articleData={{
+              title: formData.title,
+              shortDescription: formData.shortDescription,
+              originalUrl: formData.originalUrl,
+              category: formData.category,
+              location: formData.location,
+              tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+              publicationName: formData.publicationName,
+              originalPublishDate: formData.originalPublishDate,
+            }}
+            onSuccess={handleMintingSuccess}
+            onCancel={handleMintingCancel}
+          />
+        ) : (
+          <div style={{
+            backgroundColor: 'var(--color-white)',
+            border: '1px solid var(--color-digital-silver)',
+            borderRadius: '4px',
+            padding: '2rem',
+          }}>
+            <form onSubmit={handleSubmit}>
+              {validationError && (
+                <div style={{
+                  backgroundColor: 'rgba(179, 33, 30, 0.1)',
+                  borderLeft: '3px solid var(--color-typewriter-red)',
+                  padding: '1rem',
+                  marginBottom: '1.5rem',
+                  color: 'var(--color-typewriter-red)',
+                  fontSize: '0.9rem',
+                }}>
+                  {validationError}
+                </div>
+              )}
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="title"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Article Title *
+                </label>
+                <input
+                  id="title"
+                  name="title"
+                  type="text"
+                  value={formData.title}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  required
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="publicationName"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Publication Name *
+                </label>
+                <input
+                  id="publicationName"
+                  name="publicationName"
+                  type="text"
+                  value={formData.publicationName}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  placeholder="e.g. The Miami Herald, TechCrunch, etc."
+                  required
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="originalUrl"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Article URL *
+                </label>
+                <input
+                  id="originalUrl"
+                  name="originalUrl"
+                  type="url"
+                  value={formData.originalUrl}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  required
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="originalPublishDate"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Original Publish Date
+                </label>
+                <input
+                  id="originalPublishDate"
+                  name="originalPublishDate"
+                  type="date"
+                  value={formData.originalPublishDate}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                />
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label
+                  htmlFor="shortDescription"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Short Description *
+                </label>
+                <textarea
+                  id="shortDescription"
+                  name="shortDescription"
+                  value={formData.shortDescription}
+                  onChange={handleChange}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                    resize: 'vertical',
+                  }}
+                  required
+                />
+                <p style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--color-black)',
+                  opacity: 0.7,
+                  margin: '0.25rem 0 0 0',
+                }}>
+                  This will appear in Article Cards in the Reader feed ({formData.shortDescription.length}/200 characters)
+                </p>
+              </div>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '1.5rem',
+                marginBottom: '1.5rem',
+              }}>
+                <div>
+                  <label
+                    htmlFor="category"
+                    style={{
+                      display: 'block',
+                      fontFamily: 'var(--font-ui)',
+                      fontWeight: 'bold',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    Category
+                  </label>
+                  <select
+                    id="category"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-digital-silver)',
+                      fontSize: '1rem',
+                      fontFamily: 'var(--font-ui)',
+                      backgroundColor: 'var(--color-white)',
+                    }}
+                  >
+                    <option value="Technology">Technology</option>
+                    <option value="Politics">Politics</option>
+                    <option value="Business">Business</option>
+                    <option value="Science">Science</option>
+                    <option value="Health">Health</option>
+                    <option value="Arts">Arts</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Opinion">Opinion</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label
+                    htmlFor="location"
+                    style={{
+                      display: 'block',
+                      fontFamily: 'var(--font-ui)',
+                      fontWeight: 'bold',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
+                    Location
+                  </label>
+                  <select
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-digital-silver)',
+                      fontSize: '1rem',
+                      fontFamily: 'var(--font-ui)',
+                      backgroundColor: 'var(--color-white)',
+                    }}
+                  >
+                    <option value="Miami, Florida">Miami, Florida</option>
+                    <option value="Tampa, Florida">Tampa, Florida</option>
+                    <option value="Orlando, Florida">Orlando, Florida</option>
+                    <option value="Jacksonville, Florida">Jacksonville, Florida</option>
+                    <option value="Global">Global</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: '2rem' }}>
+                <label
+                  htmlFor="tags"
+                  style={{
+                    display: 'block',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 'bold',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  Tags (comma separated)
+                </label>
+                <input
+                  id="tags"
+                  name="tags"
+                  type="text"
+                  value={formData.tags}
+                  onChange={handleChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-digital-silver)',
+                    fontSize: '1rem',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  placeholder="e.g. journalism, miami, technology"
+                />
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/profile/${identifier}/publish`)}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: 'var(--color-black)',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 500,
+                    padding: '0.5rem 1rem',
+                    border: '1px solid var(--color-digital-silver)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    backgroundColor: 'var(--color-typewriter-red)',
+                    color: 'var(--color-white)',
+                    fontFamily: 'var(--font-ui)',
+                    fontWeight: 500,
+                    padding: '0.5rem 1.5rem',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Continue to Blockchain Minting
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </TokenGate>
+    </div>
+  );
+}

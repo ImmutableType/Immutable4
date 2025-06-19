@@ -1,0 +1,494 @@
+// app/(client)/profile/create/page.tsx
+'use client'
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { mockProfileService } from '../../../../lib/profile/services/mockProfileService';
+
+export default function CreateProfilePage() {
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    displayName: '',
+    bio: '',
+    avatarUrl: '',
+    location: 'Miami, Florida', // Default location
+    avatarType: 'initial', // 'initial' or 'ipfs'
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tipAmount, setTipAmount] = useState<number>(0);
+  
+  // Mock wallet address for development
+  const walletAddress = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e';
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    // Handle bio character limit
+    if (name === 'bio' && value.length > 100) {
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleAvatarTypeChange = (type: 'initial' | 'ipfs') => {
+    setFormData(prev => ({ ...prev, avatarType: type }));
+  };
+  
+  const handleTipChange = (amount: number) => {
+    setTipAmount(amount);
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      
+      // Validate form data
+      if (!formData.displayName.trim()) {
+        throw new Error('Display name is required');
+      }
+      
+      // Prepare data for submission
+      const profileData = {
+        displayName: formData.displayName,
+        bio: formData.bio,
+        avatarUrl: formData.avatarType === 'ipfs' ? formData.avatarUrl : undefined,
+        // In a real implementation, we would process the initial avatar here
+      };
+      
+      // Submit the form data
+      const response = await mockProfileService.createProfile(walletAddress, profileData);
+      
+      // In a real implementation, process the tip here if tipAmount > 0
+      
+      // Redirect to the profile page
+      router.push(`/profile/${response.profile.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create profile');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  return (
+    <div style={{
+      maxWidth: '600px',
+      margin: '0 auto',
+    }}>
+      <h1 style={{
+        fontFamily: 'var(--font-headlines)',
+        fontSize: '2rem',
+        marginBottom: '1.5rem',
+      }}>
+        Create Profile
+      </h1>
+
+
+
+
+
+
+      <div style={{
+        backgroundColor: 'var(--color-parchment)',
+        borderRadius: '4px',
+        padding: '1.5rem',
+        marginBottom: '1.5rem'  // Add this line for better spacing
+      }}>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.2rem',
+          marginTop: 0,
+          marginBottom: '1rem',
+        }}>
+          About Profile Creation
+        </h3>
+        <p style={{
+          fontSize: '0.95rem',
+          lineHeight: '1.5',
+          margin: 0,
+        }}>
+          Creating a profile will mint a unique Profile NFT with a sequential ID. 
+          Early adopters get lower ID numbers, which may become valuable within the community.
+          Your profile links your wallet address to your content and activity on ImmutableType.
+        </p>
+      </div>
+
+
+
+
+
+
+      
+      <div style={{
+        backgroundColor: 'var(--color-white)',
+        border: '1px solid var(--color-digital-silver)',
+        borderRadius: '4px',
+        padding: '2rem',
+        marginBottom: '2rem',
+      }}>
+        <form onSubmit={handleSubmit}>
+          {/* Header Image - Coming Soon */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Header Image
+            </label>
+            <div style={{
+              height: '100px',
+              backgroundColor: 'var(--color-parchment)',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-black)',
+              opacity: 0.5,
+              border: '1px dashed var(--color-digital-silver)',
+            }}>
+              <span style={{ fontFamily: 'var(--font-ui)' }}>
+                Coming soon - Mint a header image
+              </span>
+            </div>
+          </div>
+          
+          {/* Avatar Selection */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Profile Avatar
+            </label>
+            
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              marginBottom: '1rem',
+            }}>
+              <button
+                type="button"
+                onClick={() => handleAvatarTypeChange('initial')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: formData.avatarType === 'initial' ? 'var(--color-typewriter-red)' : 'transparent',
+                  color: formData.avatarType === 'initial' ? 'var(--color-white)' : 'var(--color-black)',
+                  border: formData.avatarType === 'initial' ? 'none' : '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                }}
+              >
+                Use Initial
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => handleAvatarTypeChange('ipfs')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: formData.avatarType === 'ipfs' ? 'var(--color-typewriter-red)' : 'transparent',
+                  color: formData.avatarType === 'ipfs' ? 'var(--color-white)' : 'var(--color-black)',
+                  border: formData.avatarType === 'ipfs' ? 'none' : '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                }}
+              >
+                Use IPFS Image
+              </button>
+            </div>
+            
+            {formData.avatarType === 'initial' ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--color-parchment)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'var(--font-headlines)',
+                  fontSize: '24px',
+                }}>
+                  {formData.displayName ? formData.displayName.charAt(0).toUpperCase() : 'A'}
+                </div>
+                <p style={{
+                  margin: 0,
+                  fontSize: '0.9rem',
+                  color: 'var(--color-black)',
+                  opacity: 0.7,
+                }}>
+                  Avatar will use the first letter of your display name
+                </p>
+              </div>
+            ) : (
+              <input
+                id="avatarUrl"
+                name="avatarUrl"
+                type="text"
+                value={formData.avatarUrl}
+                onChange={handleChange}
+                placeholder="ipfs://..."
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '4px',
+                  border: '1px solid var(--color-digital-silver)',
+                  fontSize: '1rem',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              />
+            )}
+          </div>
+          
+          {/* Display Name */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              htmlFor="displayName"
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Display Name *
+            </label>
+            <input
+              id="displayName"
+              name="displayName"
+              type="text"
+              value={formData.displayName}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                border: '1px solid var(--color-digital-silver)',
+                fontSize: '1rem',
+                fontFamily: 'var(--font-ui)',
+              }}
+            />
+          </div>
+          
+          {/* Location */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              htmlFor="location"
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Local to
+            </label>
+            <select
+              id="location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                border: '1px solid var(--color-digital-silver)',
+                fontSize: '1rem',
+                fontFamily: 'var(--font-ui)',
+                backgroundColor: 'var(--color-white)',
+              }}
+            >
+              <option value="Miami, Florida">Miami, Florida</option>
+              <option value="Tampa, Florida">Tampa, Florida</option>
+              <option value="Orlando, Florida">Orlando, Florida</option>
+              <option value="Jacksonville, Florida">Jacksonville, Florida</option>
+              <option value="Other">Other (Coming Soon)</option>
+            </select>
+          </div>
+          
+          {/* Bio */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              htmlFor="bio"
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleChange}
+              rows={3}
+              maxLength={100}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                borderRadius: '4px',
+                border: '1px solid var(--color-digital-silver)',
+                fontSize: '1rem',
+                fontFamily: 'var(--font-ui)',
+                resize: 'vertical',
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              fontSize: '0.8rem',
+              color: formData.bio.length > 90 ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+              opacity: formData.bio.length > 90 ? 1 : 0.7,
+              marginTop: '0.25rem',
+            }}>
+              {formData.bio.length}/100 characters
+            </div>
+          </div>
+          
+          {/* Tip Section */}
+          <div style={{ 
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            backgroundColor: 'var(--color-parchment)',
+            borderRadius: '4px',
+          }}>
+            <label
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                marginBottom: '0.5rem',
+              }}
+            >
+              Support ImmutableType (Optional)
+            </label>
+            <p style={{
+              margin: '0 0 1rem 0',
+              fontSize: '0.9rem',
+              lineHeight: '1.5',
+            }}>
+              Add a tip to support the development of ImmutableType and its community-driven journalism.
+            </p>
+            
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginBottom: '0.5rem',
+            }}>
+              {[5, 10, 25, 50].map(amount => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => handleTipChange(amount)}
+                  style={{
+                    backgroundColor: tipAmount === amount ? 'var(--color-typewriter-red)' : 'transparent',
+                    color: tipAmount === amount ? 'var(--color-white)' : 'var(--color-black)',
+                    border: tipAmount === amount ? 'none' : '1px solid var(--color-digital-silver)',
+                    borderRadius: '4px',
+                    padding: '0.5rem 1rem',
+                    fontFamily: 'var(--font-ui)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {amount} FLOW
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleTipChange(0)}
+                style={{
+                  backgroundColor: tipAmount === 0 ? 'var(--color-typewriter-red)' : 'transparent',
+                  color: tipAmount === 0 ? 'var(--color-white)' : 'var(--color-black)',
+                  border: tipAmount === 0 ? 'none' : '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  padding: '0.5rem 1rem',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                }}
+              >
+                No Tip
+              </button>
+            </div>
+          </div>
+          
+          {error && (
+            <div style={{
+              backgroundColor: 'rgba(179, 33, 30, 0.1)',
+              borderLeft: '3px solid var(--color-typewriter-red)',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              color: 'var(--color-typewriter-red)',
+              fontSize: '0.9rem',
+            }}>
+              {error}
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--color-black)',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 500,
+                padding: '0.5rem 1rem',
+                border: '1px solid var(--color-digital-silver)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              style={{
+                backgroundColor: 'var(--color-typewriter-red)',
+                color: 'var(--color-white)',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 500,
+                padding: '0.5rem 1.5rem',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: isSubmitting ? 'default' : 'pointer',
+                opacity: isSubmitting ? 0.7 : 1,
+                transition: 'background-color 0.2s ease',
+              }}
+            >
+              {isSubmitting ? 'Creating...' : tipAmount > 0 ? `Create Profile + Tip ${tipAmount} FLOW` : 'Create Profile'}
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      
+    </div>
+  );
+}

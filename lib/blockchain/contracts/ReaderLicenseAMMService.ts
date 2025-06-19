@@ -1,0 +1,392 @@
+// lib/blockchain/contracts/ReaderLicenseAMMService.ts
+import { ethers } from 'ethers';
+
+export interface LicenseInfo {
+  articleId: string;
+  editionNumber: number;
+  totalGenerated: number;
+  activeLicenses: number;
+  lastRegenerationTime: bigint;
+}
+
+export interface AccessInfo {
+  expiryTime: bigint;
+  hasAccess: boolean;
+}
+
+export interface PurchaseRecord {
+  timestamp: bigint;
+  price: bigint;
+  buyer: string;
+  seller: string;
+}
+
+export interface LicenseStats {
+  currentPrice: bigint;
+  totalSupply: number;
+  activeLicenses: number;
+  shouldRegenerate: boolean;
+  holders: string[];
+  balances: number[];
+}
+
+// Define the contract interface
+interface ReaderLicenseAMMContractInterface {
+  getCurrentPrice(articleId: bigint): Promise<bigint>;
+  buyLicense(articleId: bigint, seller: string, overrides?: ethers.Overrides): Promise<ethers.ContractTransactionResponse>;
+  burnLicenseForAccess(articleId: bigint): Promise<ethers.ContractTransactionResponse>;
+  shouldRegenerate(articleId: bigint): Promise<boolean>;
+  regenerateLicenses(articleId: bigint): Promise<ethers.ContractTransactionResponse>;
+  hasActiveAccess(articleId: bigint, user: string): Promise<boolean>;
+  getEncryptedContent(articleId: bigint): Promise<string>;
+  getArticleSummary(articleId: bigint): Promise<string>;
+  getLicenseHolders(articleId: bigint): Promise<[string[], bigint[]]>;
+  getPurchaseHistory(articleId: bigint): Promise<PurchaseRecord[]>;
+  licenseInfo(articleId: bigint): Promise<[bigint, bigint, bigint, bigint, bigint]>;
+  accessInfo(articleId: bigint, user: string): Promise<[bigint, boolean]>;
+  licenseBalances(articleId: bigint, user: string): Promise<bigint>;
+  gasPool(): Promise<bigint>;
+}
+
+export class ReaderLicenseAMMService {
+  private contract: ethers.Contract & ReaderLicenseAMMContractInterface;
+  private provider: ethers.Provider;
+
+  // Contract ABI - essential functions only
+  private static readonly ABI = [
+    "function getCurrentPrice(uint256 _articleId) external view returns (uint256)",
+    "function buyLicense(uint256 _articleId, address _seller) external payable",
+    "function burnLicenseForAccess(uint256 _articleId) external",
+    "function shouldRegenerate(uint256 _articleId) external view returns (bool)",
+    "function regenerateLicenses(uint256 _articleId) external",
+    "function hasActiveAccess(uint256 _articleId, address _user) external view returns (bool)",
+    "function getEncryptedContent(uint256 _articleId) external view returns (string)",
+    "function getArticleSummary(uint256 _articleId) external view returns (string)",
+    "function getLicenseHolders(uint256 _articleId) external view returns (address[], uint256[])",
+    "function getPurchaseHistory(uint256 _articleId) external view returns (tuple(uint256 timestamp, uint256 price, address buyer, address seller)[])",
+    "function licenseInfo(uint256) external view returns (uint256 articleId, uint256 editionNumber, uint256 totalGenerated, uint256 activeLicenses, uint256 lastRegenerationTime)",
+    "function accessInfo(uint256, address) external view returns (uint256 expiryTime, bool hasAccess)",
+    "function licenseBalances(uint256, address) external view returns (uint256)",
+    "function gasPool() external view returns (uint256)",
+    "event LicenseMinted(uint256 indexed articleId, address indexed holder, uint256 count, uint256 editionNumber)",
+    "event LicensePurchased(uint256 indexed articleId, address indexed buyer, address indexed seller, uint256 price)",
+    "event LicenseBurned(uint256 indexed articleId, address indexed user, uint256 expiryTime)",
+    "event LicenseRegenerated(uint256 indexed articleId, uint256 count, uint256 totalActive)",
+    "event AccessGranted(uint256 indexed articleId, address indexed user, uint256 expiryTime)"
+  ];
+
+  constructor(contractAddress: string, provider: ethers.Provider) {
+    this.provider = provider;
+    this.contract = new ethers.Contract(
+      contractAddress,
+      ReaderLicenseAMMService.ABI,
+      provider
+    ) as ethers.Contract & ReaderLicenseAMMContractInterface;
+  }
+
+  /**
+   * Get current license price for an article
+   */
+  async getCurrentPrice(articleId: string | number): Promise<bigint> {
+    try {
+      return await this.contract.getCurrentPrice(BigInt(articleId));
+    } catch (error) {
+      console.error('Error fetching current price:', error);
+      return BigInt(0);
+    }
+  }
+
+  /**
+   * Buy a license from another holder
+   */
+  async buyLicense(
+    articleId: string | number,
+    seller: string,
+    signer: ethers.Signer
+  ): Promise<ethers.TransactionResponse> {
+    const contractWithSigner = this.contract.connect(signer) as ethers.Contract & ReaderLicenseAMMContractInterface;
+    const currentPrice = await this.getCurrentPrice(articleId);
+    const gasReimbursement = ethers.parseEther('0.005'); // 0.005 FLOW
+    const totalCost = currentPrice + gasReimbursement;
+    
+    return await contractWithSigner.buyLicense(BigInt(articleId), seller, {
+      value: totalCost
+    });
+  }
+
+  /**
+   * Burn license for 7-day article access
+   */
+  async burnLicenseForAccess(
+    articleId: string | number,
+    signer: ethers.Signer
+  ): Promise<ethers.TransactionResponse> {
+    const contractWithSigner = this.contract.connect(signer) as ethers.Contract & ReaderLicenseAMMContractInterface;
+    
+    return await contractWithSigner.burnLicenseForAccess(BigInt(articleId));
+  }
+
+  /**
+   * Check if regeneration is needed (50% threshold)
+   */
+  async shouldRegenerate(articleId: string | number): Promise<boolean> {
+    try {
+      return await this.contract.shouldRegenerate(BigInt(articleId));
+    } catch (error) {
+      console.error('Error checking regeneration status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Trigger license regeneration (anyone can call, gas reimbursed)
+   */
+  async regenerateLicenses(
+    articleId: string | number,
+    signer: ethers.Signer
+  ): Promise<ethers.TransactionResponse> {
+    const contractWithSigner = this.contract.connect(signer) as ethers.Contract & ReaderLicenseAMMContractInterface;
+    
+    return await contractWithSigner.regenerateLicenses(BigInt(articleId));
+  }
+
+  /**
+   * Check if user has active access to article
+   */
+  async hasActiveAccess(articleId: string | number, userAddress: string): Promise<boolean> {
+    try {
+      return await this.contract.hasActiveAccess(BigInt(articleId), userAddress);
+    } catch (error) {
+      console.error('Error checking active access:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get encrypted article content (only for users with active access)
+   */
+  async getEncryptedContent(articleId: string | number, signer: ethers.Signer): Promise<string | null> {
+    try {
+      const contractWithSigner = this.contract.connect(signer);
+      return await (contractWithSigner as any).getEncryptedContent(BigInt(articleId));
+    } catch (error) {
+      console.error('Error fetching encrypted content:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get article summary (public)
+   */
+  async getArticleSummary(articleId: string | number): Promise<string> {
+    try {
+      return await this.contract.getArticleSummary(BigInt(articleId));
+    } catch (error) {
+      console.error('Error fetching article summary:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Get license holders and their balances for an article
+   */
+  async getLicenseHolders(articleId: string | number): Promise<{ holders: string[], balances: number[] }> {
+    try {
+      const [holders, balances] = await this.contract.getLicenseHolders(BigInt(articleId));
+      return {
+        holders,
+        balances: balances.map(balance => Number(balance))
+      };
+    } catch (error) {
+      console.error('Error fetching license holders:', error);
+      return { holders: [], balances: [] };
+    }
+  }
+
+  /**
+   * Get purchase history for an article
+   */
+  async getPurchaseHistory(articleId: string | number): Promise<PurchaseRecord[]> {
+    try {
+      return await this.contract.getPurchaseHistory(BigInt(articleId));
+    } catch (error) {
+      console.error('Error fetching purchase history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get license information for an article
+   */
+  async getLicenseInfo(articleId: string | number): Promise<LicenseInfo | null> {
+    try {
+      const [articleIdBN, editionNumber, totalGenerated, activeLicenses, lastRegenerationTime] = await this.contract.licenseInfo(BigInt(articleId));
+      
+      return {
+        articleId: articleIdBN.toString(),
+        editionNumber: Number(editionNumber),
+        totalGenerated: Number(totalGenerated),
+        activeLicenses: Number(activeLicenses),
+        lastRegenerationTime
+      };
+    } catch (error) {
+      console.error('Error fetching license info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get access information for a user and article
+   */
+  async getAccessInfo(articleId: string | number, userAddress: string): Promise<AccessInfo | null> {
+    try {
+      const [expiryTime, hasAccess] = await this.contract.accessInfo(BigInt(articleId), userAddress);
+      
+      return {
+        expiryTime,
+        hasAccess
+      };
+    } catch (error) {
+      console.error('Error fetching access info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get user's license balance for an article
+   */
+  async getLicenseBalance(articleId: string | number, userAddress: string): Promise<number> {
+    try {
+      const balance = await this.contract.licenseBalances(BigInt(articleId), userAddress);
+      return Number(balance);
+    } catch (error) {
+      console.error('Error fetching license balance:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get comprehensive license statistics for an article
+   */
+  async getLicenseStats(articleId: string | number): Promise<LicenseStats> {
+    try {
+      const [currentPrice, licenseInfo, shouldRegenerate, licenseHolders] = await Promise.all([
+        this.getCurrentPrice(articleId),
+        this.getLicenseInfo(articleId),
+        this.shouldRegenerate(articleId),
+        this.getLicenseHolders(articleId)
+      ]);
+
+      return {
+        currentPrice,
+        totalSupply: licenseInfo?.totalGenerated || 0,
+        activeLicenses: licenseInfo?.activeLicenses || 0,
+        shouldRegenerate,
+        holders: licenseHolders.holders,
+        balances: licenseHolders.balances
+      };
+    } catch (error) {
+      console.error('Error fetching license stats:', error);
+      return {
+        currentPrice: BigInt(0),
+        totalSupply: 0,
+        activeLicenses: 0,
+        shouldRegenerate: false,
+        holders: [],
+        balances: []
+      };
+    }
+  }
+
+  /**
+   * Get gas pool balance
+   */
+  async getGasPool(): Promise<bigint> {
+    try {
+      return await this.contract.gasPool();
+    } catch (error) {
+      console.error('Error fetching gas pool:', error);
+      return BigInt(0);
+    }
+  }
+
+  /**
+   * Estimate gas for license purchase
+   */
+  async estimateBuyLicenseGas(
+    articleId: string | number,
+    seller: string,
+    signer: ethers.Signer
+  ): Promise<bigint> {
+    try {
+      const contractWithSigner = this.contract.connect(signer);
+      const currentPrice = await this.getCurrentPrice(articleId);
+      const gasReimbursement = ethers.parseEther('0.005');
+      const totalCost = currentPrice + gasReimbursement;
+      
+      // Type assertion to access estimateGas
+      const gasEstimate = await (contractWithSigner as any).estimateGas.buyLicense(BigInt(articleId), seller, {
+        value: totalCost
+      });
+      
+      return gasEstimate;
+    } catch (error) {
+      console.error('Error estimating gas for license purchase:', error);
+      return BigInt(100000); // Fallback estimate
+    }
+  }
+
+  /**
+   * Listen for license purchase events
+   */
+  onLicensePurchased(callback: (articleId: string, buyer: string, seller: string, price: bigint) => void) {
+    this.contract.on('LicensePurchased', (articleId, buyer, seller, price) => {
+      callback(articleId.toString(), buyer, seller, price);
+    });
+  }
+
+  /**
+   * Listen for license burn events
+   */
+  onLicenseBurned(callback: (articleId: string, user: string, expiryTime: bigint) => void) {
+    this.contract.on('LicenseBurned', (articleId, user, expiryTime) => {
+      callback(articleId.toString(), user, expiryTime);
+    });
+  }
+
+  /**
+   * Listen for access granted events
+   */
+  onAccessGranted(callback: (articleId: string, user: string, expiryTime: bigint) => void) {
+    this.contract.on('AccessGranted', (articleId, user, expiryTime) => {
+      callback(articleId.toString(), user, expiryTime);
+    });
+  }
+
+  /**
+   * Listen for license regeneration events
+   */
+  onLicenseRegenerated(callback: (articleId: string, count: number, totalActive: number) => void) {
+    this.contract.on('LicenseRegenerated', (articleId, count, totalActive) => {
+      callback(articleId.toString(), Number(count), Number(totalActive));
+    });
+  }
+
+  /**
+   * Clean up event listeners
+   */
+  removeAllListeners() {
+    this.contract.removeAllListeners();
+  }
+}
+
+// Helper function to create service instance
+export function createReaderLicenseAMMService(
+  contractAddress: string,
+  provider: ethers.Provider
+): ReaderLicenseAMMService {
+  return new ReaderLicenseAMMService(contractAddress, provider);
+}
+
+// Default export
+export default ReaderLicenseAMMService;

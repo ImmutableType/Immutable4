@@ -1,0 +1,543 @@
+// components/profile/Leaderboard.tsx
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Profile } from '@/lib/profile/types/profile';
+import { GMActionService } from '@/lib/blockchain/contracts/GMAction';
+import { LeaderboardAggregatorService } from '@/lib/blockchain/contracts/LeaderboardAggregator';
+import { ethers } from 'ethers';
+import { useWallet } from '@/lib/hooks/useWallet';
+import confetti from 'canvas-confetti';
+
+interface LeaderboardEntry extends Profile {
+  rank: number;
+  score: number;
+  dailyGM: boolean;
+  gmStreak: number;
+  totalGMs: number;
+  isCurrentUser?: boolean;
+}
+
+interface LeaderboardProps {
+  profiles: Profile[];
+  currentUserAddress?: string;
+}
+
+const Leaderboard: React.FC<LeaderboardProps> = ({ profiles, currentUserAddress }) => {
+  const { provider, address: walletAddress } = useWallet();
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [timeUntilUpdate, setTimeUntilUpdate] = useState<string>('');
+  const [showUpdateButton, setShowUpdateButton] = useState(false);
+  const [todaysGMCount, setTodaysGMCount] = useState<number>(0);
+  const [isProcessingGM, setIsProcessingGM] = useState<string | null>(null);
+  const [isUpdatingLeaderboard, setIsUpdatingLeaderboard] = useState(false);
+  const [lastUpdater, setLastUpdater] = useState<string>('System');
+
+  // Sunrise-themed celebration
+  const celebrateGM = (buttonElement: HTMLElement | null) => {
+    // Get button position for origin point
+    const rect = buttonElement?.getBoundingClientRect();
+    const x = rect ? (rect.left + rect.width / 2) / window.innerWidth : 0.5;
+    const y = rect ? (rect.top + rect.height / 2) / window.innerHeight : 0.5;
+
+    // Sunrise colors
+    const colors = ['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#FFF'];
+
+    // First burst - main celebration
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { x, y },
+      colors: colors,
+      ticks: 300,
+    });
+
+    // Sun emojis
+    const sunEmojis = confetti.shapeFromText({ text: '☀️', scalar: 2 });
+    confetti({
+      shapes: [sunEmojis],
+      particleCount: 20,
+      spread: 50,
+      origin: { x, y },
+      scalar: 2,
+      ticks: 300,
+    });
+
+    // Streak bonus effects
+    const userEntry = leaderboardData.find(entry => entry.isCurrentUser);
+    if (userEntry && userEntry.gmStreak >= 6) {
+      // Extra golden burst for 7-day streak (they're on day 6, saying GM for day 7)
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: 60,
+          spread: 45,
+          origin: { x: 0, y: 0.9 },
+          colors: ['#FFD700', '#FFA500'],
+        });
+        confetti({
+          particleCount: 50,
+          angle: 120,
+          spread: 45,
+          origin: { x: 1, y: 0.9 },
+          colors: ['#FFD700', '#FFA500'],
+        });
+      }, 300);
+    }
+  };
+
+  // Fetch leaderboard data from blockchain
+  const fetchLeaderboardData = async () => {
+    const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+    const leaderboardService = new LeaderboardAggregatorService(provider);
+    const gmService = new GMActionService(provider);
+    
+    try {
+      // Get leaderboard from contract
+      const leaderboardEntries = await leaderboardService.getLeaderboard();
+      
+      // Get today's GM count
+      const todayCount = await gmService.getTodaysGMCount();
+      setTodaysGMCount(todayCount);
+      
+      // Get update info
+      const updateInfo = await leaderboardService.getUpdateInfo();
+      setLastUpdated(updateInfo.lastUpdateTime);
+      
+      // Map blockchain data to our format
+      const enrichedEntries = await Promise.all(
+        leaderboardEntries.map(async (entry, index) => {
+          // Find matching profile
+          const profile = profiles.find(p => p.walletAddress.toLowerCase() === entry.owner.toLowerCase());
+          
+          if (!profile) {
+            // Create a minimal profile if not found
+            return {
+              id: entry.profileId.toString(),
+              walletAddress: entry.owner,
+              displayName: `Profile #${entry.profileId}`,
+              bio: '',
+              location: '',
+              createdAt: new Date().toISOString(),
+              isVerified: false,
+              metrics: {
+                articlesPublished: 0,
+                proposalsCreated: 0,
+                proposalsFunded: 0,
+                totalTipsReceived: 0
+              },
+              rank: index + 1,
+              score: entry.score,
+              dailyGM: false,
+              gmStreak: 0,
+              totalGMs: 0,
+              isCurrentUser: entry.owner.toLowerCase() === currentUserAddress?.toLowerCase()
+            } as LeaderboardEntry;
+          }
+          
+          // Get GM stats for the profile
+          let gmStats = { total: 0, streak: 0, saidToday: false };
+          try {
+            gmStats = await gmService.getUserStats(entry.owner);
+          } catch (error) {
+            console.error(`Error fetching GM stats for ${entry.owner}:`, error);
+          }
+          
+          return {
+            ...profile,
+            rank: index + 1,
+            score: entry.score,
+            dailyGM: gmStats.saidToday,
+            gmStreak: gmStats.streak,
+            totalGMs: gmStats.total,
+            isCurrentUser: entry.owner.toLowerCase() === currentUserAddress?.toLowerCase()
+          } as LeaderboardEntry;
+        })
+      );
+      
+      setLeaderboardData(enrichedEntries);
+      
+      // Try to get last updater from recent events (simplified for now)
+      // In production, you'd query events or store this info
+      setLastUpdater('Community'); 
+      
+    } catch (error) {
+      console.error('Error fetching leaderboard data:', error);
+      // Fall back to client-side calculation if blockchain fails
+      fetchGMDataClientSide();
+    }
+  };
+
+  // Fallback: Client-side GM data fetching (original implementation)
+  const fetchGMDataClientSide = async () => {
+    const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+    const gmService = new GMActionService(provider);
+    
+    try {
+      const todayCount = await gmService.getTodaysGMCount();
+      setTodaysGMCount(todayCount);
+      
+      const profilesWithGM = await Promise.all(
+        profiles.map(async (profile) => {
+          try {
+            const gmStats = await gmService.getUserStats(profile.walletAddress);
+            return { ...profile, gmStats };
+          } catch (error) {
+            return { ...profile, gmStats: { total: 0, streak: 0, saidToday: false } };
+          }
+        })
+      );
+      
+      const entries: LeaderboardEntry[] = profilesWithGM
+        .map(profile => ({
+          ...profile,
+          rank: 0,
+          score: calculateScoreClientSide(profile, profile.gmStats),
+          dailyGM: profile.gmStats.saidToday,
+          gmStreak: profile.gmStats.streak,
+          totalGMs: profile.gmStats.total,
+          isCurrentUser: profile.walletAddress.toLowerCase() === currentUserAddress?.toLowerCase()
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 100)
+        .map((entry, index) => ({ ...entry, rank: index + 1 }));
+      
+      setLeaderboardData(entries);
+    } catch (error) {
+      console.error('Error fetching GM data:', error);
+    }
+  };
+
+  // Client-side score calculation (fallback)
+  const calculateScoreClientSide = (profile: Profile, gmData: { total: number; streak: number }): number => {
+    const metrics = profile.metrics;
+    return (
+      metrics.articlesPublished * 30 +
+      metrics.proposalsCreated * 20 +
+      metrics.proposalsFunded * 20 +
+      metrics.totalTipsReceived * 20 +
+      gmData.total * 10 +
+      (gmData.streak >= 7 ? 50 : 0) +
+      10 // Base score
+    );
+  };
+
+  // Handle GM click
+  const handleGM = async (profileId: string) => {
+    if (!provider || !walletAddress) {
+      alert('Please connect your wallet to say GM!');
+      return;
+    }
+    
+    setIsProcessingGM(profileId);
+    
+    try {
+      const signer = await provider.getSigner();
+      const gmService = new GMActionService(provider, signer);
+      const { txHash } = await gmService.sayGM();
+      
+      // Celebrate!
+      const buttonElement = document.querySelector(`[data-gm-button="${profileId}"]`) as HTMLElement;
+      celebrateGM(buttonElement);
+      
+      // Show success message
+      setTimeout(() => {
+        alert(`GM! ☀️\n+10 points earned!\n\nTransaction: ${txHash.slice(0, 10)}...`);
+      }, 500);
+      
+      // Refresh the data
+      await fetchLeaderboardData();
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsProcessingGM(null);
+    }
+  };
+
+  // Handle leaderboard update
+  const handleUpdateLeaderboard = async () => {
+    if (!provider || !walletAddress) {
+      alert('Please connect your wallet to update the leaderboard!');
+      return;
+    }
+    
+    setIsUpdatingLeaderboard(true);
+    
+    try {
+      const signer = await provider.getSigner();
+      const leaderboardService = new LeaderboardAggregatorService(provider, signer);
+      const { txHash } = await leaderboardService.updateLeaderboard();
+      
+      alert(`🏆 Leaderboard updated successfully!\n\nYou earned:\n• 100 leaderboard points\n• 10 EMOJI tokens\n\nTransaction: ${txHash.slice(0, 10)}...`);
+      
+      // Refresh the data
+      await fetchLeaderboardData();
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsUpdatingLeaderboard(false);
+    }
+  };
+
+  // Check update availability
+  useEffect(() => {
+    const checkUpdateAvailability = async () => {
+      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      const leaderboardService = new LeaderboardAggregatorService(provider);
+      
+      try {
+        const updateInfo = await leaderboardService.getUpdateInfo();
+        setShowUpdateButton(updateInfo.canUpdate);
+        setTimeUntilUpdate(leaderboardService.formatTimeUntilUpdate(updateInfo.timeUntilUpdate));
+      } catch (error) {
+        console.error('Error checking update availability:', error);
+      }
+    };
+    
+    // Check immediately and then every minute
+    checkUpdateAvailability();
+    const interval = setInterval(checkUpdateAvailability, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchLeaderboardData();
+  }, [profiles, currentUserAddress]);
+
+  return (
+    <div style={{
+      backgroundColor: 'var(--color-white)',
+      borderRadius: '12px',
+      padding: '2rem',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '2rem',
+        flexWrap: 'wrap',
+        gap: '1rem',
+      }}>
+        <div>
+          <h2 style={{
+            fontFamily: 'var(--font-headlines)',
+            fontSize: '2.5rem',
+            margin: 0,
+            background: 'linear-gradient(45deg, #FFD700, #FFA500)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            display: 'inline-block',
+          }}>
+            🏆 Leaderboard All-time
+          </h2>
+          <p style={{
+            margin: '0.5rem 0 0 0',
+            color: 'var(--color-digital-silver)',
+            fontSize: '0.9rem',
+          }}>
+            Top 100 Active Members • {todaysGMCount} GMs today • Last updated: {lastUpdated.toLocaleString()}
+          </p>
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div style={{
+            fontSize: '0.9rem',
+            color: 'var(--color-digital-silver)',
+            marginBottom: '0.5rem',
+          }}>
+            {timeUntilUpdate}
+          </div>
+          {showUpdateButton && (
+            <button
+              onClick={handleUpdateLeaderboard}
+              disabled={isUpdatingLeaderboard}
+              style={{
+                backgroundColor: '#FFD700',
+                color: 'var(--color-black)',
+                fontFamily: 'var(--font-ui)',
+                fontWeight: 'bold',
+                padding: '0.75rem 1.5rem',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isUpdatingLeaderboard ? 'wait' : 'pointer',
+                fontSize: '1rem',
+                boxShadow: '0 4px 6px rgba(255, 215, 0, 0.3)',
+                transition: 'all 0.3s ease',
+                opacity: isUpdatingLeaderboard ? 0.7 : 1,
+              }}
+              onMouseOver={(e) => {
+                if (!isUpdatingLeaderboard) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 12px rgba(255, 215, 0, 0.4)';
+                }
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(255, 215, 0, 0.3)';
+              }}
+            >
+              {isUpdatingLeaderboard ? 'Updating...' : '🎯 Update Leaderboard & Earn Rewards!'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Leaderboard Table */}
+      <div style={{
+        overflowX: 'auto',
+      }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+        }}>
+          <thead>
+            <tr style={{
+              borderBottom: '2px solid var(--color-digital-silver)',
+            }}>
+              <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.9rem', fontWeight: 'bold' }}>Rank</th>
+              <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.9rem', fontWeight: 'bold' }}>Profile</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Score</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Articles</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Proposals</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Tips Given</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>GMs</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Streak</th>
+              <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.9rem', fontWeight: 'bold' }}>Daily GM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leaderboardData.map((entry) => (
+              <tr
+                key={entry.id}
+                style={{
+                  backgroundColor: entry.isCurrentUser ? 'rgba(255, 215, 0, 0.1)' : 'transparent',
+                  borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  if (!entry.isCurrentUser) {
+                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!entry.isCurrentUser) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <td style={{ padding: '1rem' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}>
+                    {entry.rank <= 3 && (
+                      <span style={{ fontSize: '1.5rem' }}>
+                        {entry.rank === 1 && '🥇'}
+                        {entry.rank === 2 && '🥈'}
+                        {entry.rank === 3 && '🥉'}
+                      </span>
+                    )}
+                    <span style={{
+                      fontWeight: entry.rank <= 3 ? 'bold' : 'normal',
+                      fontSize: entry.rank <= 3 ? '1.2rem' : '1rem',
+                    }}>
+                      #{entry.rank}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ padding: '1rem' }}>
+                  <Link href={`/profile/${entry.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontWeight: 'bold',
+                      }}>
+                        {entry.displayName?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 'bold' }}>
+                          {entry.displayName || `User ${entry.id}`}
+                        </div>
+                        {entry.membershipTokenId && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--color-digital-silver)' }}>
+                            IT{entry.membershipTokenId.padStart(2, '0')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                  <div style={{
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    color: entry.rank <= 3 ? '#FFD700' : 'inherit',
+                  }}>
+                    {entry.score.toLocaleString()}
+                  </div>
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>{entry.metrics.articlesPublished}</td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>{entry.metrics.proposalsCreated}</td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>0</td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>{entry.totalGMs}</td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                  {entry.gmStreak >= 7 && '🔥'} {entry.gmStreak}
+                </td>
+                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                  {entry.dailyGM ? (
+                    <span style={{ fontSize: '1.5rem' }}>☀️</span>
+                  ) : (
+                    <button
+                      onClick={() => handleGM(entry.id)}
+                      disabled={!entry.isCurrentUser || isProcessingGM === entry.id}
+                      data-gm-button={entry.id}
+                      style={{
+                        backgroundColor: entry.isCurrentUser ? '#4ECDC4' : 'var(--color-digital-silver)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '4px',
+                        cursor: entry.isCurrentUser && !isProcessingGM ? 'pointer' : 'not-allowed',
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold',
+                        opacity: entry.isCurrentUser ? 1 : 0.5,
+                      }}
+                    >
+                      {isProcessingGM === entry.id ? '...' : 'GM'}
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <div style={{
+        marginTop: '2rem',
+        padding: '1rem',
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        borderRadius: '8px',
+        fontSize: '0.85rem',
+        color: 'var(--color-digital-silver)',
+      }}>
+        <strong>Scoring:</strong> Articles (30 pts) • Proposals Created (20 pts) • Proposals Funded (20 pts) • Tips Given (20 pts) • GM (10 pts each) • 7-Day Streak Bonus (50 pts) • Daily Update (100 pts + 10 EMOJI)
+      </div>
+    </div>
+  );
+};
+
+export default Leaderboard;

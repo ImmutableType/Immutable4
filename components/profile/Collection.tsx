@@ -1,0 +1,403 @@
+// components/profile/Collection.tsx
+'use client'
+
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import TokenCard from './TokenCard';
+import TokenDetailModal from './modals/TokenDetailModal';
+import { PublisherCredentialsService, PublisherCredential } from '../../lib/blockchain/contracts/PublisherCredentials';
+import { EmojiTokenService } from '../../lib/blockchain/contracts/EmojiToken';
+import { Profile } from '../../lib/profile/types/profile';
+
+interface CollectionProps {
+profile: Profile;
+isOwner: boolean;
+}
+
+interface MembershipToken {
+tokenId: number;
+owner: string;
+name: string;
+mintedAt: string;
+isActive: boolean;
+tokenURI: string;
+svgImage?: string;
+}
+
+interface ArticleNFT {
+id: string;
+title: string;
+author: string;
+location: string;
+licenseBalance: number;
+tokenId: string;
+}
+
+const Collection: React.FC<CollectionProps> = ({ profile, isOwner }) => {
+// State for tokens and data
+const [membershipToken, setMembershipToken] = useState<MembershipToken | null>(null);
+const [publisherCredential, setPublisherCredential] = useState<PublisherCredential | null>(null);
+const [emojiBalance, setEmojiBalance] = useState<string>('0');
+const [articleNFTs, setArticleNFTs] = useState<ArticleNFT[]>([]);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+
+// Modal state
+const [modalOpen, setModalOpen] = useState(false);
+const [modalType, setModalType] = useState<'membership' | 'publisher' | 'profile' | 'emoji'>('membership');
+const [modalData, setModalData] = useState<any>(null);
+
+// Load collection data
+useEffect(() => {
+  async function loadCollection() {
+    if (!profile.walletAddress) return;
+
+    console.log('Collection Debug - Profile wallet:', profile.walletAddress);
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Use the same RPC provider and logic as the profile page
+      const rpcProvider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      const membershipContract = new ethers.Contract(
+        '0xC90bE82B23Dca9453445b69fB22D5A90402654b2',
+        [
+          "function balanceOf(address owner) external view returns (uint256)",
+          "function ownerOf(uint256 tokenId) external view returns (address)",
+          "function tokenURI(uint256 tokenId) external view returns (string)",
+          "function isTokenMinted(uint256 tokenId) external view returns (bool)",
+          "function getMember(uint256 tokenId) external view returns (address owner, string memory name, uint256 mintedAt, bool isActive)"
+        ],
+        rpcProvider
+      );
+
+      // Check for membership tokens
+      const membershipBalance = await membershipContract.balanceOf(profile.walletAddress);
+      console.log('Collection Debug - Membership Balance:', membershipBalance.toString());
+
+      if (membershipBalance > BigInt(0)) {
+        // Check tokens 0-99 to find which one this wallet owns
+        for (let i = 0; i <= 99; i++) {
+          try {
+            const exists = await membershipContract.isTokenMinted(i);
+            if (!exists) continue;
+            
+            const owner = await membershipContract.ownerOf(i);
+            if (owner.toLowerCase() === profile.walletAddress.toLowerCase()) {
+              console.log(`Collection Debug - Found token ID: ${i}`);
+              
+              // Get token details
+              const member = await membershipContract.getMember(i);
+              const tokenURI = await membershipContract.tokenURI(i);
+              
+              // Parse SVG from tokenURI
+              let svgImage: string | undefined;
+              try {
+                if (tokenURI.startsWith('data:application/json;base64,')) {
+                  const base64Data = tokenURI.replace('data:application/json;base64,', '');
+                  const jsonString = atob(base64Data);
+                  const metadata = JSON.parse(jsonString);
+                  svgImage = metadata.image;
+                }
+              } catch (e) {
+                console.warn('Could not parse token metadata:', e);
+              }
+
+              const foundMembershipToken = {
+                tokenId: i,
+                owner: member.owner,
+                name: member.name,
+                mintedAt: new Date(Number(member.mintedAt) * 1000).toISOString(),
+                isActive: member.isActive,
+                tokenURI,
+                svgImage
+              };
+
+              console.log('Collection Debug - Setting membership token:', foundMembershipToken);
+              setMembershipToken(foundMembershipToken);
+              break; // Found the token, exit loop
+            }
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+
+      // Load publisher credential
+      const publisherService = new PublisherCredentialsService(rpcProvider);
+      const credential = await publisherService.getCredentialByAddress(profile.walletAddress);
+      setPublisherCredential(credential);
+
+      // Load EMOJI balance
+      const emojiService = new EmojiTokenService(rpcProvider);
+      const emojiTokenBalance = await emojiService.getBalance(profile.walletAddress);
+      setEmojiBalance(emojiTokenBalance);
+
+      // Load Article NFTs
+      const articleContract = new ethers.Contract(
+        '0xd99aB3390aAF8BC69940626cdbbBf22F436c6753',
+        [
+          "event ArticlePublished(uint256 indexed articleId, address indexed author, string title, string location, uint256 nftCount, uint256 nftPrice)",
+          "event NFTMinted(uint256 indexed tokenId, uint256 indexed articleId, address indexed buyer, uint256 editionNumber, uint256 price, uint256 licensesGenerated)"
+        ],
+        rpcProvider
+      );
+
+      const ammContract = new ethers.Contract(
+        '0x4E0f2A3A8AfEd1f86D83AAB1a989E01c316996d2',
+        ["function balanceOf(address, uint256) view returns (uint256)"],
+        rpcProvider
+      );
+
+      // Get NFTs purchased by this user
+      const nftFilter = articleContract.filters.NFTMinted(null, null, profile.walletAddress);
+      const nftEvents = await articleContract.queryFilter(nftFilter, 0, 'latest');
+      
+      const userArticleNFTs: ArticleNFT[] = [];
+      
+      for (const event of nftEvents) {
+        try {
+          const eventLog = event as ethers.EventLog;
+          const { tokenId, articleId } = eventLog.args;
+          
+          // Get article details
+          const articleFilter = articleContract.filters.ArticlePublished(articleId);
+          const articleEvents = await articleContract.queryFilter(articleFilter, 0, 'latest');
+          
+          if (articleEvents.length > 0) {
+            const articleEvent = articleEvents[0] as ethers.EventLog;
+            const { title, author, location } = articleEvent.args;
+            
+            // Get license balance
+            const licenseBalance = await ammContract.balanceOf(profile.walletAddress, articleId);
+            
+            userArticleNFTs.push({
+              id: articleId.toString(),
+              title,
+              author,
+              location,
+              licenseBalance: Number(licenseBalance),
+              tokenId: tokenId.toString()
+            });
+          }
+        } catch (eventError) {
+          console.warn('Error processing NFT event:', eventError);
+        }
+      }
+      
+      setArticleNFTs(userArticleNFTs);
+
+    } catch (err: any) {
+      console.error('Error loading collection:', err);
+      setError(err.message || 'Failed to load collection');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadCollection();
+}, [profile.walletAddress]);
+
+const openModal = (type: 'membership' | 'publisher' | 'profile' | 'emoji', data: any) => {
+  setModalType(type);
+  setModalData(data);
+  setModalOpen(true);
+};
+
+if (loading) {
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '200px',
+      color: 'var(--color-black)',
+      opacity: 0.7,
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid var(--color-digital-silver)',
+          borderTop: '3px solid var(--color-typewriter-red)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 1rem auto',
+        }} />
+        Loading collection from blockchain...
+      </div>
+    </div>
+  );
+}
+
+if (error) {
+  return (
+    <div style={{
+      textAlign: 'center',
+      padding: '2rem',
+      color: 'var(--color-typewriter-red)',
+    }}>
+      Error loading collection: {error}
+    </div>
+  );
+}
+
+return (
+  <div>
+    {/* Collection Header */}
+    <div style={{ marginBottom: '2rem' }}>
+      <h2 style={{
+        fontFamily: 'var(--font-headlines)',
+        fontSize: '1.5rem',
+        margin: '0 0 0.5rem 0',
+      }}>
+        Digital Collection
+      </h2>
+      <p style={{
+        fontSize: '0.95rem',
+        color: 'var(--color-black)',
+        opacity: 0.7,
+        margin: 0,
+      }}>
+        NFTs and tokens owned by this profile on the ImmutableType platform
+      </p>
+    </div>
+
+    {/* Collection Grid */}
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+      gap: '1.5rem',
+    }}>
+      {/* Membership Token */}
+      {membershipToken && (
+        <TokenCard
+          title={`Founding Member`}
+          subtitle={`Token ID: IT${membershipToken.tokenId.toString().padStart(2, '0')}`}
+          image={membershipToken.svgImage}
+          tokenId={`IT${membershipToken.tokenId.toString().padStart(2, '0')}`}
+          description="Platform access and governance rights"
+          type="membership"
+          onClick={() => openModal('membership', membershipToken)}
+        />
+      )}
+
+      {/* Publisher Credential */}
+      {publisherCredential && (
+        <TokenCard
+          title="Publisher Credential"
+          subtitle={`Credential #${publisherCredential.tokenId}`}
+          tokenId={`PC${publisherCredential.tokenId.toString().padStart(3, '0')}`}
+          description="Professional publishing rights"
+          type="publisher"
+          onClick={() => openModal('publisher', publisherCredential)}
+        />
+      )}
+
+      {/* Profile NFT */}
+      <TokenCard
+        title="Profile NFT"
+        subtitle={`Profile #${profile.id}`}
+        tokenId={`PF${profile.id.padStart(3, '0')}`}
+        description="Your identity on the platform"
+        type="profile"
+        onClick={() => openModal('profile', profile)}
+      />
+
+      {/* EMOJI Token Balance */}
+      <TokenCard
+        title="EMOJI Credits"
+        subtitle={`${parseFloat(emojiBalance).toLocaleString()} EMOJI`}
+        description="Platform engagement currency"
+        type="emoji"
+        onClick={() => openModal('emoji', { balance: emojiBalance })}
+      />
+
+      {/* Article NFTs */}
+      {articleNFTs.map((nft) => (
+  <TokenCard
+    key={nft.tokenId}
+    title={nft.title}
+    subtitle={`Token #${nft.tokenId} • ${nft.licenseBalance} licenses`}
+    tokenId={`AN${nft.tokenId.padStart(3, '0')}`}
+    description={`Article from ${nft.location}`}
+    type="article"
+    onClick={() => {
+      // For now, just log the article NFT data since modal doesn't support article type
+      console.log('Article NFT clicked:', nft);
+    }}
+  />
+))}
+
+      {/* Placeholder for Future Articles (only if no article NFTs) */}
+      {articleNFTs.length === 0 && (
+        <TokenCard
+          title="Collected Articles"
+          subtitle="On-chain journalism"
+          description="Encrypted articles you've collected"
+          type="article"
+          isPlaceholder={true}
+          onClick={() => {
+            // Future: Open articles collection
+            console.log('Future: Articles collection');
+          }}
+        />
+      )}
+
+  
+      
+    </div>
+
+    {/* Empty State */}
+    {!membershipToken && !publisherCredential && parseFloat(emojiBalance) === 0 && articleNFTs.length === 0 && (
+      <div style={{
+        textAlign: 'center',
+        padding: '4rem 2rem',
+        color: 'var(--color-black)',
+        opacity: 0.6,
+      }}>
+        <div style={{
+          fontSize: '3rem',
+          marginBottom: '1rem',
+        }}>
+          📦
+        </div>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.5rem',
+          margin: '0 0 1rem 0',
+        }}>
+          Collection Empty
+        </h3>
+        <p style={{
+          fontSize: '1rem',
+          lineHeight: '1.5',
+          maxWidth: '400px',
+          margin: '0 auto',
+        }}>
+          This profile doesn't have any ImmutableType tokens yet. Membership tokens and publisher credentials appear here once acquired.
+        </p>
+      </div>
+    )}
+
+    {/* Token Detail Modal */}
+    <TokenDetailModal
+      isOpen={modalOpen}
+      onClose={() => setModalOpen(false)}
+      type={modalType}
+      data={modalData}
+    />
+
+    {/* Spinner Animation CSS */}
+    <style jsx>{`
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `}</style>
+  </div>
+);
+};
+
+export default Collection;

@@ -1,0 +1,144 @@
+// File: lib/reader/hooks/useFeed.ts
+import { useState, useEffect } from 'react';
+import { Article } from '../types/article';
+import { FeedFilters, FeedSortOptions, ProposalSummary } from '../types/feed';
+import proposalIntegrationService from '../services/proposalIntegrationService';
+import unifiedArticleService from '../services/unifiedArticleService';
+
+export const useFeed = (
+  initialFilters?: Partial<FeedFilters>,
+  initialSort?: Partial<FeedSortOptions>
+) => {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [proposals, setProposals] = useState<ProposalSummary[]>([]);
+  const [filters, setFilters] = useState<FeedFilters>({
+    contentType: 'all',
+    ...initialFilters
+  });
+  const [sort, setSort] = useState<FeedSortOptions>({
+    field: 'date',
+    direction: 'desc',
+    ...initialSort
+  });
+  const [categories, setCategories] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load feed data from blockchain
+  useEffect(() => {
+    const loadFeed = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        console.log('Loading feed with filters:', filters);
+        
+        // Load articles from all contracts
+        let allArticles: Article[] = [];
+        
+        try {
+          allArticles = await unifiedArticleService.getAllArticles(filters);
+          console.log(`Loaded ${allArticles.length} total articles from blockchain`);
+        } catch (articleError) {
+          console.error('Failed to fetch articles from blockchain:', articleError);
+          setError('Failed to load articles from blockchain');
+        }
+        
+        // Apply sorting
+        const sortField = sort?.field || 'date';
+        const sortDirection = sort?.direction || 'desc';
+        
+        allArticles = allArticles.sort((a, b) => {
+          if (sortField === 'date') {
+            return sortDirection === 'desc' 
+              ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          }
+          
+          if (sortField === 'popularity') {
+            return sortDirection === 'desc'
+              ? b.readerMetrics.viewCount - a.readerMetrics.viewCount
+              : a.readerMetrics.viewCount - b.readerMetrics.viewCount;
+          }
+          
+          if (sortField === 'funding') {
+            return sortDirection === 'desc'
+              ? b.readerMetrics.tipAmount - a.readerMetrics.tipAmount
+              : a.readerMetrics.tipAmount - b.readerMetrics.tipAmount;
+          }
+          
+          return 0;
+        });
+        
+        setArticles(allArticles);
+        
+        // Load proposals if needed
+        if (filters.contentType === 'all' || filters.contentType === 'proposals') {
+          try {
+            const proposalsData = await proposalIntegrationService.getActiveProposals();
+            setProposals(proposalsData);
+            console.log(`Loaded ${proposalsData.length} proposals`);
+          } catch (proposalError) {
+            console.error('Failed to fetch proposals:', proposalError);
+            setProposals([]);
+          }
+        } else {
+          setProposals([]);
+        }
+        
+        // Load categories and locations for filters
+        try {
+          const [categoriesData, locationsData] = await Promise.all([
+            unifiedArticleService.getCategories(),
+            unifiedArticleService.getLocations()
+          ]);
+          
+          setCategories(categoriesData);
+          setLocations(locationsData);
+        } catch (filterError) {
+          console.error('Failed to load filter options:', filterError);
+        }
+        
+      } catch (err) {
+        setError('Failed to load feed from blockchain');
+        console.error('Error loading feed:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadFeed();
+  }, [filters, sort]);
+
+  // Update filters
+  const updateFilters = (newFilters: Partial<FeedFilters>) => {
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
+  };
+
+  // Update sort
+  const updateSort = (newSort: Partial<FeedSortOptions>) => {
+    setSort(prev => ({
+      ...prev,
+      ...newSort
+    }));
+  };
+
+  return {
+    articles,
+    proposals,
+    filters,
+    sort,
+    categories,
+    locations,
+    isLoading,
+    error,
+    updateFilters,
+    updateSort
+  };
+};
+
+export default useFeed;

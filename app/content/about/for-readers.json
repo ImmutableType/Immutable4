@@ -1,0 +1,13 @@
+{
+    "title": "For Readers",
+    "sections": [
+      {
+        "heading": "First Section Heading",
+        "content": "Your custom content here..."
+      },
+      {
+        "heading": "Second Section Heading",
+        "content": "More custom content..."
+      }
+    ]
+  }

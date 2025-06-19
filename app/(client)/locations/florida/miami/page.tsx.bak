@@ -1,0 +1,182 @@
+// Updated Miami landing page with SEO
+// app/(client)/locations/florida/miami/page.tsx
+'use client'
+import React, { useState } from 'react';
+import { LocationSEO } from '../../../../../components/locations/seo/LocationSEO';
+import LocationArticleFeed from '../../../../../components/locations/LocationArticleFeed';
+
+export default function MiamiPage() {
+  // State for filters
+  const [recencyFilter, setRecencyFilter] = useState<'all' | 'latest' | 'week' | 'month'>('all');
+  const [engagementFilter, setEngagementFilter] = useState<'all' | 'most-tipped' | 'trending'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'politics' | 'climate' | 'tech' | 'arts' | 'realestate'>('all');
+  
+  // Expanded filter state
+  const [showFilters, setShowFilters] = useState(false);
+
+  return (
+    <div className="miami-page">
+      {/* SEO component */}
+      <LocationSEO 
+        city="Miami" 
+        state="Florida" 
+        type="landing" 
+      />
+      
+      {/* Description text */}
+      <p style={{
+        fontSize: '16px',
+        lineHeight: '1.6',
+        marginBottom: '24px',
+        color: '#666'
+      }}>
+        Discover immutable journalism from Miami stored on the Flow EVM blockchain. All articles are permanently archived and cannot be altered or removed.
+      </p>
+      
+      {/* Primary filter row */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '2px solid #F4F1E8',
+        marginBottom: showFilters ? '0' : '24px'
+      }}>
+        {/* Recency filter */}
+        <div style={{
+          display: 'flex',
+          borderRight: '1px solid #F4F1E8',
+          paddingRight: '8px'
+        }}>
+          <div 
+            style={{
+              padding: '8px 16px',
+              borderBottom: recencyFilter === 'all' ? '2px solid #B3211E' : 'none',
+              marginBottom: '-2px',
+              fontWeight: recencyFilter === 'all' ? 'bold' : 'normal',
+              cursor: 'pointer'
+            }}
+            onClick={() => setRecencyFilter('all')}
+          >
+            All Time
+          </div>
+          <div 
+            style={{
+              padding: '8px 16px',
+              borderBottom: recencyFilter === 'latest' ? '2px solid #B3211E' : 'none',
+              marginBottom: '-2px',
+              fontWeight: recencyFilter === 'latest' ? 'bold' : 'normal',
+              cursor: 'pointer'
+            }}
+            onClick={() => setRecencyFilter('latest')}
+          >
+            Latest
+          </div>
+          <div 
+            style={{
+              padding: '8px 16px',
+              borderBottom: recencyFilter === 'week' ? '2px solid #B3211E' : 'none',
+              marginBottom: '-2px',
+              fontWeight: recencyFilter === 'week' ? 'bold' : 'normal',
+              cursor: 'pointer'
+            }}
+            onClick={() => setRecencyFilter('week')}
+          >
+            This Week
+          </div>
+        </div>
+        
+        {/* Engagement filter dropdown toggle */}
+        <div style={{
+          marginLeft: '16px',
+          display: 'flex',
+          alignItems: 'center'
+        }}>
+          <select
+            value={engagementFilter}
+            onChange={(e) => setEngagementFilter(e.target.value as any)}
+            style={{
+              padding: '4px 8px',
+              border: '1px solid #D9D9D9',
+              borderRadius: '4px',
+              backgroundColor: 'white'
+            }}
+          >
+            <option value="all">Engagement</option>
+            <option value="most-tipped">Most Tipped</option>
+            <option value="trending">Trending</option>
+          </select>
+        </div>
+        
+        {/* Show/Hide Filters toggle */}
+        <div 
+          style={{
+            marginLeft: 'auto',
+            padding: '8px 0',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          {showFilters ? 'Hide Filters ▲' : 'Show Filters ▼'}
+        </div>
+      </div>
+      
+      {/* Expanded filters panel */}
+      {showFilters && (
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#F9F9F9',
+          borderRadius: '0 0 8px 8px',
+          marginBottom: '24px',
+          border: '1px solid #E9E9E9'
+        }}>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            {/* Category filter */}
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}>
+                Category
+              </label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value as any)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #D9D9D9',
+                  borderRadius: '4px',
+                  minWidth: '180px'
+                }}
+              >
+                <option value="all">All Categories</option>
+                <option value="politics">Local Politics</option>
+                <option value="climate">Climate & Environment</option>
+                <option value="tech">Tech & Innovation</option>
+                <option value="arts">Arts & Culture</option>
+                <option value="realestate">Real Estate & Development</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Content feed with filters */}
+      <LocationArticleFeed 
+        key={`${recencyFilter}-${engagementFilter}-${categoryFilter}`}
+        city="Miami" 
+        state="Florida" 
+        filters={{ 
+          recency: recencyFilter, 
+          engagement: engagementFilter,
+          category: categoryFilter
+        }} 
+      />
+    </div>
+  );
+}

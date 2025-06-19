@@ -1,0 +1,276 @@
+// File: components/reader/ArticleFeed.tsx
+import React from 'react';
+import { FeedFilters } from '../../lib/reader/types/feed';
+import { useFeed } from '../../lib/reader/hooks/useFeed';
+import { ArticleCard, ProposalCard } from '../cards';
+import CommunityCard from '../cards/types/CommunityCard';
+import PortfolioCard from '../cards/types/PortfolioCard';
+import FilterBar from './FilterBar';
+import { getColorPlaceholder } from '../../lib/utils/placeholderUtils';
+import { getArticleCardType } from '../../lib/reader/adapters/articleTransformers';
+
+// Helper for parsing location
+function parseLocation(locationString: string): { city: string; state: string } | undefined {
+  if (!locationString) return undefined;
+  
+  const parts = locationString.split(',').map((part: string) => part.trim());
+  if (parts.length >= 2) {
+    return { city: parts[0], state: parts[1] };
+  }
+  return { city: locationString, state: '' };
+}
+
+// Helper for truncating wallet address
+function truncateAddress(address: string): string {
+  return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+}
+
+interface ArticleFeedProps {
+  onArticleSelect?: (articleId: string) => void;
+}
+
+const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
+  const {
+    articles,
+    proposals,
+    filters,
+    categories,
+    locations,
+    isLoading,
+    error,
+    updateFilters
+  } = useFeed();
+
+  const handleFilterChange = (newFilters: FeedFilters) => {
+    updateFilters(newFilters);
+  };
+
+  const handleArticleClick = (articleId: string) => {
+    if (onArticleSelect) {
+      onArticleSelect(articleId);
+    }
+  };
+
+  // Render individual article based on type
+  const renderArticle = (article: any) => {
+    const cardType = getArticleCardType(article);
+    const commonProps = {
+      id: article.id,
+      title: article.title,
+      summary: article.summary,
+      imageUrl: getColorPlaceholder(article),
+      createdAt: article.createdAt,
+      location: parseLocation(article.location),
+      category: article.category,
+      tags: article.tags,
+      onClick: () => handleArticleClick(article.id)
+    };
+
+    switch (cardType) {
+      case 'community':
+        return (
+          <CommunityCard
+            key={article.id}
+            {...commonProps}
+            submitter={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              stats: {
+                curated: 5, // Placeholder
+                reliability: 85 // Placeholder
+              }
+            }}
+            sourceUrl={article.originalUrl || '#'}
+            sourceName={article.publicationName || 'External Source'}
+            sharedAt={article.createdAt}
+            voting={{
+              upvotes: 8, // Placeholder
+              downvotes: 2, // Placeholder
+              percentage: 80 // Placeholder
+            }}
+            distribution={{
+              submitter: 0.045,
+              platform: 0.025,
+              total: 0.070
+            }}
+            contentHash={article.contentHash}
+            onUpvote={() => console.log('Upvote', article.id)}
+            onDownvote={() => console.log('Downvote', article.id)}
+          />
+        );
+
+      case 'portfolio':
+        return (
+          <PortfolioCard
+            key={article.id}
+            {...commonProps}
+            author={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              stats: {
+                articlesPublished: 12, // Placeholder
+                credibility: 92 // Placeholder
+              }
+            }}
+            originalUrl={article.originalUrl || '#'}
+            publicationName={article.publicationName || 'Unknown Publication'}
+            originalAuthor={article.originalAuthor}
+            originalPublishDate={article.originalPublishDate || article.createdAt}
+            verifiedAt={article.createdAt}
+            portfolioType={article.portfolioType || 'verification'}
+            distribution={{
+              author: 0.045,
+              platform: 0.025,
+              total: 0.070
+            }}
+            contentHash={article.contentHash}
+          />
+        );
+
+      case 'article':
+      default:
+        // Handle encrypted/native articles with access control
+        const isEncrypted = article.articleType === 'native';
+        const displaySummary = isEncrypted && !article.hasAccess 
+          ? article.summary 
+          : article.summary;
+
+        return (
+          <ArticleCard
+            key={article.id}
+            {...commonProps}
+            summary={displaySummary}
+            author={{
+              name: article.authorName || truncateAddress(article.author),
+              id: article.author,
+              type: article.authorType,
+              stats: {
+                written: 8, // Placeholder
+                proposed: 3 // Placeholder
+              }
+            }}
+            proposer={article.proposalId ? {
+              name: "Community Proposal",
+              id: article.proposalId
+            } : undefined}
+            contentHash={article.contentHash}
+            isVerified={Boolean(article.contentHash)}
+            metrics={{
+              views: article.readerMetrics.viewCount,
+              comments: article.readerMetrics.commentCount,
+              tips: article.readerMetrics.tipAmount,
+              reactions: {}, // No mock data
+              supporters: 0 // No mock data
+            }}
+            distribution={{
+              author: 0.045,
+              platform: 0.025,
+              proposer: article.proposalId ? 0.030 : 0
+            }}
+          />
+        );
+    }
+  };
+
+  // Determine what content to display based on filters
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)'
+        }}>
+          Loading articles from blockchain...
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)',
+          color: 'var(--color-typewriter-red)'
+        }}>
+          {error}
+        </div>
+      );
+    }
+
+    if (articles.length === 0 && proposals.length === 0) {
+      return (
+        <div style={{
+          padding: '2rem',
+          textAlign: 'center',
+          fontFamily: 'var(--font-ui)'
+        }}>
+          No content found. Try adjusting your filters or check that articles have been published to the blockchain.
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        {/* Display articles */}
+        {filters.contentType !== 'proposals' && articles.map(renderArticle)}
+        
+        {/* Display proposals if in proposal mode */}
+        {filters.contentType === 'proposals' && proposals.map(proposal => (
+          <ProposalCard
+            key={proposal.id}
+            id={proposal.id}
+            title={proposal.title}
+            summary={proposal.summary}
+            imageUrl={getColorPlaceholder(proposal)}
+            proposer={{
+              name: proposal.proposerName || truncateAddress(proposal.proposer),
+              id: proposal.proposer,
+              stats: {
+                written: 2, // Placeholder
+                proposed: 5 // Placeholder
+              }
+            }}
+            createdAt={proposal.createdAt}
+            location={parseLocation(proposal.location)}
+            category={proposal.category}
+            tags={proposal.tags || []}
+            status='active'
+            funding={{
+              amount: proposal.fundingAmount,
+              goal: proposal.fundingGoal,
+              percentage: (proposal.fundingAmount / proposal.fundingGoal) * 100
+            }}
+            metrics={{
+              reactions: {}, // No mock data
+              supporters: 0, // No mock data
+              journalistInterest: 0 // No mock data
+            }}
+            distribution={{
+              proposer: 0.060,
+              platform: 0.040,
+              futureAuthor: 0
+            }}
+            contentHash=""
+            onClick={() => handleArticleClick(proposal.id)}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <FilterBar 
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        categories={categories}
+        locations={locations}
+      />
+      {renderContent()}
+    </div>
+  );
+};
+
+export default ArticleFeed;

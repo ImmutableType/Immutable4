@@ -1,0 +1,237 @@
+// File: lib/reader/services/blockchainReaderService.ts
+import { Article } from '../types/article';
+import { FeedFilters, FeedSortOptions, ProposalSummary } from '../types/feed';
+import { ArticleMetrics, TipTransaction, VoteAction } from '../types/engagement';
+import { CommunityArticleService } from '../../blockchain/contracts/CommunityArticleService';
+import { ethers } from 'ethers';
+
+// Transform blockchain article to Article type
+const transformBlockchainArticle = (blockchainArticle: any): Article => {
+  return {
+    id: blockchainArticle.id.toString(),
+    title: blockchainArticle.title,
+    content: blockchainArticle.description,
+    summary: blockchainArticle.description.substring(0, 200) + (blockchainArticle.description.length > 200 ? '...' : ''),
+    author: blockchainArticle.author,
+    authorName: undefined,
+    authorType: 'Citizen' as const,
+    contentHash: blockchainArticle.id.toString(),
+    createdAt: new Date(Number(blockchainArticle.timestamp) * 1000).toISOString(),
+    location: blockchainArticle.location || 'Miami, FL',
+    category: blockchainArticle.category || 'Community',
+    tags: blockchainArticle.tags || [],
+    imageUrl: undefined,
+    proposalId: undefined,
+    readerMetrics: {
+      viewCount: Math.floor(Math.random() * 100) + 10,
+      tipAmount: Math.floor(Math.random() * 50) + 5,
+      commentCount: Math.floor(Math.random() * 20) + 1
+    }
+  };
+};
+
+// Add a delay to simulate network requests (can be removed for production)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Blockchain reader service
+export const blockchainReaderService = {
+  // Get list of articles from blockchain with optional filtering
+  getArticles: async (filters?: Partial<FeedFilters>): Promise<Article[]> => {
+    await delay(300); // Simulate network delay
+    
+    try {
+      // Import deployment info - fixed path
+      const deploymentInfo = await import('../../../deployments/CommunityArticles.json');
+      const contractAddress = deploymentInfo.address;
+      
+      // Create a basic provider for read-only operations
+      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      
+      // Create service instance with provider
+      const service = new CommunityArticleService(contractAddress, provider);
+      
+      // Try to determine total number of articles
+      let totalArticles = 0;
+      for (let i = 1; i <= 100; i++) { // Limit to 100 for performance
+        try {
+          const article = await service.getArticle(i);
+          if (article) {
+            totalArticles = i;
+          } else {
+            break;
+          }
+        } catch (e) {
+          break; // No more articles
+        }
+      }
+      
+      if (totalArticles === 0) {
+        return [];
+      }
+      
+      // Fetch articles
+      const rawArticles = [];
+      for (let i = 1; i <= totalArticles; i++) {
+        try {
+          const article = await service.getArticle(i);
+          if (article) {
+            rawArticles.push(article);
+          }
+        } catch (e) {
+          console.warn(`Could not fetch article ${i}:`, e);
+        }
+      }
+      
+      // Transform to Article format
+      let articles = rawArticles.map(transformBlockchainArticle);
+      
+      // Apply filters
+      if (filters) {
+        if (filters.category) {
+          articles = articles.filter(article => article.category === filters.category);
+        }
+        
+        if (filters.location) {
+          articles = articles.filter(article => article.location.includes(filters.location as string));
+        }
+        
+        if (filters.tag) {
+          articles = articles.filter(article => article.tags.includes(filters.tag as string));
+        }
+        
+        if (filters.authorType) {
+          articles = articles.filter(article => article.authorType === filters.authorType);
+        }
+        
+        if (filters.dateRange) {
+          const { start, end } = filters.dateRange;
+          articles = articles.filter(article => {
+            const articleDate = new Date(article.createdAt);
+            return articleDate >= new Date(start) && articleDate <= new Date(end);
+          });
+        }
+      }
+      
+      return articles;
+      
+    } catch (error) {
+      console.error('Failed to fetch articles from blockchain:', error);
+      return [];
+    }
+  },
+  
+  // Get a specific article by ID from blockchain
+  getArticleById: async (id: string): Promise<Article | null> => {
+    await delay(200);
+    
+    try {
+      const deploymentInfo = await import('../../../deployments/CommunityArticles.json');
+      const contractAddress = deploymentInfo.address;
+      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      const service = new CommunityArticleService(contractAddress, provider);
+      
+      const blockchainArticle = await service.getArticle(parseInt(id));
+      
+      if (!blockchainArticle) {
+        return null;
+      }
+      
+      return transformBlockchainArticle(blockchainArticle);
+      
+    } catch (error) {
+      console.error(`Failed to fetch article ${id} from blockchain:`, error);
+      return null;
+    }
+  },
+  
+  // Get engagement metrics for an article (placeholder implementation)
+  getArticleMetrics: async (articleId: string): Promise<ArticleMetrics | null> => {
+    await delay(200);
+    
+    // For now, return placeholder metrics
+    // In the future, this could be enhanced with actual on-chain engagement tracking
+    return {
+      articleId,
+      viewCount: Math.floor(Math.random() * 100) + 10,
+      uniqueViewers: Math.floor(Math.random() * 80) + 5,
+      tipTotal: Math.floor(Math.random() * 50) + 5,
+      tipCount: Math.floor(Math.random() * 10) + 1,
+      commentCount: Math.floor(Math.random() * 20) + 1,
+      votes: {
+        up: Math.floor(Math.random() * 15) + 1,
+        down: Math.floor(Math.random() * 5),
+        emoji: {
+          '👍': Math.floor(Math.random() * 10) + 1,
+          '👏': Math.floor(Math.random() * 8) + 1,
+          '🔥': Math.floor(Math.random() * 6) + 1,
+          '🤔': Math.floor(Math.random() * 4) + 1
+        }
+      }
+    };
+  },
+  
+  // Placeholder implementations for engagement (to be implemented with blockchain later)
+  addVote: async (
+    articleId: string,
+    userId: string,
+    voteType: 'up' | 'down' | 'emoji',
+    emoji?: string
+  ): Promise<VoteAction> => {
+    await delay(400);
+    
+    // Placeholder implementation
+    const vote: VoteAction = {
+      id: `vote-${Date.now()}`,
+      articleId,
+      voter: userId,
+      voteType,
+      emoji: voteType === 'emoji' ? emoji : undefined,
+      timestamp: new Date().toISOString()
+    };
+    
+    return vote;
+  },
+  
+  addTip: async (
+    articleId: string,
+    userId: string,
+    amount: number,
+    message?: string
+  ): Promise<TipTransaction> => {
+    await delay(600);
+    
+    // Placeholder implementation
+    const tip: TipTransaction = {
+      id: `tip-${Date.now()}`,
+      articleId,
+      sender: userId,
+      amount,
+      timestamp: new Date().toISOString(),
+      message
+    };
+    
+    return tip;
+  },
+  
+  getUserEngagement: async (articleId: string, userId: string): Promise<{
+    hasVoted: boolean;
+    hasTipped: boolean;
+    userVote?: VoteAction;
+    userTip?: TipTransaction;
+  }> => {
+    await delay(300);
+    
+    // Placeholder implementation
+    return {
+      hasVoted: false,
+      hasTipped: false
+    };
+  },
+  
+  recordView: async (articleId: string, userId: string): Promise<void> => {
+    await delay(100);
+    console.log(`View recorded for blockchain article ${articleId} by user ${userId}`);
+  }
+};
+
+export default blockchainReaderService;

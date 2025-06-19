@@ -1,0 +1,253 @@
+// File: components/reader/ProposalArticleCard.tsx
+import React from 'react';
+import { Article } from '../../lib/reader/types/article';
+
+interface ProposalArticleCardProps {
+  article: Article;
+  proposalDetails?: {
+    fundingGoal: number;
+    fundingReceived: number;
+    contributorCount: number;
+    proposalDate: string;
+    completionDate: string;
+    proposalTitle: string;
+    proposalSummary: string;
+  };
+  onClick?: (articleId: string) => void;
+}
+
+const ProposalArticleCard: React.FC<ProposalArticleCardProps> = ({ 
+  article, 
+  proposalDetails,
+  onClick 
+}) => {
+  const handleClick = () => {
+    if (onClick) {
+      onClick(article.id);
+    }
+  };
+
+  // Format date for display
+  const formattedDate = new Date(article.createdAt).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+
+  // Truncate wallet address for display
+  const truncatedWallet = article.author.substring(0, 6) + '...' + article.author.substring(article.author.length - 4);
+
+  // Calculate funding percentage
+  const fundingPercentage = proposalDetails 
+    ? Math.min(100, Math.round((proposalDetails.fundingReceived / proposalDetails.fundingGoal) * 100)) 
+    : 0;
+
+  return (
+    <div 
+      style={{
+        padding: '1.5rem',
+        marginBottom: '1rem',
+        backgroundColor: 'var(--color-parchment)', // Different background to distinguish from regular articles
+        border: '1px solid var(--color-digital-silver)',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+      onClick={handleClick}
+    >
+      {/* Article Header with Proposal Badge */}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ 
+              color: 'var(--color-typewriter-red)', 
+              fontFamily: 'var(--font-ui)', 
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              marginRight: '0.75rem'
+            }}>
+              {article.category}
+            </div>
+            <div style={{
+              backgroundColor: 'var(--color-blockchain-blue)',
+              color: 'white',
+              padding: '0.2rem 0.4rem',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500
+            }}>
+              Community Funded
+            </div>
+          </div>
+          <div style={{ 
+            color: 'var(--color-digital-silver)', 
+            fontFamily: 'var(--font-ui)', 
+            fontSize: '0.8rem' 
+          }}>
+            {formattedDate}
+          </div>
+        </div>
+        <h2 style={{ 
+          fontFamily: 'var(--font-headlines)', 
+          fontSize: '1.4rem', 
+          margin: '0 0 0.5rem 0' 
+        }}>
+          {article.title}
+        </h2>
+      </div>
+
+      {/* Article Summary */}
+      <div style={{ 
+        fontFamily: 'var(--font-body)', 
+        fontSize: '1rem', 
+        marginBottom: '1rem',
+        color: 'var(--color-black)',
+        lineHeight: 1.5
+      }}>
+        {article.summary}
+      </div>
+
+      {/* Funding Information (if proposal details are available) */}
+      {proposalDetails && (
+        <div style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.05)',
+          borderRadius: '4px',
+          padding: '0.75rem',
+          marginBottom: '1rem'
+        }}>
+          <div style={{
+            fontSize: '0.85rem',
+            fontFamily: 'var(--font-ui)',
+            marginBottom: '0.5rem'
+          }}>
+            Community funded with {proposalDetails.fundingReceived} ETH from {proposalDetails.contributorCount} contributors
+          </div>
+          <div style={{
+            height: '6px',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            borderRadius: '3px',
+            overflow: 'hidden',
+            marginBottom: '0.5rem'
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${fundingPercentage}%`,
+              backgroundColor: 'var(--color-verification-green)',
+              borderRadius: '3px'
+            }} />
+          </div>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '0.75rem',
+            fontFamily: 'var(--font-ui)',
+            color: 'var(--color-digital-silver)'
+          }}>
+            <div>Proposal: {new Date(proposalDetails.proposalDate).toLocaleDateString()}</div>
+            <div>Completed: {new Date(proposalDetails.completionDate).toLocaleDateString()}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Article Footer */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        borderTop: '1px solid var(--color-digital-silver)',
+        paddingTop: '0.75rem',
+        marginTop: '0.75rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '50%', 
+            width: '24px', 
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: '0.5rem'
+          }}>
+            {article.authorName ? article.authorName.charAt(0).toUpperCase() : '?'}
+          </div>
+          <div style={{ 
+            fontFamily: 'var(--font-ui)', 
+            fontSize: '0.85rem',
+            fontWeight: 500
+          }}>
+            {article.authorName || truncatedWallet}
+            <span style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: 'normal',
+              opacity: 0.7,
+              marginLeft: '0.5rem'
+            }}>
+              {article.authorType}
+            </span>
+          </div>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          fontFamily: 'var(--font-ui)', 
+          fontSize: '0.8rem', 
+          color: 'var(--color-digital-silver)'
+        }}>
+          <div style={{ marginRight: '0.75rem' }}>
+            {article.readerMetrics.viewCount} views
+          </div>
+          <div style={{ marginRight: '0.75rem' }}>
+            {article.readerMetrics.commentCount} comments
+          </div>
+          <div>
+            {article.readerMetrics.tipAmount} ETH tips
+          </div>
+        </div>
+      </div>
+
+      {/* Tags */}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        marginTop: '0.75rem' 
+      }}>
+        {article.tags.map((tag, index) => (
+          <div key={index} style={{ 
+            backgroundColor: 'white',
+            color: 'var(--color-black)',
+            borderRadius: '4px',
+            padding: '0.25rem 0.5rem',
+            fontSize: '0.75rem',
+            fontFamily: 'var(--font-ui)',
+            marginRight: '0.5rem',
+            marginBottom: '0.5rem'
+          }}>
+            {tag}
+          </div>
+        ))}
+      </div>
+
+      {/* Location */}
+      <div style={{ 
+        fontSize: '0.75rem',
+        fontFamily: 'var(--font-ui)',
+        color: 'var(--color-digital-silver)',
+        marginTop: '0.5rem'
+      }}>
+        {article.location}
+      </div>
+    </div>
+  );
+};
+
+export default ProposalArticleCard;

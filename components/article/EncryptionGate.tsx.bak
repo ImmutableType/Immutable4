@@ -1,0 +1,591 @@
+// components/article/EncryptionGate.tsx
+'use client';
+import React, { useState, useEffect } from 'react';
+import { Article } from '../../lib/reader/types/article';
+
+interface EncryptionGateProps {
+  article: Article;
+  onDecrypt?: (success: boolean) => void;
+}
+
+const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) => {
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<'license' | 'nft'>('license');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [hasReaderLicense, setHasReaderLicense] = useState(false);
+  const [licenseExpiry, setLicenseExpiry] = useState<Date | null>(null);
+
+  // Mock wallet check - replace with actual blockchain service
+  useEffect(() => {
+    // This would check user's wallet for reader license or NFT
+    const checkWalletTokens = async () => {
+      // Mock implementation
+      const mockHasLicense = Math.random() > 0.7; // 30% chance of having license
+      setHasReaderLicense(mockHasLicense);
+      if (mockHasLicense) {
+        setLicenseExpiry(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 7 days from now
+      }
+    };
+    checkWalletTokens();
+  }, []);
+
+  // If user has access, show decrypted content with elegant reveal
+  if (article.hasAccess || hasReaderLicense) {
+    return (
+      <main>
+        {/* Elegant Decryption Success Banner */}
+        <div style={{
+          padding: '1.5rem',
+          background: 'linear-gradient(135deg, var(--color-verification-green), #1a6b5c)',
+          color: 'white',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 4px 20px rgba(29, 127, 110, 0.2)'
+        }}>
+          <div style={{
+            fontSize: '2rem',
+            animation: 'pulse 2s infinite',
+            filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))'
+          }}>
+            🔓
+          </div>
+          <div>
+            <div style={{ 
+              fontFamily: 'var(--font-headlines)', 
+              fontSize: '1.2rem',
+              fontWeight: '600',
+              marginBottom: '0.25rem'
+            }}>
+              Article Unlocked Successfully
+            </div>
+            <div style={{ 
+              fontSize: '0.9rem', 
+              opacity: 0.9,
+              fontFamily: 'var(--font-ui)'
+            }}>
+              {licenseExpiry ? 
+                `Reader license expires ${licenseExpiry.toLocaleDateString()}` :
+                'Permanent NFT ownership verified'
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Premium Content with Enhanced Typography */}
+        <div style={{
+          fontSize: '1.1rem',
+          lineHeight: '1.8',
+          color: 'var(--color-black)',
+          fontFamily: 'var(--font-body)'
+        }}>
+          {article.content.split('\n').map((paragraph: string, index: number) => (
+            paragraph.trim() && (
+              <p key={index} style={{ 
+                marginBottom: '1.5rem',
+                textAlign: 'justify'
+              }}>
+                {paragraph}
+              </p>
+            )
+          ))}
+        </div>
+
+        {/* Reading Progress Indicator */}
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '3px',
+          backgroundColor: 'var(--color-verification-green)',
+          width: '0%',
+          transition: 'width 0.3s ease',
+          zIndex: 1000
+        }} id="reading-progress" />
+      </main>
+    );
+  }
+
+  // Elegant encryption gate with intrigue
+  return (
+    <main>
+      {/* Intriguing Preview Section */}
+      <div style={{
+        position: 'relative',
+        padding: '2rem',
+        background: 'linear-gradient(135deg, var(--color-parchment), #f8f6f0)',
+        borderRadius: '16px',
+        marginBottom: '2rem',
+        border: '1px solid var(--color-digital-silver)',
+        overflow: 'hidden'
+      }}>
+        {/* Mysterious Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          marginBottom: '2rem'
+        }}>
+          <div style={{
+            fontSize: '2.5rem',
+            animation: 'glow 2s ease-in-out infinite alternate',
+            filter: 'drop-shadow(0 0 8px rgba(179, 33, 30, 0.4))'
+          }}>
+            🔐
+          </div>
+          <div>
+            <h3 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.8rem',
+              marginBottom: '0.5rem',
+              color: 'var(--color-typewriter-red)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}>
+              Encrypted Premium Content
+            </h3>
+            <p style={{
+              fontSize: '1rem',
+              color: 'var(--color-digital-silver)',
+              fontFamily: 'var(--font-ui)',
+              margin: 0
+            }}>
+              This article contains exclusive insights worth unlocking
+            </p>
+          </div>
+        </div>
+
+        {/* Teasing Content Preview */}
+        <div style={{
+          position: 'relative',
+          backgroundColor: 'var(--color-white)',
+          borderRadius: '12px',
+          padding: '2rem',
+          border: '1px solid var(--color-digital-silver)',
+          marginBottom: '2rem'
+        }}>
+          {/* Article Summary - Fully Visible */}
+          {article.summary && (
+            <div style={{
+              fontSize: '1.2rem',
+              lineHeight: '1.6',
+              color: 'var(--color-black)',
+              fontStyle: 'italic',
+              marginBottom: '2rem',
+              padding: '1.5rem',
+              backgroundColor: 'rgba(43, 57, 144, 0.05)',
+              borderLeft: '4px solid var(--color-blockchain-blue)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <strong>What you'll discover:</strong> {article.summary}
+            </div>
+          )}
+
+          {/* Partial Content Reveal */}
+          <div style={{
+            position: 'relative',
+            fontSize: '1.1rem',
+            lineHeight: '1.8',
+            color: 'var(--color-black)'
+          }}>
+            <p style={{ marginBottom: '1.5rem' }}>
+              {article.content.substring(0, 300)}...
+            </p>
+            
+            {/* Elegant Fade Effect */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '120px',
+              background: 'linear-gradient(transparent, var(--color-white) 70%)',
+              borderRadius: '0 0 12px 12px',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              paddingBottom: '1rem'
+            }}>
+              <div style={{
+                fontSize: '0.9rem',
+                color: 'var(--color-digital-silver)',
+                textAlign: 'center',
+                fontFamily: 'var(--font-ui)',
+                fontStyle: 'italic'
+              }}>
+                Continue reading with premium access...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Access Options - Low Friction */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '1.5rem'
+        }}>
+          {/* Quick License Option */}
+          <div style={{
+            backgroundColor: 'var(--color-white)',
+            padding: '2rem',
+            borderRadius: '12px',
+            border: '2px solid var(--color-blockchain-blue)',
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 15px rgba(43, 57, 144, 0.1)'
+          }}
+          onClick={() => {
+            setPurchaseType('license');
+            setShowPurchaseModal(true);
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(43, 57, 144, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(43, 57, 144, 0.1)';
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '1rem',
+              right: '1rem',
+              backgroundColor: 'var(--color-verification-green)',
+              color: 'white',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '12px',
+              fontSize: '0.8rem',
+              fontWeight: 'bold'
+            }}>
+              RECOMMENDED
+            </div>
+            
+            <div style={{
+              fontSize: '2rem',
+              marginBottom: '1rem'
+            }}>⚡</div>
+            
+            <h4 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.3rem',
+              marginBottom: '1rem',
+              color: 'var(--color-blockchain-blue)'
+            }}>
+              Quick Reader License
+            </h4>
+            
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: 'var(--color-blockchain-blue)',
+              marginBottom: '1rem'
+            }}>
+              $0.05 - $0.25
+            </div>
+            
+            <div style={{ 
+              fontSize: '0.9rem', 
+              color: 'var(--color-digital-silver)', 
+              marginBottom: '1.5rem',
+              lineHeight: '1.5'
+            }}>
+              <div>✓ 7-day access to this article</div>
+              <div>✓ Instant unlock in 2 clicks</div>
+              <div>✓ Support independent journalism</div>
+              <div>✓ Mobile & desktop access</div>
+            </div>
+            
+            <div style={{
+              backgroundColor: 'var(--color-blockchain-blue)',
+              color: 'white',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              textAlign: 'center',
+              fontWeight: '500',
+              fontSize: '1rem'
+            }}>
+              Unlock Now →
+            </div>
+          </div>
+
+          {/* NFT Collection Option */}
+          <div style={{
+            backgroundColor: 'var(--color-white)',
+            padding: '2rem',
+            borderRadius: '12px',
+            border: '2px solid var(--color-typewriter-red)',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 15px rgba(179, 33, 30, 0.1)'
+          }}
+          onClick={() => {
+            setPurchaseType('nft');
+            setShowPurchaseModal(true);
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 25px rgba(179, 33, 30, 0.2)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 15px rgba(179, 33, 30, 0.1)';
+          }}>
+            <div style={{
+              fontSize: '2rem',
+              marginBottom: '1rem'
+            }}>🎨</div>
+            
+            <h4 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.3rem',
+              marginBottom: '1rem',
+              color: 'var(--color-typewriter-red)'
+            }}>
+              Premium NFT Collection
+            </h4>
+            
+            <div style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              color: 'var(--color-typewriter-red)',
+              marginBottom: '1rem'
+            }}>
+              ${(article.nftPrice || 0.5) * 2} FLOW
+            </div>
+            
+            <div style={{ 
+              fontSize: '0.9rem', 
+              color: 'var(--color-digital-silver)', 
+              marginBottom: '1.5rem',
+              lineHeight: '1.5'
+            }}>
+              <div>✓ Permanent ownership & access</div>
+              <div>✓ Tradeable NFT in your wallet</div>
+              <div>✓ Exclusive collector benefits</div>
+              <div>✓ Support creator directly</div>
+            </div>
+            
+            <div style={{
+              backgroundColor: 'var(--color-typewriter-red)',
+              color: 'white',
+              padding: '0.75rem',
+              borderRadius: '8px',
+              textAlign: 'center',
+              fontWeight: '500',
+              fontSize: '1rem'
+            }}>
+              Collect Forever →
+            </div>
+          </div>
+        </div>
+
+        {/* Trust Indicators */}
+        <div style={{
+          marginTop: '2rem',
+          padding: '1.5rem',
+          backgroundColor: 'rgba(29, 127, 110, 0.1)',
+          borderRadius: '8px',
+          border: '1px solid rgba(29, 127, 110, 0.2)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            fontSize: '0.9rem',
+            color: 'var(--color-verification-green)',
+            fontWeight: '500'
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>🛡️</span>
+            <div>
+              <div>Secure blockchain payment • No subscription required</div>
+              <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '0.25rem' }}>
+                Powered by Flow EVM • Your access is cryptographically verified
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Frictionless Purchase Modal */}
+      {showPurchaseModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 2000,
+          padding: '2rem'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--color-white)',
+            borderRadius: '16px',
+            maxWidth: '450px',
+            width: '100%',
+            padding: '2.5rem',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '2rem'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
+                {purchaseType === 'license' ? '⚡' : '🎨'}
+              </div>
+              <h3 style={{
+                fontFamily: 'var(--font-headlines)',
+                fontSize: '1.5rem',
+                marginBottom: '0.5rem',
+                color: purchaseType === 'license' ? 'var(--color-blockchain-blue)' : 'var(--color-typewriter-red)'
+              }}>
+                {purchaseType === 'license' ? 'Unlock Article' : 'Collect as NFT'}
+              </h3>
+              <p style={{
+                color: 'var(--color-digital-silver)',
+                fontSize: '0.9rem'
+              }}>
+                {purchaseType === 'license' ? 
+                  '7-day access for just a few cents' :
+                  'Own this article forever as an NFT'
+                }
+              </p>
+            </div>
+
+            {!isProcessing ? (
+              <>
+                <div style={{
+                  padding: '1.5rem',
+                  backgroundColor: 'var(--color-parchment)',
+                  borderRadius: '8px',
+                  marginBottom: '2rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span>Article Access:</span>
+                    <span style={{ fontWeight: '500' }}>
+                      {purchaseType === 'license' ? '$0.15' : '$3.50'}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '0.5rem',
+                    fontSize: '0.9rem',
+                    color: 'var(--color-digital-silver)'
+                  }}>
+                    <span>Network fee:</span>
+                    <span>~$0.02</span>
+                  </div>
+                  <hr style={{ margin: '1rem 0', border: '1px solid var(--color-digital-silver)' }} />
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem'
+                  }}>
+                    <span>Total:</span>
+                    <span>{purchaseType === 'license' ? '$0.17' : '$3.52'}</span>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem'
+                }}>
+                  <button
+                    onClick={() => setShowPurchaseModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      border: '2px solid var(--color-digital-silver)',
+                      backgroundColor: 'transparent',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-ui)'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsProcessing(true);
+                      // Mock processing delay
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        setShowPurchaseModal(false);
+                        setHasReaderLicense(true);
+                        onDecrypt?.(true);
+                      }, 2000);
+                    }}
+                    style={{
+                      flex: 2,
+                      padding: '0.75rem',
+                      backgroundColor: purchaseType === 'license' ? 'var(--color-blockchain-blue)' : 'var(--color-typewriter-red)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      fontFamily: 'var(--font-ui)'
+                    }}
+                  >
+                    {purchaseType === 'license' ? 'Unlock Now' : 'Collect NFT'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '2rem'
+              }}>
+                <div style={{
+                  fontSize: '2rem',
+                  marginBottom: '1rem',
+                  animation: 'spin 1s linear infinite'
+                }}>
+                  ⚡
+                </div>
+                <p>Processing your purchase...</p>
+                <p style={{
+                  fontSize: '0.9rem',
+                  color: 'var(--color-digital-silver)',
+                  marginTop: '0.5rem'
+                }}>
+                  Confirming on blockchain
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced CSS Animations */}
+      <style jsx>{`
+        @keyframes glow {
+          from { filter: drop-shadow(0 0 8px rgba(179, 33, 30, 0.4)); }
+          to { filter: drop-shadow(0 0 15px rgba(179, 33, 30, 0.8)); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </main>
+  );
+};
+
+export default EncryptionGate;

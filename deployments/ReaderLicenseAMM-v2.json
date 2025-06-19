@@ -1,0 +1,9 @@
+{
+  "network": "flowTestnet",
+  "readerLicenseAMM": "0x4E0f2A3A8AfEd1f86D83AAB1a989E01c316996d2",
+  "encryptedArticles": "0xd99aB3390aAF8BC69940626cdbbBf22F436c6753",
+  "deployer": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+  "timestamp": "2025-06-18T22:59:35.077Z",
+  "blockNumber": 53427585,
+  "version": "v2-fixed-interface"
+}

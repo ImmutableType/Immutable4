@@ -1,0 +1,31 @@
+{
+    "fees": [
+      {
+        "id": "fee-001",
+        "articleId": "article-001",
+        "authorId": "1",
+        "feeAmount": 0.5,
+        "status": "confirmed",
+        "transactionHash": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+        "timestamp": "2025-04-25T14:35:08Z"
+      },
+      {
+        "id": "fee-002",
+        "articleId": "article-002",
+        "authorId": "2",
+        "feeAmount": 0.5,
+        "status": "confirmed",
+        "transactionHash": "0xf1e2d3c4b5a6987654321abcdef1234567890abcdef1234567890abcdef1234",
+        "timestamp": "2025-04-26T11:20:45Z"
+      },
+      {
+        "id": "fee-003",
+        "articleId": "article-003",
+        "authorId": "1",
+        "feeAmount": 0.5,
+        "status": "confirmed",
+        "transactionHash": "0xa9b8c7d6e5f4312345678901234567890123456789012345678901234abcdef",
+        "timestamp": "2025-04-27T10:30:15Z"
+      }
+    ]
+  }

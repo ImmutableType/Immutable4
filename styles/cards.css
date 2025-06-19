@@ -1,0 +1,452 @@
+/* styles/cards.css */
+
+/* Import fonts from your global.css if not already available */
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Spectral:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Primary Colors */
+  --color-black: #000000;
+  --color-white: #FFFFFF;
+  --color-typewriter-red: #B3211E;
+  
+  /* Secondary Colors */
+  --color-blockchain-blue: #2B3990;
+  --color-digital-silver: #D9D9D9;
+  --color-parchment: #F4F1E8;
+  
+  /* Accent Colors */
+  --color-verification-green: #1D7F6E;
+  --color-alert-amber: #E8A317;
+}
+
+/* Card container */
+.article-container {
+  display: flex;
+  max-width: 900px;
+  margin: 0 auto 30px auto;
+  background-color: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid var(--color-digital-silver);
+}
+
+/* Content pane (left side) */
+.content-pane {
+  flex: 2;
+  padding: 24px;
+  border-right: 1px solid var(--color-digital-silver);
+  position: relative;
+}
+
+.content-pane img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  background-color: var(--color-digital-silver);
+}
+
+.content-pane h2 {
+  font-family: var(--font-headlines, 'Special Elite', monospace);
+  font-size: 24px;
+  margin: 0 0 12px 0;
+  line-height: 1.2;
+}
+
+.content-pane p {
+  margin: 0 0 16px 0;
+  line-height: 1.6;
+  color: #333;
+  font-family: var(--font-body, 'Spectral', serif);
+}
+
+/* Action icons */
+.content-actions {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+}
+
+.action-icon {
+  width: 32px;
+  height: 32px;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.action-icon:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip {
+  position: relative;
+}
+
+.tooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* Metadata */
+.metadata {
+  display: flex;
+  flex-wrap: wrap;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.metadata span {
+  margin-right: 16px;
+  margin-bottom: 4px;
+}
+
+.location-tag {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-blockchain-blue);
+  font-weight: 500;
+}
+
+.location-tag svg {
+  margin-right: 4px;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-right: 8px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+}
+
+.verification-badge {
+  background-color: var(--color-verification-green);
+  color: white;
+}
+
+.proposal-badge {
+  background-color: var(--color-blockchain-blue);
+  color: white;
+}
+
+/* Engagement pane (right side) */
+.engagement-pane {
+  flex: 1;
+  padding: 24px;
+  background-color: var(--color-parchment);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body, 'Spectral', serif);
+}
+
+.section-title {
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  margin: 0 0 16px 0;
+  color: #555;
+  display: flex;
+  align-items: center;
+}
+
+.section-title svg {
+  margin-right: 6px;
+}
+
+/* Chain Reactions */
+.chain-reaction-panel {
+  margin-bottom: 20px;
+}
+
+.emoji-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.emoji-button {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-digital-silver);
+  border-radius: 20px;
+  padding: 8px 12px;
+  margin: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.emoji-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.emoji-button span {
+  font-size: 16px;
+  margin-right: 6px;
+}
+
+.emoji-button.active {
+  background-color: #f0f0f0;
+  border-color: var(--color-blockchain-blue);
+}
+
+.emoji-button .power-up {
+  position: absolute;
+  bottom: -30px;
+  left: 0;
+  width: 100%;
+  background-color: var(--color-blockchain-blue);
+  color: white;
+  text-align: center;
+  padding: 4px 0;
+  transition: bottom 0.3s;
+  font-size: 12px;
+}
+
+.emoji-button.long-press .power-up {
+  bottom: 0;
+}
+
+.emoji-counter {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 24px 0;
+}
+
+/* Emoji Earnings */
+.emoji-earnings {
+  background-color: white;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.earnings-entity {
+  text-align: center;
+}
+
+.earnings-amount {
+  font-weight: 600;
+  color: var(--color-verification-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.earnings-amount span {
+  margin-right: 4px;
+}
+
+.earnings-label {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Funding Status */
+.funding-status {
+  margin-bottom: 24px;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: var(--color-digital-silver);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--color-verification-green);
+  width: 75%; /* Value set by component */
+}
+
+/* Community Voting */
+.community-voting {
+  margin-bottom: 20px;
+}
+
+.vote-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: center;
+}
+
+.vote-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-weight: 500;
+  border: 1px solid var(--color-digital-silver);
+  flex: 1;
+}
+
+.upvote {
+  background-color: rgba(29, 127, 110, 0.1);
+  color: var(--color-verification-green);
+}
+
+.downvote {
+  background-color: rgba(179, 33, 30, 0.1);
+  color: var(--color-typewriter-red);
+}
+
+.ratio-display {
+  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  color: #666;
+  text-align: center;
+}
+
+/* Attribution section */
+.attribution {
+  margin-top: auto;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+}
+
+.attribution-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.attribution-label {
+  color: #777;
+}
+
+.attribution-value {
+  font-weight: 500;
+  color: #333;
+}
+
+.author-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.stat-item svg {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+/* CTA Button */
+.cta-button {
+  background-color: var(--color-blockchain-blue);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: var(--font-ui, 'Inter', sans-serif);
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background-color 0.2s;
+  text-align: center;
+  width: 100%;
+}
+
+.cta-button:hover {
+  background-color: #1a2770;
+}
+
+/* Card type-specific styling */
+.proposal-card .engagement-pane {
+  background-color: rgba(43, 57, 144, 0.05);
+}
+
+/* Community card with gradient background based on score */
+.community-card .engagement-pane {
+  background: linear-gradient(to bottom, rgba(29, 127, 110, 0.1), rgba(29, 127, 110, 0.05));
+}
+
+.community-card.medium-score .engagement-pane {
+  background: linear-gradient(to bottom, rgba(232, 163, 23, 0.1), rgba(232, 163, 23, 0.05));
+}
+
+.community-card.low-score .engagement-pane {
+  background: linear-gradient(to bottom, rgba(179, 33, 30, 0.1), rgba(179, 33, 30, 0.05));
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .article-container {
+    flex-direction: column;
+  }
+
+  .content-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--color-digital-silver);
+  }
+
+  .content-actions {
+    top: 16px;
+    right: 16px;
+  }
+
+  .emoji-reactions {
+    justify-content: center;
+  }
+
+  .vote-buttons {
+    flex-direction: column;
+  }
+}

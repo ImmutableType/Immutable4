@@ -1,0 +1,21 @@
+{
+    "prop-001": {
+      "votes": [
+        {"user": "0xabcd...efgh", "emoji": "👍", "timestamp": "2025-04-21T16:45:00Z"},
+        {"user": "0x5678...90ab", "emoji": "🔍", "timestamp": "2025-04-21T18:20:00Z"},
+        {"user": "0x2468...1357", "emoji": "👍", "timestamp": "2025-04-22T09:15:00Z"}
+      ],
+      "funding": [
+        {"user": "0x9876...5432", "amount": 0.2, "timestamp": "2025-04-22T14:30:00Z"},
+        {"user": "0x5678...90ab", "amount": 0.3, "timestamp": "2025-04-23T11:05:00Z"}
+      ],
+      "journalistInterest": [
+        {"user": "0x5678...90ab", "timestamp": "2025-04-22T10:45:00Z", "message": "I have experience covering environmental issues and would be interested in this story."},
+        {"user": "0x8642...9753", "timestamp": "2025-04-23T15:20:00Z", "message": "I'd like to investigate this with a focus on the approval process transparency."}
+      ],
+      "comments": [
+        {"user": "0xdef1...2345", "content": "This is extremely important work. I live near this area and have concerns about the environmental impact.", "timestamp": "2025-04-22T08:30:00Z"},
+        {"user": "0x1357...2468", "content": "Would love to see this investigation also look into similar developments in neighboring areas.", "timestamp": "2025-04-23T13:15:00Z"}
+      ]
+    }
+  }

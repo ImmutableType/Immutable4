@@ -1,0 +1,156 @@
+// app/(client)/profile/page.tsx
+'use client'
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import ProfileCard from '../../../components/profile/ProfileCard';
+import { useProfiles } from '../../../lib/profile/hooks/useProfiles';
+
+export default function ProfilesPage() {
+  const { profiles, isLoading, error, hasMore, loadMore } = useProfiles(9);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const filteredProfiles = searchTerm
+    ? profiles.filter(
+        profile => 
+          profile.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          profile.id.includes(searchTerm) ||
+          profile.walletAddress.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : profiles;
+
+  return (
+    <div>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '2rem',
+        flexWrap: 'wrap',
+        gap: '1rem',
+      }}>
+        <h1 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '2rem',
+          margin: 0,
+        }}>
+          Profiles
+        </h1>
+        
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+        }}>
+          <input
+            type="text"
+            placeholder="Search profiles..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '4px',
+              border: '1px solid var(--color-digital-silver)',
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-ui)',
+              width: '200px',
+            }}
+          />
+          
+          <Link href="/profile/create">
+            <button style={{
+              backgroundColor: 'var(--color-typewriter-red)',
+              color: 'var(--color-white)',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500,
+              padding: '0.5rem 1rem',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s ease',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#8C1A17';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-typewriter-red)';
+            }}
+            >
+              Create Profile
+            </button>
+          </Link>
+        </div>
+      </div>
+      
+      {isLoading && profiles.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem',
+          color: 'var(--color-black)',
+          opacity: 0.7,
+        }}>
+          Loading profiles...
+        </div>
+      ) : error ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem',
+          color: 'var(--color-typewriter-red)',
+        }}>
+          Error loading profiles: {error.message}
+        </div>
+      ) : filteredProfiles.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '3rem',
+          color: 'var(--color-black)',
+          opacity: 0.7,
+        }}>
+          {searchTerm 
+            ? `No profiles found matching "${searchTerm}"`
+            : 'No profiles available yet'
+          }
+        </div>
+      ) : (
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+            gap: '1.5rem',
+          }}>
+            {filteredProfiles.map((profile) => (
+              <ProfileCard 
+                key={profile.id} 
+                profile={profile} 
+              />
+            ))}
+          </div>
+          
+          {hasMore && (
+            <div style={{
+              textAlign: 'center',
+              marginTop: '2rem',
+            }}>
+              <button
+                onClick={loadMore}
+                disabled={isLoading}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: 'var(--color-black)',
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 500,
+                  padding: '0.5rem 1.5rem',
+                  border: '1px solid var(--color-digital-silver)',
+                  borderRadius: '4px',
+                  cursor: isLoading ? 'default' : 'pointer',
+                  opacity: isLoading ? 0.7 : 1,
+                }}
+              >
+                {isLoading ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

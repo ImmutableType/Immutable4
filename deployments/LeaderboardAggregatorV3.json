@@ -1,0 +1,15 @@
+{
+  "address": "0xbc815e49A70E6445373410DE42F92616651f71E4",
+  "contractName": "LeaderboardAggregatorV3",
+  "version": "v3",
+  "network": "flow-evm-testnet",
+  "deployedAt": "2025-06-03T02:02:38.815Z",
+  "constructorArgs": [
+    "0x0c4141ec0d87fA1B7820E5AF277024251d392F05",
+    "0xaE76fde8f2fc50968182b76f76341d79249A66F5",
+    "0xC90bE82B23Dca9453445b69fB22D5A90402654b2",
+    "0x8b351Bc93799898a201E796405dBC30Aad49Ee21",
+    "0x572F036576D1D9F41876e714D47f69CEa6933c36"
+  ],
+  "notes": "Fixed GM interface mismatch - getUserStats instead of userStats"
+}

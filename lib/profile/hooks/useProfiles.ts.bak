@@ -1,0 +1,69 @@
+// lib/profile/hooks/useProfiles.ts
+import { useState, useEffect } from 'react';
+import { Profile, ProfilesResponse } from '../types/profile';
+import { mockProfileService } from '../services/mockProfileService';
+
+export function useProfiles(limit = 10) {
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProfiles = async () => {
+      try {
+        setIsLoading(true);
+        const response = await mockProfileService.getProfiles(limit);
+        
+        if (isMounted) {
+          setProfiles(response.profiles);
+          setTotal(response.total);
+          setNextCursor(response.nextCursor);
+          setError(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error('Failed to fetch profiles'));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProfiles();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [limit]);
+
+  const loadMore = async () => {
+    if (!nextCursor || isLoading) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await mockProfileService.getProfiles(limit, nextCursor);
+      
+      setProfiles(prev => [...prev, ...response.profiles]);
+      setNextCursor(response.nextCursor);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to load more profiles'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    profiles,
+    total,
+    isLoading,
+    error,
+    hasMore: !!nextCursor,
+    loadMore
+  };
+}
