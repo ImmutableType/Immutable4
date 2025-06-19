@@ -1,7 +1,0 @@
-{
-  "/(client)/profile/page": "app/(client)/profile/page.js",
-  "/(client)/reader/page": "app/(client)/reader/page.js",
-  "/(client)/marketplace/page": "app/(client)/marketplace/page.js",
-  "/(client)/profile/[identifier]/page": "app/(client)/profile/[identifier]/page.js",
-  "/(client)/profile/[identifier]/publish/native/page": "app/(client)/profile/[identifier]/publish/native/page.js"
-}

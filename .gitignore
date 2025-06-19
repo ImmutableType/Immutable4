@@ -1,2 +1,20 @@
 .env
 node_modules
+
+# Build outputs
+.next/
+artifacts/
+cache/
+admin/artifacts/
+admin/cache/
+tsconfig.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"lib/profile/hooks/useProfile.ts -> @/lib/blockchain/contracts/ProfileNFT\":{\"id\":\"lib/profile/hooks/useProfile.ts -> @/lib/blockchain/contracts/ProfileNFT\",\"files\":[\"static/chunks/_app-pages-browser_lib_blockchain_contracts_ProfileNFT_ts.js\"]}}"
