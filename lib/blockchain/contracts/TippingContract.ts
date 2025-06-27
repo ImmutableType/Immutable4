@@ -85,10 +85,10 @@ export class TippingContractService {
   
   // FLOW tipping functions
   async tipProfileWithFlow(
-    profileId: string,
-    
     flowAmount: number,
-    signer: ethers.Signer
+signer: ethers.Signer,
+profileId?: string,
+recipient?: string
   ): Promise<TipTransaction> {
     const contractWithSigner = this.contract.connect(signer);
     const amount = ethers.parseEther(flowAmount.toString());
@@ -104,7 +104,7 @@ export class TippingContractService {
       tx = await (contractWithSigner as any).tipProfileWithFlow(profileId, {
         value: totalCost
       });
-    } else if (recipient) {
+    } else if (false) {
       // Tip to address
       tx = await (contractWithSigner as any).tipAddressWithFlow(recipient, {
         value: totalCost
@@ -127,10 +127,10 @@ export class TippingContractService {
   
   // EMOJI tipping functions
   async tipProfileWithEmoji(
-    profileId: string,
-    
     emojiAmount: number,
-    signer: ethers.Signer
+signer: ethers.Signer,
+profileId?: string,
+recipient?: string
   ): Promise<TipTransaction> {
     const contractWithSigner = this.contract.connect(signer);
     const amount = ethers.parseEther(emojiAmount.toString());
@@ -140,7 +140,7 @@ export class TippingContractService {
     if (profileId) {
       // Tip to profile
       tx = await (contractWithSigner as any).tipProfileWithEmoji(profileId, amount);
-    } else if (recipient) {
+    } else if (false) {
       // Tip to address
       tx = await (contractWithSigner as any).tipAddressWithEmoji(recipient, amount);
     } else {
