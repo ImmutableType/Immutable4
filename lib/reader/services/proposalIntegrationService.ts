@@ -1,7 +1,4 @@
 // File: lib/reader/services/proposalIntegrationService.ts
-import mockReaderService from './mockReaderService';
-
-// This is a mock service that would be replaced with actual API calls
 // to the News Proposals system in a real implementation
 export const proposalIntegrationService = {
   // Get proposal details for an article
@@ -9,7 +6,7 @@ export const proposalIntegrationService = {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    // For the MVP, we're using mock data
+    // 
     // In a real implementation, this would call the News Proposals API
     return {
       proposalId: proposalId,
