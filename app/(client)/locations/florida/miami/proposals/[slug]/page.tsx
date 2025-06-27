@@ -6,14 +6,15 @@ import { useProposals } from '../../../../../../../lib/hooks/proposals/usePropos
 import { urlOptimizer } from '../../../../../../../lib/locations/seo/urlOptimizer';
 
 interface ProposalPageProps {
-  params: {
-    slug: string;
-  };
+  params: Promise<{ slug: string; }>;
 }
+
+export default async function ProposalPage({ params }: ProposalPageProps) {
+  const { slug } = await params;
 
 export default function ProposalPage({ params }: ProposalPageProps) {
   // Extract the proposal ID from the slug
-  const proposalId = urlOptimizer.extractIdFromSlug(params.slug);
+  const proposalId = urlOptimizer.extractIdFromSlug(slug);
   // Use the hook to fetch proposal details
   const { proposals, loading, error } = useProposals();
   
