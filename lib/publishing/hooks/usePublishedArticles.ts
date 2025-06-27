@@ -1,75 +1,80 @@
 // lib/publishing/hooks/usePublishedArticles.ts
 import { useState, useEffect } from 'react';
 import { PublishedArticle } from '../types/publishedArticle';
-import { mockPublishingService } from '../services/mockPublishingService';
 
 export function usePublishedArticles(authorId?: string, limit = 10) {
-  const [articles, setArticles] = useState<PublishedArticle[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+ const [articles, setArticles] = useState<PublishedArticle[]>([]);
+ const [total, setTotal] = useState<number>(0);
+ const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+ const [isLoading, setIsLoading] = useState<boolean>(true);
+ const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+ useEffect(() => {
+   let isMounted = true;
 
-    const fetchArticles = async () => {
-      try {
-        setIsLoading(true);
-        
-        const response = authorId 
-          ? await mockPublishingService.getPublishedArticlesByAuthor(authorId, limit)
-          : await mockPublishingService.getPublishedArticles(limit);
-        
-        if (isMounted) {
-          setArticles(response.articles);
-          setTotal(response.total);
-          setNextCursor(response.nextCursor);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Failed to fetch published articles'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+   const fetchArticles = async () => {
+     try {
+       setIsLoading(true);
+       
+       // Placeholder - no articles available in production
+       const response = {
+         articles: [],
+         total: 0,
+         nextCursor: undefined
+       };
 
-    fetchArticles();
+       if (isMounted) {
+         setArticles(response.articles);
+         setTotal(response.total);
+         setNextCursor(response.nextCursor);
+         setError(null);
+       }
+     } catch (err) {
+       if (isMounted) {
+         setError(err instanceof Error ? err : new Error('Failed to fetch published articles'));
+       }
+     } finally {
+       if (isMounted) {
+         setIsLoading(false);
+       }
+     }
+   };
 
-    return () => {
-      isMounted = false;
-    };
-  }, [authorId, limit]);
+   fetchArticles();
 
-  const loadMore = async () => {
-    if (!nextCursor || isLoading) return;
-    
-    try {
-      setIsLoading(true);
-      
-      const response = authorId 
-        ? await mockPublishingService.getPublishedArticlesByAuthor(authorId, limit, nextCursor)
-        : await mockPublishingService.getPublishedArticles(limit, nextCursor);
-      
-      setArticles(prev => [...prev, ...response.articles]);
-      setNextCursor(response.nextCursor);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load more articles'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+   return () => {
+     isMounted = false;
+   };
+ }, [authorId, limit]);
 
-  return {
-    articles,
-    total,
-    isLoading,
-    error,
-    hasMore: !!nextCursor,
-    loadMore
-  };
+ const loadMore = async () => {
+   if (!nextCursor || isLoading) return;
+
+   try {
+     setIsLoading(true);
+     
+     // Placeholder - no more articles available in production
+     const response = {
+       articles: [],
+       total: 0,
+       nextCursor: undefined
+     };
+
+     setArticles(prev => [...prev, ...response.articles]);
+     setNextCursor(response.nextCursor);
+   } catch (err) {
+     setError(err instanceof Error ? err : new Error('Failed to load more articles'));
+   } finally {
+     setIsLoading(false);
+   }
+ };
+
+ return {
+   articles,
+   total,
+   isLoading,
+   error,
+   hasMore: !!nextCursor,
+   loadMore
+ };
 }

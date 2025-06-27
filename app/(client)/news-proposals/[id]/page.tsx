@@ -5,7 +5,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Proposal, EngagementData } from '../../../../lib/types/proposal';
-import { mockProposalService, mockEngagementService } from '../../../../lib/mockData/mockService';
 import ProposalStatusBadge from '../../../../components/proposals/cards/ProposalStatusBadge';
 
 export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -25,13 +24,12 @@ export default async function ProposalDetailPage({ params }: { params: Promise<{
 
         setLoading(true);
         
-        // Fetch proposal details
-        const proposalData = await mockProposalService.getProposalById(id);
-        setProposal(proposalData);
-        
-        // Fetch engagement data
-        const engagementData = await mockEngagementService.getEngagement(id);
-        setEngagement(engagementData);
+     // Fetch proposal details - placeholder for production
+const proposalData = null;
+setProposal(proposalData);
+// Delete the engagement data fetch for now
+// const engagementData = await mockEngagementService.getEngagement(id);
+// setEngagement(engagementData);
         
       } catch (err) {
         console.error('Error fetching proposal details:', err);

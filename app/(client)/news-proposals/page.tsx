@@ -6,7 +6,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Proposal } from '../../../lib/types/proposal';
-import { mockProposalService } from '../../../lib/mockData/mockService';
 import ProposalCardGrid from '../../../components/proposals/cards/ProposalCardGrid';
 import ProposalCardList from '../../../components/proposals/cards/ProposalCardList';
 
@@ -22,7 +21,7 @@ export default function NewsProposalsPage() {
    const fetchProposals = async () => {
      try {
        const filters = categoryFilter ? { category: categoryFilter } : {};
-       const data = await mockProposalService.getProposals(filters);
+       const data: Proposal[] = []; // Empty array - no proposals in production
        setProposals(data);
      } catch (error) {
        console.error('Error fetching proposals:', error);
