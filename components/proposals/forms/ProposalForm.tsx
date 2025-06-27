@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MarkdownEditor from './MarkdownEditor';
 import FundingGoalInput from './FundingGoalInput';
-import { mockProposalService } from '../../../lib/mockData/mockService';
 
 // Form steps
 enum FormStep {
@@ -199,20 +198,24 @@ export default function ProposalForm() {
       
       // In a real app, we would upload content to IPFS here
       // and then mint the proposal on the blockchain
+
+
+
+
+
       
-      // For our mock version, we'll just use the mock service
-      const result = await mockProposalService.createProposal({
-        title: formData.title,
-        summary: formData.tldr,
-        description: formData.description,
-        category: formData.category,
-        location: formData.location,
-        proposer: '0x1234...5678', // Mock wallet address
-        fundingGoal: formData.fundingGoal,
-        tags: formData.tags,
-        timeline: formData.timeline,
-        contentFormat: formData.contentFormat
-      });
+    // Placeholder - proposal submission not implemented in production
+const result = { success: false, error: 'Proposal creation not implemented in production' };
+
+
+
+
+
+
+
+
+
+
       
       // Show success state
       setCurrentStep(FormStep.Success);
