@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { promises as fs } from 'fs';
 import path from 'path';
 import confetti from 'canvas-confetti';
-import PlatformProgressChart from '../../../../components/charts/PlatformProgressChart';
+//import PlatformProgressChart from '../../../../components/charts/PlatformProgressChart';
 import SupporterHeatMap from '@/components/charts/SupporterHeatMap';
 import { useWallet } from '../../../../lib/hooks/useWallet';
 import { ethers } from 'ethers';
@@ -171,7 +171,8 @@ export default function DonatePage() {
           Help build the future of decentralized journalism
         </p>
 
-        <PlatformProgressChart />
+        {/* <PlatformProgressChart /> */}
+
         <SupporterHeatMap />
 
         
