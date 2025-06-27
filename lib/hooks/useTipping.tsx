@@ -103,9 +103,9 @@ export const useTipping = () => {
       let transaction: TipTransaction;
       
       if (currency === 'FLOW') {
-        transaction = await service.tipProfileWithFlow(profileId, amount, await provider!.getSigner());
+        transaction = await service.tipProfileWithFlow(amount, await provider!.getSigner(), profileId);
       } else {
-        transaction = await service.tipProfileWithEmoji(profileId, amount, await provider!.getSigner());
+        transaction = await service.tipProfileWithEmoji(amount, await provider!.getSigner(), profileId);
       }
 
       const result: TipResult = {
@@ -147,9 +147,11 @@ export const useTipping = () => {
       let transaction: TipTransaction;
       
       if (currency === 'FLOW') {
-        transaction = await service.tipAddressWithFlow(recipientAddress, amount, await provider.getSigner());
+        transaction = await service.tipProfileWithFlow(amount, await provider!.getSigner(), undefined, recipientAddress);
+
       } else {
-        transaction = await service.tipAddressWithEmoji(recipientAddress, amount, await provider.getSigner());
+        transaction = await service.tipProfileWithEmoji(amount, await provider!.getSigner(), undefined, recipientAddress);
+
       }
 
       const result: TipResult = {
@@ -225,7 +227,7 @@ export const useTipping = () => {
     // Clear functions
     clearResult,
     clearError,
-    tipPlatform,
+    //tipPlatform,
     
     // Connection state
     isConnected,
