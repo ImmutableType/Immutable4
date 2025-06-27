@@ -6,7 +6,8 @@ import { ethers } from 'ethers';
 import { useWallet } from '../../lib/hooks/useWallet';
 import EncryptedArticleService from '../../lib/blockchain/contracts/EncryptedArticleService';
 import TransactionStatus from './TransactionStatus';
-import { TransactionState, TransactionProgress, GasEstimation, EncryptedMintingResult } from '../../lib/publishing/types/transaction';
+import { TransactionState, TransactionProgress, GasEstimation } from '../../lib/publishing/types/transaction';
+
 
 interface NativeFeePaymentProps {
   authorId: string;
@@ -22,7 +23,7 @@ interface NativeFeePaymentProps {
     journalistRetained: number;
     readerLicenseRatio: number;
   };
-  onSuccess: (result: EncryptedMintingResult) => void;
+  onSuccess: (result: any) => void;
   onCancel: () => void;
 }
 
@@ -189,7 +190,7 @@ const NativeFeePayment: React.FC<NativeFeePaymentProps> = ({
         });
 
         // FIX: Use the result from service directly
-        const result: EncryptedMintingResult = {
+        const result: any = {
           success: true,
           articleId: articleResult.articleId,
           txHash: articleResult.txHash,
