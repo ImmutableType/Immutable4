@@ -63,10 +63,10 @@ export class PublisherProfileService {
                 username,
                 bio,
                 avatarHash,
-                socialLinks: socialLinksJson,
+                socialLinks: socialLinksJson as any,
                 createdAt: Number(createdAt),
                 lastUpdated: Number(lastUpdated)
-            };
+            } as any;
         } catch (error) {
             console.error("Error fetching profile:", error);
             return null;
@@ -90,7 +90,7 @@ export class PublisherProfileService {
             const connectedContract = this.contract.connect(signer);
             const socialLinksJson = JSON.stringify(profile.socialLinks);
             
-            const tx = await connectedContract.updateProfile(
+            const tx = await (connectedContract as any).updateProfile(
                 profile.username,
                 profile.bio,
                 profile.avatarHash,
