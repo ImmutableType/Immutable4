@@ -1,7 +1,6 @@
 // lib/publishing/hooks/useArticleCreation.ts
 import { useState } from 'react';
 import { PublishedArticle, CommunityArticle, PortfolioArticle, NativeArticle } from '../types/publishedArticle';
-import { mockPublishingService } from '../services/mockPublishingService';
 import { useWallet } from '../../hooks/useWallet';
 
 // Helper function to extract domain from URL
@@ -210,13 +209,12 @@ export function useArticleCreation(authorId: string) {
       setIsSubmitting(true);
       setError(null);
       
-      const article = await mockPublishingService.publishNativeArticle(authorId, {
-        ...articleData,
-        authorId,
-        mintType: 'native'
-      });
+      const article = { 
+        success: false, 
+        error: 'Native article publishing not implemented in production' 
+      } as any;
       
-      setCreatedArticle(article);
+      setCreatedArticle(null);
       return article;
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to publish native article'));
@@ -225,13 +223,13 @@ export function useArticleCreation(authorId: string) {
       setIsSubmitting(false);
     }
   };
-
+  
   const createProposalFromArticle = async (articleId: string) => {
     try {
       setIsSubmitting(true);
       setError(null);
       
-      const proposalId = await mockPublishingService.createProposalFromArticle(articleId, authorId);
+      const proposalId = null; // Proposal creation not implemented in production
       return proposalId;
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to create proposal from article'));
@@ -240,7 +238,7 @@ export function useArticleCreation(authorId: string) {
       setIsSubmitting(false);
     }
   };
-
+  
   return {
     publishCommunityArticle,
     publishPortfolioArticle,
