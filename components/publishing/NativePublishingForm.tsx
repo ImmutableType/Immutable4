@@ -9,7 +9,6 @@ import { useHasPublisherToken } from '../../lib/hooks/useHasPublisherToken';
 import EncryptedArticleService from '../../lib/blockchain/contracts/EncryptedArticleService';
 import NativeFeePayment from './NativeFeePayment';
 import EncryptionStatus from './EncryptionStatus';
-import { EncryptedMintingResult } from '../../lib/publishing/types/transaction';
 
 
 interface NativePublishingFormProps {
@@ -169,7 +168,7 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
     setShowFeePayment(true);
   };
 
-  const handlePublishSuccess = (result: EncryptedMintingResult) => {
+  const handlePublishSuccess = (result: any) => {
     // Redirect to profile with success message
     router.push(`/profile/${authorId}?published=${result.articleId}&type=native`);
   };
