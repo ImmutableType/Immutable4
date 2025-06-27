@@ -40,12 +40,13 @@ interface ArticleDetail {
 }
 
 interface ArticleDetailPageProps {
-  params: {
-    articleId: string;
-  };
-}
+    params: Promise<{
+      articleId: string;
+    }>;
+  }
 
-export default function ArticleDetailPage({ params }: ArticleDetailPageProps) {
+  export default async function ArticleDetailPage({ params }: ArticleDetailPageProps) {
+    const { articleId } = await params;
   const { isConnected, address, provider, connect } = useWallet();
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,7 +59,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailPageProps) {
     if (address) {
       checkMembership();
     }
-  }, [params.articleId, address]);
+  }, [articleId, address]);
 
   const loadArticleDetail = async () => {
     try {
@@ -66,12 +67,12 @@ export default function ArticleDetailPage({ params }: ArticleDetailPageProps) {
       const rpcProvider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
       const contract = new ethers.Contract(ENCRYPTED_ARTICLES_ADDRESS, ENCRYPTED_ARTICLES_ABI, rpcProvider);
       
-      const articleData = await contract.articles(params.articleId);
-      const availableEditions = await contract.getAvailableEditions(params.articleId);
-      const editionsSold = await contract.editionsSold(params.articleId);
+      const articleData = await contract.articles(articleId);
+      const availableEditions = await contract.getAvailableEditions(articleId);
+      const editionsSold = await contract.editionsSold(articleId);
 
       setArticle({
-        id: params.articleId,
+        id: articleId,
         title: articleData.title,
         summary: articleData.summary,
         author: articleData.author,
@@ -130,7 +131,7 @@ export default function ArticleDetailPage({ params }: ArticleDetailPageProps) {
       const contract = new ethers.Contract(ENCRYPTED_ARTICLES_ADDRESS, ENCRYPTED_ARTICLES_ABI, signer);
       const totalPrice = ethers.parseEther(article.nftPrice) + ethers.parseEther('1'); // NFT price + 1 FLOW buyer fee
       
-      const tx = await contract.mintNFTEdition(params.articleId, {
+      const tx = await contract.mintNFTEdition(articleId, {
         value: totalPrice,
         gasLimit: 500000
       });
