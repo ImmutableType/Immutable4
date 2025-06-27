@@ -39,18 +39,14 @@ export class ArticleContract {
         ) as unknown as ArticleMinterContract;
     }
 
-
-
-
-
     async publishArticle(input: ArticleInput): Promise<ethers.ContractTransaction> {
         console.log(`Publishing article to contract: ${await this.contract.getAddress()}`);
         
-        if (input.publisherProfile) {
+        if ((input as any).publisherProfile) {
             return await this.contract.publishArticle(
                 input.contentHash,
                 input.title,
-                input.publisherProfile
+                (input as any).publisherProfile
             );
         } else {
             return await this.contract.publishArticle(
@@ -63,7 +59,7 @@ export class ArticleContract {
     async getArticle(tokenId: number): Promise<Article | null> {
         try {
             const rawData = await this.contract.getArticle(tokenId);
-            const [contentHash, title, author, publisherProfile, contractTimestamp] = rawData;
+            const [contentHash, title, author, publisherProfile, contractTimestamp] = rawData as any;
             
             let timestamp = Number(contractTimestamp);
             
@@ -83,7 +79,7 @@ export class ArticleContract {
                     };
                     
                     // Query logs directly
-                    const logs = await provider.getLogs({
+                    const logs = await provider!.getLogs({
                         ...filter,
                         fromBlock: 0,
                         toBlock: "latest"
@@ -91,7 +87,7 @@ export class ArticleContract {
                     
                     if (logs.length > 0) {
                         // Get the block with the transaction
-                        const block = await provider.getBlock(logs[0].blockNumber);
+                        const block = await provider!.getBlock(logs[0].blockNumber);
                         if (block && block.timestamp) {
                             timestamp = Number(block.timestamp);
                             console.log(`Found real timestamp for article ${tokenId}: ${timestamp} (${new Date(timestamp * 1000).toISOString()})`);
@@ -112,7 +108,7 @@ export class ArticleContract {
                 timestamp: timestamp,
                 preview: '',
                 contentHash
-            };
+            } as any;
         } catch (error: any) {
             if (error.message && error.message.includes('Article does not exist')) {
                 return null;
