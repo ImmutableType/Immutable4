@@ -33,7 +33,7 @@ export function useHasMembershipToken() {
         );
         
         const balance = await contract.balanceOf(address);
-        const hasToken = balance > 0n;
+        const hasToken = balance > 0;
         
         setHasMembershipToken(hasToken);
         
