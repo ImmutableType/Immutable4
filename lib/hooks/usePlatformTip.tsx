@@ -19,7 +19,7 @@ export const usePlatformTip = () => {
     error: null
   });
 
-  const { tipPlatform, estimateTip } = useTipping();
+  const { estimateTip } = useTipping();
 
   const sendPlatformTip = useCallback(async (
     amount: number, 
@@ -28,7 +28,8 @@ export const usePlatformTip = () => {
     setState(prev => ({ ...prev, isTipping: true, error: null }));
     
     try {
-      const result = await tipPlatform(amount, currency);
+      const result = { success: false, error: 'Platform tipping not implemented in MVP' };
+
       
       setState(prev => ({ 
         ...prev, 
@@ -47,7 +48,7 @@ export const usePlatformTip = () => {
       }));
       return { success: false, error: errorMessage };
     }
-  }, [tipPlatform]);
+  }, []);
 
   const estimatePlatformTip = useCallback(async (
     amount: number, 
