@@ -5,8 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import mockReaderService from '../../../../lib/reader/services/mockReaderService';
 
-export default async function ArticlePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default function ArticlePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +33,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
       
       try {
         // Load the article
-        const articleData = await mockReaderService.getArticleById(id);
+        const articleData = await mockReaderService.getArticleById(params.id);
         if (!articleData) {
           setError('Article not found');
           return;
@@ -43,10 +42,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
         setArticle(articleData);
         
         // Record view
-        await mockReaderService.recordView(id, userId);
+        await mockReaderService.recordView(params.id, userId);
         
         // Get user engagement with this article
-        const engagement = await mockReaderService.getUserEngagement(id, userId);
+        const engagement = await mockReaderService.getUserEngagement(params.id, userId);
         setUserEngagement(engagement);
         
       } catch (err) {
@@ -58,7 +57,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
     };
     
     loadArticle();
-  }, [id]);
+  }, [params.id]);
 
   // Handle back button
   const handleBack = () => {
@@ -70,10 +69,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
     if (!article) return;
     
     try {
-      await mockReaderService.addVote(id, userId, voteType, emoji);
+      await mockReaderService.addVote(params.id, userId, voteType, emoji);
       
       // Refresh engagement data
-      const engagement = await mockReaderService.getUserEngagement(id, userId);
+      const engagement = await mockReaderService.getUserEngagement(params.id, userId);
       setUserEngagement(engagement);
     } catch (err) {
       console.error('Error voting:', err);
@@ -85,10 +84,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
     if (!article) return;
     
     try {
-      await mockReaderService.addTip(id, userId, amount, message);
+      await mockReaderService.addTip(params.id, userId, amount, message);
       
       // Refresh engagement data
-      const engagement = await mockReaderService.getUserEngagement(id, userId);
+      const engagement = await mockReaderService.getUserEngagement(params.id, userId);
       setUserEngagement(engagement);
     } catch (err) {
       console.error('Error tipping:', err);

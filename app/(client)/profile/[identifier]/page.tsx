@@ -1,7 +1,7 @@
 // app/(client)/profile/[identifier]/page.tsx
 'use client'
 
-import React, { useState, use, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useProfile } from '../../../../lib/profile/hooks/useProfile';
 import { useProfileActivity } from '../../../../lib/profile/hooks/useProfileActivity';
@@ -28,8 +28,8 @@ const MEMBERSHIP_TOKEN_ABI = [
   "function getMember(uint256 tokenId) external view returns (address owner, string memory name, uint256 mintedAt, bool isActive)"
 ];
 
-export default function ProfilePage({ params }: { params: Promise<{ identifier: string }> }) {
-  const { identifier } = use(params);
+export default async function ProfilePage({ params }: { params: Promise<{ identifier: string }> }) {
+  const { identifier } = await params;
   const router = useRouter();
   
   const { profile, isOwner, isLoading: profileLoading, error: profileError } = useProfile(identifier);

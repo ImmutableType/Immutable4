@@ -6,9 +6,9 @@ import { notFound } from 'next/navigation';
 export default async function AboutSlugPage({
   params
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>  // Changed: Promise wrapper
 }) {
-  const { slug } = params;
+  const { slug } = await params;  // Changed: await params
   
   try {
     // Read the JSON file

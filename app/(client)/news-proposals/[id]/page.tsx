@@ -3,13 +3,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Proposal, EngagementData } from '../../../../lib/types/proposal';
 import { mockProposalService, mockEngagementService } from '../../../../lib/mockData/mockService';
 import ProposalStatusBadge from '../../../../components/proposals/cards/ProposalStatusBadge';
 
-export default function ProposalDetailPage() {
-  const params = useParams();
+export default async function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const router = useRouter();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [engagement, setEngagement] = useState<EngagementData | null>(null);
@@ -19,12 +19,11 @@ export default function ProposalDetailPage() {
   useEffect(() => {
     const fetchProposalDetails = async () => {
       try {
-        if (!params.id) {
+        if (!id) {
           throw new Error('No proposal ID provided');
         }
 
         setLoading(true);
-        const id = Array.isArray(params.id) ? params.id[0] : params.id;
         
         // Fetch proposal details
         const proposalData = await mockProposalService.getProposalById(id);
@@ -43,8 +42,7 @@ export default function ProposalDetailPage() {
     };
 
     fetchProposalDetails();
-  }, [params.id]);
-
+  }, [id]);
   // Format date to readable format
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
