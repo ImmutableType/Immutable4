@@ -107,7 +107,7 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
     title,
     summary: enhancedSummary,
     imageUrl,
-    contentType: 'portfolio',
+    contentType: 'portfolio' as any,
     createdAt: formattedVerifiedDate,
     location,
     category,
