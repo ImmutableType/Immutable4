@@ -260,7 +260,7 @@ export class ProfileNFTService {
     let foundCount = 0;
     let checkedCount = 0;
     const startId = offset + 1;
-    const maxToCheck = 100; // Don't check more than 100 IDs in one request
+    const maxToCheck = 10; // Don't check more than 100 IDs in one request
     
     for (let i = startId; i < startId + maxToCheck && foundCount < limit; i++) {
       try {

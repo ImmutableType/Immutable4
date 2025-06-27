@@ -1,4 +1,4 @@
-// lib/blockchain/contracts/ReaderLicenseAMMService.ts (ENHANCED - KEEPS ALL ORIGINAL + ADDS DECRYPTION)
+// lib/blockchain/contracts/ReaderLicenseAMMService.ts
 import { ethers } from 'ethers';
 
 export interface LicenseInfo {
@@ -30,13 +30,6 @@ export interface LicenseStats {
   balances: number[];
 }
 
-// ✅ NEW: Interface for decryption integration
-export interface LicenseAccess {
-  hasAccess: boolean;
-  licenseTokenId: string | null;
-  expiryTime?: bigint;
-}
-
 // Define the contract interface
 interface ReaderLicenseAMMContractInterface {
   getCurrentPrice(articleId: bigint): Promise<bigint>;
@@ -53,9 +46,6 @@ interface ReaderLicenseAMMContractInterface {
   accessInfo(articleId: bigint, user: string): Promise<[bigint, boolean]>;
   licenseBalances(articleId: bigint, user: string): Promise<bigint>;
   gasPool(): Promise<bigint>;
-  // ✅ NEW: Added for license token ID retrieval
-  balanceOf(user: string): Promise<bigint>;
-  tokenOfOwnerByIndex(owner: string, index: bigint): Promise<bigint>;
 }
 
 export class ReaderLicenseAMMService {
@@ -78,9 +68,6 @@ export class ReaderLicenseAMMService {
     "function accessInfo(uint256, address) external view returns (uint256 expiryTime, bool hasAccess)",
     "function licenseBalances(uint256, address) external view returns (uint256)",
     "function gasPool() external view returns (uint256)",
-    // ✅ NEW: Added for license token ID retrieval
-    "function balanceOf(address owner) external view returns (uint256)",
-    "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)",
     "event LicenseMinted(uint256 indexed articleId, address indexed holder, uint256 count, uint256 editionNumber)",
     "event LicensePurchased(uint256 indexed articleId, address indexed buyer, address indexed seller, uint256 price)",
     "event LicenseBurned(uint256 indexed articleId, address indexed user, uint256 expiryTime)",
@@ -346,76 +333,6 @@ export class ReaderLicenseAMMService {
     } catch (error) {
       console.error('Error estimating gas for license purchase:', error);
       return BigInt(100000); // Fallback estimate
-    }
-  }
-
-  // ✅ NEW METHODS FOR DECRYPTION INTEGRATION
-
-  /**
-   * Get user's license token ID for decryption
-   */
-  async getUserLicenseTokenId(userAddress: string): Promise<string> {
-    try {
-      const balance = await this.contract.balanceOf(userAddress);
-      
-      if (balance == BigInt(0)) {
-        throw new Error('No reader license found');
-      }
-      
-      // Get first token ID (or implement logic for selecting specific token)
-      const tokenId = await this.contract.tokenOfOwnerByIndex(userAddress, BigInt(0));
-      return tokenId.toString();
-    } catch (error) {
-      console.error('Error getting license token ID:', error);
-      throw new Error('Failed to retrieve license token ID');
-    }
-  }
-
-  /**
-   * Get detailed access information including token ID
-   */
-  async getAccessDetails(articleId: string | number, userAddress: string): Promise<LicenseAccess> {
-    try {
-      // Check if user has active access to this specific article
-      const hasAccess = await this.hasActiveAccess(articleId, userAddress);
-      
-      if (!hasAccess) {
-        return {
-          hasAccess: false,
-          licenseTokenId: null
-        };
-      }
-
-      // Get license token ID
-      const tokenId = await this.getUserLicenseTokenId(userAddress);
-      
-      // Get access expiry time
-      const accessInfo = await this.getAccessInfo(articleId, userAddress);
-      
-      return {
-        hasAccess: true,
-        licenseTokenId: tokenId,
-        expiryTime: accessInfo?.expiryTime
-      };
-    } catch (error) {
-      console.error('Error getting access details:', error);
-      return {
-        hasAccess: false,
-        licenseTokenId: null
-      };
-    }
-  }
-
-  /**
-   * Check if user has any reader license (for general access)
-   */
-  async hasReaderLicense(userAddress: string): Promise<boolean> {
-    try {
-      const balance = await this.contract.balanceOf(userAddress);
-      return balance > BigInt(0);
-    } catch (error) {
-      console.error('Error checking reader license:', error);
-      return false;
     }
   }
 

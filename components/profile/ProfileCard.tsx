@@ -1,7 +1,7 @@
 // components/profile/ProfileCard.tsx
 import React from 'react';
 import Link from 'next/link';
-import { Profile } from '@/lib/profile/types/profile';
+import { Profile } from '../../lib/profile/types/profile';
 
 interface ProfileCardProps {
   profile: Profile;
@@ -83,28 +83,17 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isCompact = false })
             fontFamily: 'var(--font-ui)',
           }}>
             {/* Profile ID */}
-            <span>Profile ID #{profile.id}</span>
-            
-            {/* Membership Token ID */}
-            {profile.membershipTokenId && (
-              <>
-                <span>•</span>
-                <span>IT{profile.membershipTokenId.padStart(2, '0')}</span>
-              </>
-            )}
+            <span>ID: {profile.id}</span>
             
             {/* Verification Badge */}
             {profile.isVerified && (
-              <>
-                <span>•</span>
-                <span className="verification-indicator" style={{ color: 'var(--color-earth-brown)' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
-                  Verified
-                </span>
-              </>
+              <span className="verification-indicator">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                Verified
+              </span>
             )}
           </div>
         </div>
@@ -120,25 +109,6 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isCompact = false })
         }}>
           {profile.bio}
         </p>
-      )}
-
-      {/* Location - Only show if exists */}
-      {profile.location && (
-        <div style={{
-          marginBottom: '1rem',
-          fontSize: '0.9rem',
-          color: 'var(--color-digital-silver)',
-          fontFamily: 'var(--font-ui)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
-          {profile.location}
-        </div>
       )}
 
       {/* Metrics */}

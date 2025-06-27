@@ -56,12 +56,12 @@ export class ArticleCollectionService {
 
   async getUserArticleNFTs(userAddress: string): Promise<ArticleNFT[]> {
     try {
-      console.debug('ArticleCollectionService: Fetching NFTs for', userAddress);
+      console.log('ArticleCollectionService: Fetching NFTs for', userAddress);
 
-      // FIXED: Use the SAME PATTERN as unifiedArticleService - get from events only
+      // Use the SAME PATTERN as marketplace - get articles from events
       const filter = this.encryptedArticlesContract.filters.ArticlePublished();
       const events = await this.encryptedArticlesContract.queryFilter(filter, 0, 'latest');
-      console.debug('ArticleCollectionService: Found events:', events.length);
+      console.log('ArticleCollectionService: Found events:', events.length);
 
       const nfts: ArticleNFT[] = [];
 
@@ -70,14 +70,13 @@ export class ArticleCollectionService {
           const eventLog = event as ethers.EventLog;
           const { articleId, author, title, location } = eventLog.args;
           
-          // FIXED: Use console.debug instead of console.log to reduce spam
-          console.debug(`ArticleCollectionService: Checking ownership of article ${articleId}`);
+          console.log(`ArticleCollectionService: Checking ownership of article ${articleId}`);
           
           // Check if user owns this article NFT
           const owner = await this.encryptedArticlesContract.ownerOf(articleId);
           
           if (owner.toLowerCase() === userAddress.toLowerCase()) {
-            console.debug(`ArticleCollectionService: User owns article ${articleId}`);
+            console.log(`ArticleCollectionService: User owns article ${articleId}`);
 
             // Get license data from AMM
             const licensesBurned = await this.readerLicenseAMMContract.getLicensesBurnedForArticle(articleId);
@@ -104,13 +103,12 @@ export class ArticleCollectionService {
           }
 
         } catch (error) {
-          // FIXED: Use console.debug instead of console.log to reduce spam
-          console.debug(`ArticleCollectionService: Skipping article:`, error);
-          continue; // Skip missing articles without spam
+          console.log(`ArticleCollectionService: Skipping article:`, error);
+          continue;
         }
       }
 
-      console.debug('ArticleCollectionService: Retrieved', nfts.length, 'NFTs');
+      console.log('ArticleCollectionService: Retrieved', nfts.length, 'NFTs');
       return nfts;
 
     } catch (error) {

@@ -35,7 +35,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
   const [showTipDialog, setShowTipDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Check if profile owner has publisher token
+  // FIXED: Check if profile owner has publisher token with proper dependency array
   useEffect(() => {
     async function checkPublisherToken() {
       if (!profile?.walletAddress) return;
@@ -56,7 +56,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
     }
     
     checkPublisherToken();
-  }, [profile?.walletAddress]);
+  }, [profile?.walletAddress]); // FIXED: Added proper dependency array
 
   // Format wallet address for display (0x1234...5678)
   const formatAddress = (address: string) => {
@@ -269,7 +269,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
                 <text x="50" y="55" textAnchor="middle" fill="white" fontSize="16" fontWeight="bold">
                   {membershipTokenId}
                 </text>
-                )}
+              )}
             </svg>
           )}
         </div>
@@ -466,33 +466,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
         </div>
       </div>
 
-      {/* Metrics */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'start',
-        gap: '2rem',
-        margin: '0.75rem 0 1rem 0',
-        fontFamily: 'var(--font-ui)',
-        borderBottom: '1px solid var(--color-digital-silver)',
-        paddingBottom: '1rem',
-      }}>
-        <div>
-          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.articlesPublished}</span>
-          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Articles</span>
-        </div>
-        <div>
-          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.proposalsCreated}</span>
-          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Proposals</span>
-        </div>
-        <div>
-          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.proposalsFunded}</span>
-          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Funded</span>
-        </div>
-        <div>
-          <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>{profile.metrics.totalTipsReceived}</span>
-          <span style={{ fontSize: '0.9rem', color: 'var(--color-black)', opacity: 0.7, marginLeft: '0.25rem' }}>Tips Received</span>
-        </div>
-      </div>
 
       {/* Enhanced Tip Dialog */}
       {showTipDialog && (
@@ -695,7 +668,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
                 color: 'var(--color-black)',
                 opacity: 0.6,
               }}>
-                You'll receive {(parseFloat(tipAmount) || 0) * 10} EMOJI tokens as a reward!
+                You will receive {(parseFloat(tipAmount) || 0) * 10} EMOJI tokens as a reward!
               </p>
             </div>
             

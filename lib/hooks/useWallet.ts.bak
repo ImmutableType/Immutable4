@@ -21,29 +21,24 @@ export function useWallet() {
   const [error, setError] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
 
-
-
   const debounceRef = useRef<NodeJS.Timeout>();
 
-useEffect(() => {
- if (window.ethereum) {
-const handleAccountsChanged = (accounts: string[]) => {
-     clearTimeout(debounceRef.current);
-     debounceRef.current = setTimeout(() => {
-       console.log('Account changed:', accounts);
-       if (accounts.length > 0) {
-         const provider = new ethers.BrowserProvider(window.ethereum);
-         setProvider(provider);
-         setAddress(accounts[0]);
-       } else {
-         setAddress(null);
-         setProvider(null);
-       }
-     }, 100);
-   };
-
-
-
+  useEffect(() => {
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts: string[]) => {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          console.log('Account changed:', accounts);
+          if (accounts.length > 0) {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            setProvider(provider);
+            setAddress(accounts[0]);
+          } else {
+            setAddress(null);
+            setProvider(null);
+          }
+        }, 100);
+      };
 
       // Check if already connected WITHOUT prompting
       window.ethereum.request({ 

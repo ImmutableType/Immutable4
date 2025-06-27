@@ -1,0 +1,494 @@
+// components/profile/Bookmarks.tsx
+'use client'
+
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import BookmarkCard from './BookmarkCard';
+import BookmarkDetailModal from './modals/BookmarkDetailModal';
+import BookmarkContractService, { ContentType, Bookmark } from '@/lib/blockchain/contracts/BookmarkContract';
+import { Profile } from '../../lib/profile/types/profile';
+
+// Import actual content services (these need to match your actual service files)
+// TODO: Replace these with your actual service imports once I see the available services
+interface ArticleService {
+  getArticle(id: string): Promise<any>;
+}
+
+interface ProposalService {
+  getProposal(id: string): Promise<any>;
+}
+
+// Temporary service implementations that fetch from actual blockchain contracts
+// These will be replaced with your real services
+const createRealArticleService = (): ArticleService => ({
+  async getArticle(id: string) {
+    console.log(`🔍 Fetching REAL article data for ID: ${id}`);
+    
+    try {
+      // TODO: Replace with actual article contract call
+      // For now, we'll return an error to clearly show this needs real implementation
+      throw new Error(`Real article service not yet connected for article ${id}`);
+      
+      // Expected structure when real service is connected:
+      // const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      // const articleContract = new ethers.Contract(ARTICLE_CONTRACT_ADDRESS, ARTICLE_ABI, provider);
+      // const articleData = await articleContract.getArticle(id);
+      // return {
+      //   id: articleData.id,
+      //   title: articleData.title,
+      //   summary: articleData.summary,
+      //   author: articleData.author,
+      //   createdAt: new Date(Number(articleData.timestamp) * 1000).toISOString(),
+      //   // ... other fields
+      // };
+    } catch (error) {
+      console.error(`❌ Failed to fetch article ${id}:`, error);
+      throw error;
+    }
+  }
+});
+
+const createRealProposalService = (): ProposalService => ({
+  async getProposal(id: string) {
+    console.log(`🔍 Fetching REAL proposal data for ID: ${id}`);
+    
+    try {
+      // TODO: Replace with actual proposal contract call
+      throw new Error(`Real proposal service not yet connected for proposal ${id}`);
+      
+      // Expected structure when real service is connected:
+      // const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      // const proposalContract = new ethers.Contract(PROPOSAL_CONTRACT_ADDRESS, PROPOSAL_ABI, provider);
+      // const proposalData = await proposalContract.getProposal(id);
+      // return proposalData;
+    } catch (error) {
+      console.error(`❌ Failed to fetch proposal ${id}:`, error);
+      throw error;
+    }
+  }
+});
+
+interface BookmarksProps {
+  profile: Profile;
+  isOwner: boolean;
+}
+
+interface BookmarkedContent {
+  id: string;
+  title: string;
+  summary: string;
+  contentType: 'article' | 'proposal';
+  author?: {
+    name: string;
+    address: string;
+  };
+  proposer?: {
+    name: string;
+    address: string;
+  };
+  createdAt: string;
+  bookmarkedAt: string;
+  category?: string;
+  tags?: string[];
+  imageUrl?: string;
+  location?: {
+    city: string;
+    state: string;
+  };
+  metrics?: {
+    views?: number;
+    comments?: number;
+    reactions?: number;
+    fundingAmount?: number;
+    fundingGoal?: number;
+  };
+}
+
+const CONTRACT_ADDRESS = '0x66f856f960AEF5011FdCc7383B9F81d2515930c9';
+
+const Bookmarks: React.FC<BookmarksProps> = ({ profile, isOwner }) => {
+  // State for bookmarks and data
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [enrichedBookmarks, setEnrichedBookmarks] = useState<BookmarkedContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enriching, setEnriching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [contentErrors, setContentErrors] = useState<string[]>([]);
+  const [filter, setFilter] = useState<'all' | 'articles' | 'proposals'>('all');
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<BookmarkedContent | null>(null);
+
+  // Create service instances
+  const articleService = createRealArticleService();
+  const proposalService = createRealProposalService();
+
+  // Load bookmarks data from blockchain
+  useEffect(() => {
+    async function loadBookmarks() {
+      if (!profile.walletAddress) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+        setContentErrors([]);
+
+        console.log('🔖 Loading REAL bookmarks for:', profile.walletAddress);
+
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const service = new BookmarkContractService(CONTRACT_ADDRESS, provider);
+        
+        // Get user's bookmarks from the contract
+        const userBookmarks = await service.getUserBookmarks(profile.walletAddress);
+        
+        console.log('📊 Raw bookmark data from contract:', userBookmarks);
+        console.log('📊 Total bookmarks found:', userBookmarks.length);
+        
+        // Log each bookmark with details
+        userBookmarks.forEach((bookmark, index) => {
+          console.log(`📑 Bookmark ${index + 1}:`, {
+            contentId: bookmark.contentId,
+            contentType: bookmark.contentType === ContentType.ARTICLE ? 'ARTICLE' : 'PROPOSAL',
+            timestamp: new Date(Number(bookmark.timestamp) * 1000).toLocaleString(),
+            isActive: bookmark.isActive
+          });
+        });
+        
+        setBookmarks(userBookmarks);
+      } catch (err: any) {
+        console.error('❌ Error loading bookmarks from contract:', err);
+        setError(err.message || 'Failed to load bookmarks from blockchain');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBookmarks();
+  }, [profile.walletAddress]);
+
+  // Fetch real content for each bookmark
+  useEffect(() => {
+    async function fetchRealContent() {
+      if (bookmarks.length === 0) {
+        setEnrichedBookmarks([]);
+        return;
+      }
+
+      try {
+        setEnriching(true);
+        setContentErrors([]);
+        console.log('🔄 Fetching REAL content for', bookmarks.length, 'bookmarks...');
+
+        const enrichedData: BookmarkedContent[] = [];
+        const errors: string[] = [];
+
+        for (const bookmark of bookmarks) {
+          try {
+            console.log(`🔍 Fetching real content for ${bookmark.contentType === ContentType.ARTICLE ? 'article' : 'proposal'} #${bookmark.contentId}`);
+            
+            if (bookmark.contentType === ContentType.ARTICLE) {
+              // Attempt to fetch real article data
+              const articleData = await articleService.getArticle(bookmark.contentId);
+              enrichedData.push({
+                id: bookmark.contentId,
+                title: articleData.title,
+                summary: articleData.summary,
+                contentType: 'article',
+                author: articleData.author,
+                createdAt: articleData.createdAt,
+                bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+                category: articleData.category,
+                location: articleData.location,
+                imageUrl: articleData.imageUrl,
+                metrics: articleData.metrics
+              });
+            } else {
+              // Attempt to fetch real proposal data
+              const proposalData = await proposalService.getProposal(bookmark.contentId);
+              enrichedData.push({
+                id: bookmark.contentId,
+                title: proposalData.title,
+                summary: proposalData.summary,
+                contentType: 'proposal',
+                proposer: proposalData.proposer,
+                createdAt: proposalData.createdAt,
+                bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+                category: proposalData.category,
+                location: proposalData.location,
+                imageUrl: proposalData.imageUrl,
+                metrics: proposalData.metrics
+              });
+            }
+          } catch (contentError: any) {
+            console.error(`❌ Failed to fetch real content for ${bookmark.contentType === ContentType.ARTICLE ? 'article' : 'proposal'} #${bookmark.contentId}:`, contentError);
+            errors.push(`${bookmark.contentType === ContentType.ARTICLE ? 'Article' : 'Proposal'} #${bookmark.contentId}: ${contentError.message}`);
+            
+            // Create a minimal placeholder that indicates the content couldn't be loaded
+            enrichedData.push({
+              id: bookmark.contentId,
+              title: `${bookmark.contentType === ContentType.ARTICLE ? 'Article' : 'Proposal'} #${bookmark.contentId} (Content Unavailable)`,
+              summary: `Unable to load content details. Error: ${contentError.message}`,
+              contentType: bookmark.contentType === ContentType.ARTICLE ? 'article' : 'proposal',
+              createdAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+              bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+              category: 'Unknown',
+              location: { city: 'Miami', state: 'FL' }
+            });
+          }
+        }
+
+        console.log('✅ Real content fetch complete:', {
+          successful: enrichedData.length - errors.length,
+          failed: errors.length,
+          total: enrichedData.length
+        });
+        
+        setEnrichedBookmarks(enrichedData);
+        setContentErrors(errors);
+      } catch (err: any) {
+        console.error('❌ Error fetching real content:', err);
+        setError('Failed to load bookmark content from blockchain');
+      } finally {
+        setEnriching(false);
+      }
+    }
+
+    fetchRealContent();
+  }, [bookmarks]);
+
+  const openModal = (bookmark: BookmarkedContent) => {
+    setModalData(bookmark);
+    setModalOpen(true);
+  };
+
+  // Filter bookmarks
+  const filteredBookmarks = enrichedBookmarks.filter(bookmark => {
+    if (filter === 'all') return true;
+    if (filter === 'articles') return bookmark.contentType === 'article';
+    if (filter === 'proposals') return bookmark.contentType === 'proposal';
+    return true;
+  });
+
+  const articleBookmarks = enrichedBookmarks.filter(b => b.contentType === 'article');
+  const proposalBookmarks = enrichedBookmarks.filter(b => b.contentType === 'proposal');
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '200px',
+        color: 'var(--color-black)',
+        opacity: 0.7,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid var(--color-digital-silver)',
+            borderTop: '3px solid var(--color-verification-green)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem auto',
+          }} />
+          <span style={{ fontFamily: 'var(--font-ui)' }}>Loading bookmarks from blockchain...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        textAlign: 'center',
+        padding: '2rem',
+        color: 'var(--color-typewriter-red)',
+      }}>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          marginBottom: '1rem',
+        }}>
+          Error Loading Bookmarks
+        </h3>
+        <p>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '1rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: 'var(--color-typewriter-red)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (bookmarks.length === 0) {
+    return (
+      <div style={{
+        textAlign: 'center',
+        padding: '4rem 2rem',
+        color: 'var(--color-black)',
+        opacity: 0.7,
+      }}>
+        <div style={{
+          fontSize: '3rem',
+          marginBottom: '1rem',
+        }}>
+          🔖
+        </div>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.5rem',
+          margin: '0 0 1rem 0',
+        }}>
+          No Bookmarks Yet
+        </h3>
+        <p style={{
+          fontSize: '1rem',
+          lineHeight: '1.5',
+          maxWidth: '400px',
+          margin: '0 auto',
+        }}>
+          {isOwner 
+            ? "You haven't bookmarked any content yet. Start bookmarking articles and proposals to see them here."
+            : "This user hasn't bookmarked any content yet."
+          }
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Bookmarks Header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.5rem',
+          margin: '0 0 0.5rem 0',
+        }}>
+          Bookmarked Content ({enrichedBookmarks.length})
+        </h2>
+        <p style={{
+          fontSize: '0.95rem',
+          color: 'var(--color-black)',
+          opacity: 0.7,
+          margin: '0 0 1.5rem 0',
+        }}>
+          {isOwner ? 'Real articles and proposals you\'ve bookmarked from the blockchain' : 'Real content this user has bookmarked'}
+        </p>
+
+        {/* Content Loading Status */}
+        {enriching && (
+          <div style={{
+            backgroundColor: 'var(--color-parchment)',
+            padding: '1rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            fontFamily: 'var(--font-ui)',
+            fontSize: '0.9rem',
+          }}>
+            🔄 Loading real content from blockchain... ({enrichedBookmarks.length}/{bookmarks.length} processed)
+          </div>
+        )}
+
+        {/* Content Errors */}
+        {contentErrors.length > 0 && (
+          <div style={{
+            backgroundColor: 'rgba(179, 33, 30, 0.1)',
+            border: '1px solid var(--color-typewriter-red)',
+            padding: '1rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            fontFamily: 'var(--font-ui)',
+            fontSize: '0.9rem',
+          }}>
+            <strong>⚠️ Content Loading Issues ({contentErrors.length}):</strong>
+            <ul style={{ margin: '0.5rem 0 0 1rem', padding: 0 }}>
+              {contentErrors.map((error, index) => (
+                <li key={index} style={{ marginBottom: '0.25rem' }}>{error}</li>
+              ))}
+            </ul>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', opacity: 0.8 }}>
+              This likely means the content services need to be connected to real blockchain contracts.
+            </p>
+          </div>
+        )}
+
+        {/* Filter Tabs */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          borderBottom: '1px solid var(--color-digital-silver)',
+          marginBottom: '1.5rem',
+        }}>
+          {[
+            { key: 'all', label: `All (${enrichedBookmarks.length})` },
+            { key: 'articles', label: `Articles (${articleBookmarks.length})` },
+            { key: 'proposals', label: `Proposals (${proposalBookmarks.length})` }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key as any)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '0.75rem 0',
+                fontFamily: 'var(--font-ui)',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                color: filter === tab.key ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+                borderBottom: filter === tab.key ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
+                fontWeight: filter === tab.key ? 'bold' : 'normal',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Real Bookmarks Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: '1.5rem',
+      }}>
+        {filteredBookmarks.map((bookmark) => (
+          <BookmarkCard
+            key={`${bookmark.contentType}-${bookmark.id}`}
+            bookmark={bookmark}
+            onClick={() => openModal(bookmark)}
+          />
+        ))}
+      </div>
+
+      {/* Bookmark Detail Modal */}
+      <BookmarkDetailModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        bookmark={modalData}
+      />
+
+      {/* Spinner Animation CSS */}
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Bookmarks;

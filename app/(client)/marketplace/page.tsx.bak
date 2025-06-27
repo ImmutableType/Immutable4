@@ -8,7 +8,6 @@ import EncryptedArticleReadService from '@/lib/blockchain/contracts/EncryptedArt
 import ArticleNFTCard from '@/components/cards/types/ArticleNFTCard';
 import { EmojiPurchaseButton } from '@/components/emoji/EmojiPurchaseButton';
 import { EmojiPurchaseModal } from '@/components/emoji/EmojiPurchaseModal';
-import confetti from 'canvas-confetti';
 
 interface Article {
   id: string;
@@ -90,70 +89,16 @@ export default function MarketplacePage() {
     router.push(`/miami/news/general/native_${articleId}`);
   };
 
-  // 🎉 CONFETTI CELEBRATION for EMOJI purchases
-  const celebrateEmojiPurchase = (emojiAmount: number) => {
-    // Main confetti burst from center-right (where purchase button is)
-    const colors = ['#FF6B9D', '#FFD700', '#4ECDC4', '#FFA500', '#FF69B4'];
-
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { x: 0.8, y: 0.3 }, // Top-right area where EMOJI widget is
-      colors: colors,
-      ticks: 400,
-    });
-
-    // EMOJI shapes confetti
-    const emojiShapes = confetti.shapeFromText({ text: '🎉', scalar: 2 });
-    const moneyShapes = confetti.shapeFromText({ text: '💰', scalar: 2 });
-    const sparkleShapes = confetti.shapeFromText({ text: '✨', scalar: 2 });
-
-    confetti({
-      shapes: [emojiShapes, moneyShapes, sparkleShapes],
-      particleCount: 30,
-      spread: 60,
-      origin: { x: 0.8, y: 0.3 },
-      scalar: 2,
-      ticks: 400,
-    });
-
-    // Bonus burst for large purchases
-    if (emojiAmount >= 1000) {
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          angle: 60,
-          spread: 45,
-          origin: { x: 0, y: 0.9 },
-          colors: ['#FFD700', '#FFA500'],
-        });
-        confetti({
-          particleCount: 100,
-          angle: 120,
-          spread: 45,
-          origin: { x: 1, y: 0.9 },
-          colors: ['#FFD700', '#FFA500'],
-        });
-      }, 300);
-    }
-  };
-
   const handlePurchaseSuccess = (result: any) => {
     console.log('✅ EMOJI purchase successful:', result);
-    
-    // 🔄 EMIT EVENT for balance refresh
-    window.dispatchEvent(new CustomEvent('emojiBalanceChanged'));
-    
-    // 🎉 TRIGGER CONFETTI
-    if (result.emojiAmount) {
-      celebrateEmojiPurchase(result.emojiAmount);
-    }
+    // Optionally refresh balance or show success notification
   };
 
-  // Styles - FIXED: Removed maxWidth constraint to match ArticlesTab
+  // Styles
   const containerStyle: React.CSSProperties = {
     padding: '2rem',
-    margin: '0 auto' // Removed maxWidth: '1200px' to match ArticlesTab
+    maxWidth: '1200px',
+    margin: '0 auto'
   };
 
   const headerStyle: React.CSSProperties = {

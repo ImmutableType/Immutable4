@@ -86,7 +86,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     badges.push(<VerificationBadge key="verified" />);
   }
 
-  // Prepare action buttons - only bookmark for articles
+  // Prepare action buttons - functional bookmark button for articles
   const actionButtons = [
     <BookmarkButton key="bookmark" contentId={id} contentType="article" />
   ];

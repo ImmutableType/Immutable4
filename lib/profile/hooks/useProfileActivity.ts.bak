@@ -1,0 +1,35 @@
+// lib/profile/hooks/useProfileActivity.ts
+import { useState, useEffect } from 'react';
+import { ActivityItem } from '../types/activity';
+
+export function useProfileActivity(profileId: string, limit = 10) {
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // Activity data will be connected to blockchain events in a future update
+    console.debug('Activity feed will be integrated with blockchain in future update');
+    setActivities([]);
+    setTotal(0);
+    setNextCursor(undefined);
+    setIsLoading(false);
+    setError(null);
+  }, [profileId, limit]);
+
+  const loadMore = async () => {
+    // No-op - will be implemented with blockchain integration
+    console.debug('Load more will be implemented with blockchain integration');
+  };
+
+  return {
+    activities,
+    total,
+    isLoading,
+    error,
+    hasMore: false,
+    loadMore
+  };
+}

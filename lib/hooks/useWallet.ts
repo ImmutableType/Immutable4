@@ -37,7 +37,7 @@ export function useWallet() {
             setAddress(null);
             setProvider(null);
           }
-        }, 100);
+        }, 1000);
       };
 
       // Check if already connected WITHOUT prompting

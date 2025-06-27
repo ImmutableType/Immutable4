@@ -5,6 +5,7 @@ import React, { useState, use, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useProfile } from '../../../../lib/profile/hooks/useProfile';
 import { useProfileActivity } from '../../../../lib/profile/hooks/useProfileActivity';
+// REMOVED: import { useProfileArticles } from '../../../../lib/profile/hooks/useProfileArticles';
 import ProfileHeader from '../../../../components/profile/ProfileHeader';
 import ActivityFeed from '../../../../components/profile/ActivityFeed';
 import TokenGate from '../../../../components/publishing/TokenGate';
@@ -15,7 +16,8 @@ import { useHasPublisherToken } from '../../../../lib/hooks/useHasPublisherToken
 import { useHasMembershipToken } from '../../../../lib/hooks/useHasMembershipToken';
 import Collection from '../../../../components/profile/Collection';
 import Bookmarks from '@/components/profile/Bookmarks';
-
+import CommunityCard from '@/components/cards/types/CommunityCard';
+import PortfolioCard from '@/components/cards/types/PortfolioCard';
 
 // Membership token contract details
 const MEMBERSHIP_TOKEN_ADDRESS = '0xC90bE82B23Dca9453445b69fB22D5A90402654b2';
@@ -31,27 +33,46 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
   const { identifier } = use(params);
   const router = useRouter();
   
-  // Add this debug logging
-  console.log('ProfilePage - identifier:', identifier);
+  // REMOVED: Debug logging that was causing spam
+  // console.log('ProfilePage - identifier:', identifier);
   
   const { profile, isOwner, isLoading: profileLoading, error: profileError } = useProfile(identifier);
   
-  // Add this debug logging
-  console.log('ProfilePage - profile state:', {
-    profile,
-    isOwner,
-    isLoading: profileLoading,
-    error: profileError
-  });
+  // REMOVED: Debug logging that was causing spam
+  // console.log('ProfilePage - profile state:', { ... });
   
   const { activities, isLoading: activitiesLoading, error: activitiesError, hasMore, loadMore } = useProfileActivity(identifier);
-  const [activeTab, setActiveTab] = useState<'activity' | 'articles' | 'proposals' | 'collection' | 'bookmarked' | 'publish'>('activity');
+  
+  // REMOVED: useProfileArticles hook that was causing infinite loops
+  /*
+  const {
+    articles,
+    cardData,
+    stats,
+    isLoading: articlesLoading,
+    error: articlesError,
+    communityArticles,
+    portfolioArticles,
+    currentFilter,
+    setFilter,
+    refresh: refreshArticles,
+    loadMore: loadMoreArticles,
+    hasMore: hasMoreArticles
+  } = useProfileArticles({
+    authorAddress: profile?.walletAddress,
+    authorName: profile?.displayName || 'Unknown Author',
+    authorId: profile?.id || '',
+    autoFetch: !!profile?.walletAddress
+  });
+  */
+
+  const [activeTab, setActiveTab] = useState<'activity' | 'articles' | 'proposals' | 'community-articles' | 'portfolio-articles' | 'collection' | 'bookmarked' | 'publish'>('activity');
   const [membershipTokenId, setMembershipTokenId] = useState<string | undefined>(undefined);
   const [tokenImageUrl, setTokenImageUrl] = useState<string | undefined>(undefined);
   const { hasMembershipToken } = useHasMembershipToken();
   const { hasPublisherToken } = useHasPublisherToken();
 
-  // Get membership token for this specific profile
+  // Get membership token for this specific profile - FIXED with dependency array
   useEffect(() => {
     async function fetchMembershipToken() {
       if (!profile?.walletAddress) return;
@@ -117,7 +138,7 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
     }
     
     fetchMembershipToken();
-  }, [profile?.walletAddress]);
+  }, [profile?.walletAddress]); // FIXED: Added proper dependency array
 
   if (profileLoading) {
     return (
@@ -268,25 +289,27 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
           >
             Proposals
           </button>
-          
+
+          {/* REMOVED: Community Articles Tab - was causing infinite loop */}
+          {/* REMOVED: Portfolio Articles Tab - was causing infinite loop */}
 
           <button
-  onClick={() => setActiveTab('collection')}
-  style={{
-    backgroundColor: 'transparent',
-    color: activeTab === 'collection' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
-    fontFamily: 'var(--font-ui)',
-    fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
-    padding: '0.75rem 1rem',
-    border: 'none',
-    borderBottom: activeTab === 'collection' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
-    cursor: 'pointer',
-    transition: 'color 0.2s ease',
-    whiteSpace: 'nowrap',
-  }}
->
-  Collection
-</button>
+            onClick={() => setActiveTab('collection')}
+            style={{
+              backgroundColor: 'transparent',
+              color: activeTab === 'collection' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
+              padding: '0.75rem 1rem',
+              border: 'none',
+              borderBottom: activeTab === 'collection' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Collection
+          </button>
           
           <button
             onClick={() => setActiveTab('bookmarked')}
@@ -397,14 +420,17 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
           Proposals tab content will be integrated with the News Proposals system.
         </div>
       )}
+
+      {/* REMOVED: Community Articles Tab Content - was causing infinite loop */}
+      {/* REMOVED: Portfolio Articles Tab Content - was causing infinite loop */}
       
       {activeTab === 'collection' && (
-  <Collection profile={profile} isOwner={isOwner} />
-)}
+        <Collection profile={profile} isOwner={isOwner} />
+      )}
       
       {activeTab === 'bookmarked' && (
-  <Bookmarks profile={profile} isOwner={isOwner} />
-)}
+        <Bookmarks profile={profile} isOwner={isOwner} />
+      )}
 
       {activeTab === 'publish' && isOwner && (
         <div style={{

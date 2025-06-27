@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ethers } from 'ethers';
+import confetti from 'canvas-confetti';
 import { Profile } from '../../lib/profile/types/profile';
 import { useWallet } from '../../lib/hooks/useWallet';
 
@@ -9,6 +10,15 @@ import { useWallet } from '../../lib/hooks/useWallet';
 const PUBLISHER_TOKEN_ADDRESS = '0x8b351Bc93799898a201E796405dBC30Aad49Ee21';
 const PUBLISHER_TOKEN_ABI = [
   "function hasValidCredential(address journalist) external view returns (bool)"
+];
+
+// TippingContract details
+const TIPPING_CONTRACT_ADDRESS = '0xbA1bba49FD1A6B949844CEFddc94d182272A19b8';
+const TIPPING_CONTRACT_ABI = [
+  "function tipProfile(uint256 profileId, uint256 tipAmount, string memory currency) external payable",
+  "function tipAddress(address recipient, uint256 tipAmount, string memory currency) external payable",
+  "function getMinimumTipAmount() external view returns (uint256)",
+  "function getPlatformFeePercentage() external view returns (uint256)"
 ];
 
 interface ProfileHeaderProps {
@@ -21,11 +31,11 @@ interface ProfileHeaderProps {
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, membershipTokenId, tokenImageUrl }) => {
   const { provider, address: currentUserAddress, isConnected } = useWallet();
   const [hasPublisherToken, setHasPublisherToken] = useState(false);
-  const [isTipping, setIsTipping] = useState(false);
-  const [tipAmount, setTipAmount] = useState('1.0');
+  const [tipAmount, setTipAmount] = useState('10.0');
   const [showTipDialog, setShowTipDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Check if profile owner has publisher token
+  // FIXED: Check if profile owner has publisher token with proper dependency array
   useEffect(() => {
     async function checkPublisherToken() {
       if (!profile?.walletAddress) return;
@@ -46,7 +56,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
     }
     
     checkPublisherToken();
-  }, [profile?.walletAddress]);
+  }, [profile?.walletAddress]); // FIXED: Added proper dependency array
 
   // Format wallet address for display (0x1234...5678)
   const formatAddress = (address: string) => {
@@ -73,38 +83,138 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
     return null;
   };
 
-  // Handle tipping
-  const handleTip = async () => {
+  // Confetti celebration
+  const triggerConfetti = () => {
+    // Multiple confetti bursts for extra celebration
+    const count = 200;
+    const defaults = {
+      origin: { y: 0.7 },
+      zIndex: 9999
+    };
+
+    function fire(particleRatio: number, opts: any) {
+      confetti({
+        ...defaults,
+        ...opts,
+        particleCount: Math.floor(count * particleRatio)
+      });
+    }
+
+    // First burst
+    fire(0.25, {
+      spread: 26,
+      startVelocity: 55,
+      colors: ['#FF6B9D', '#C44569', '#F8B500', '#00CDAC', '#4ECDC4']
+    });
+
+    // Second burst
+    fire(0.2, {
+      spread: 60,
+      colors: ['#B3211E', '#1D7F6E', '#E8A317']
+    });
+
+    // Third burst
+    fire(0.35, {
+      spread: 100,
+      decay: 0.91,
+      scalar: 0.8,
+      colors: ['#FF6B9D', '#C44569', '#F8B500', '#00CDAC', '#4ECDC4']
+    });
+
+    // Final burst
+    fire(0.1, {
+      spread: 120,
+      startVelocity: 25,
+      decay: 0.92,
+      scalar: 1.2,
+      colors: ['#B3211E', '#1D7F6E']
+    });
+  };
+
+  // Direct contract integration for tipping
+  const handleTip = async (amount: number) => {
     if (!provider || !isConnected || !currentUserAddress) {
       alert('Please connect your wallet to send tips');
       return;
     }
 
     try {
-      setIsTipping(true);
+      setIsProcessing(true);
       const signer = await provider.getSigner();
       
-      // Convert tip amount to wei
-      const tipAmountWei = ethers.parseEther(tipAmount);
-      
-      // Send transaction
-      const tx = await signer.sendTransaction({
-        to: profile.walletAddress,
-        value: tipAmountWei,
-      });
+      // Create contract instance
+      const tippingContract = new ethers.Contract(
+        TIPPING_CONTRACT_ADDRESS,
+        TIPPING_CONTRACT_ABI,
+        signer
+      );
+
+      // Get minimum tip amount and platform fee for validation
+      const minTipAmount = await tippingContract.getMinimumTipAmount();
+      const tipAmountWei = ethers.parseEther(amount.toString());
+
+      if (tipAmountWei < minTipAmount) {
+        alert(`Minimum tip amount is ${ethers.formatEther(minTipAmount)} FLOW`);
+        return;
+      }
+
+      // Calculate platform fee (1.9%)
+      const platformFeePercentage = await tippingContract.getPlatformFeePercentage();
+      const platformFee = (tipAmountWei * platformFeePercentage) / BigInt(10000);
+      const totalAmount = tipAmountWei + platformFee;
+
+      // Send tip via contract - using tipAddress since we want to tip the profile owner's wallet
+      const tx = await tippingContract.tipAddress(
+        profile.walletAddress, // Tip goes to profile owner's wallet
+        tipAmountWei,
+        'FLOW',
+        { value: totalAmount } // Include platform fee in total
+      );
       
       // Wait for confirmation
+      console.log('Transaction sent:', tx.hash);
       await tx.wait();
       
-      alert(`Successfully sent ${tipAmount} FLOW!`);
+      // Trigger confetti celebration
+      triggerConfetti();
+      
+      // Show success message with EMOJI rewards info
+      const emojiRewards = amount * 10;
+      alert(`🎉 Successfully sent ${amount} FLOW tip! You also received ${emojiRewards} EMOJI tokens as a reward!`);
+      
       setShowTipDialog(false);
-      setTipAmount('1.0');
+      setTipAmount('10.0'); // Reset to default
     } catch (error: any) {
       console.error('Tipping error:', error);
-      alert(error.message || 'Failed to send tip');
+      let errorMessage = 'Failed to send tip';
+      
+      if (error.message?.includes('insufficient funds')) {
+        errorMessage = 'Insufficient FLOW balance';
+      } else if (error.message?.includes('user rejected')) {
+        errorMessage = 'Transaction cancelled by user';
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      }
+      
+      alert(errorMessage);
     } finally {
-      setIsTipping(false);
+      setIsProcessing(false);
     }
+  };
+
+  // Handle preset tip amounts
+  const handlePresetTip = async (amount: number) => {
+    await handleTip(amount);
+  };
+
+  // Handle custom tip amount
+  const handleCustomTip = async () => {
+    const amount = parseFloat(tipAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid tip amount');
+      return;
+    }
+    await handleTip(amount);
   };
 
   return (
@@ -215,39 +325,44 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
                   </button>
                 </Link>
               ) : (
-                // Tipping button for non-owners with better icon
+                // Awesome Tip Button with enhanced styling
                 <button style={{
-                  backgroundColor: 'var(--color-typewriter-red)',
+                  background: 'linear-gradient(135deg, #FF6B9D 0%, #C44569 25%, #F8B500 50%, #00CDAC 75%, #4ECDC4 100%)',
                   color: 'var(--color-white)',
                   fontFamily: 'var(--font-ui)',
-                  fontWeight: 500,
-                  padding: '0.5rem 1rem',
+                  fontWeight: 600,
+                  fontSize: '0.95rem',
+                  padding: '0.75rem 1.5rem',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
+                  transition: 'all 0.3s ease',
                   whiteSpace: 'nowrap',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
+                  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                  transform: 'translateY(0)',
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#8C1A17';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--color-typewriter-red)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
                 }}
                 onClick={() => setShowTipDialog(true)}
                 >
-                  {/* Coffee cup icon - universal tipping symbol */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  {/* Enhanced tip icon */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
                     <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
                     <line x1="6" y1="1" x2="6" y2="4"></line>
                     <line x1="10" y1="1" x2="10" y2="4"></line>
                     <line x1="14" y1="1" x2="14" y2="4"></line>
                   </svg>
-                  Support
+                  Tip this User
                 </button>
               )}
             </div>
@@ -379,7 +494,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
         </div>
       </div>
 
-      {/* Tip Dialog */}
+      {/* Enhanced Tip Dialog */}
       {showTipDialog && (
         <div style={{
           position: 'fixed',
@@ -387,7 +502,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -396,33 +511,159 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
           <div style={{
             backgroundColor: 'var(--color-white)',
             padding: '2rem',
-            borderRadius: '8px',
-            maxWidth: '400px',
+            borderRadius: '12px',
+            maxWidth: '450px',
             width: '90%',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
           }}>
             <h3 style={{
               fontFamily: 'var(--font-headlines)',
-              fontSize: '1.5rem',
-              margin: '0 0 1rem 0',
+              fontSize: '1.6rem',
+              margin: '0 0 0.5rem 0',
+              textAlign: 'center',
             }}>
-              Support {profile.displayName || formatAddress(profile.walletAddress)}
+              💰 Tip {profile.displayName || formatAddress(profile.walletAddress)}
             </h3>
             
             <p style={{
               fontSize: '0.95rem',
               marginBottom: '1.5rem',
+              textAlign: 'center',
+              color: 'var(--color-black)',
+              opacity: 0.8,
             }}>
-              Send FLOW directly to support this creator
+              Support this creator with FLOW tokens and receive EMOJI rewards!
             </p>
             
+            {/* Preset Tip Buttons */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.75rem',
+              marginBottom: '1.5rem',
+            }}>
+              <button
+                onClick={() => handlePresetTip(5)}
+                disabled={isProcessing}
+                style={{
+                  padding: '1rem',
+                  backgroundColor: 'var(--color-verification-green)',
+                  color: 'var(--color-white)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isProcessing ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  transition: 'all 0.2s ease',
+                  opacity: isProcessing ? 0.7 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+                onMouseOver={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(29, 127, 110, 0.3)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>5 FLOW</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>+50 EMOJI</span>
+              </button>
+
+              <button
+                onClick={() => handlePresetTip(20)}
+                disabled={isProcessing}
+                style={{
+                  padding: '1rem',
+                  backgroundColor: 'var(--color-blockchain-blue)',
+                  color: 'var(--color-white)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isProcessing ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  transition: 'all 0.2s ease',
+                  opacity: isProcessing ? 0.7 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+                onMouseOver={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(43, 57, 144, 0.3)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>20 FLOW</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>+200 EMOJI</span>
+              </button>
+
+              <button
+                onClick={() => handlePresetTip(100)}
+                disabled={isProcessing}
+                style={{
+                  padding: '1rem',
+                  backgroundColor: 'var(--color-alert-amber)',
+                  color: 'var(--color-white)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isProcessing ? 'default' : 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  transition: 'all 0.2s ease',
+                  opacity: isProcessing ? 0.7 : 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+                onMouseOver={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(232, 163, 23, 0.3)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isProcessing) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
+                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>100 FLOW</span>
+                <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>+1000 EMOJI</span>
+              </button>
+            </div>
+
+            {/* Custom Amount Section */}
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{
                 display: 'block',
                 marginBottom: '0.5rem',
                 fontSize: '0.9rem',
-                fontWeight: 500,
+                fontWeight: 600,
+                textAlign: 'center',
               }}>
-                Amount (FLOW)
+                Or Enter Custom Amount (FLOW)
               </label>
               <input
                 type="number"
@@ -432,48 +673,86 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, isOwner, members
                 step="0.1"
                 style={{
                   width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid var(--color-digital-silver)',
-                  borderRadius: '4px',
-                  fontSize: '1rem',
+                  padding: '0.75rem',
+                  border: '2px solid var(--color-digital-silver)',
+                  borderRadius: '8px',
+                  fontSize: '1.1rem',
+                  textAlign: 'center',
+                  fontWeight: 'bold',
+                  transition: 'border-color 0.2s ease',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-typewriter-red)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-digital-silver)';
                 }}
               />
+              <p style={{
+                fontSize: '0.8rem',
+                textAlign: 'center',
+                margin: '0.5rem 0 0 0',
+                color: 'var(--color-black)',
+                opacity: 0.6,
+              }}>
+                You will receive {(parseFloat(tipAmount) || 0) * 10} EMOJI tokens as a reward!
+              </p>
             </div>
             
             <div style={{
               display: 'flex',
-              gap: '0.5rem',
-              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              justifyContent: 'center',
             }}>
               <button
                 onClick={() => setShowTipDialog(false)}
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.75rem 1.5rem',
                   backgroundColor: 'transparent',
                   color: 'var(--color-black)',
-                  border: '1px solid var(--color-digital-silver)',
-                  borderRadius: '4px',
+                  border: '2px solid var(--color-digital-silver)',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                   fontFamily: 'var(--font-ui)',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--color-parchment)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
                 Cancel
               </button>
               <button
-                onClick={handleTip}
-                disabled={isTipping || !tipAmount || parseFloat(tipAmount) <= 0}
+                onClick={handleCustomTip}
+                disabled={isProcessing || !tipAmount || parseFloat(tipAmount) <= 0}
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.75rem 1.5rem',
                   backgroundColor: 'var(--color-typewriter-red)',
                   color: 'var(--color-white)',
                   border: 'none',
-                  borderRadius: '4px',
-                  cursor: isTipping ? 'default' : 'pointer',
+                  borderRadius: '8px',
+                  cursor: (isProcessing || !tipAmount || parseFloat(tipAmount) <= 0) ? 'default' : 'pointer',
                   fontFamily: 'var(--font-ui)',
-                  opacity: isTipping ? 0.7 : 1,
+                  fontWeight: 600,
+                  opacity: (isProcessing || !tipAmount || parseFloat(tipAmount) <= 0) ? 0.7 : 1,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  if (!isProcessing && tipAmount && parseFloat(tipAmount) > 0) {
+                    e.currentTarget.style.backgroundColor = '#8C1A17';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isProcessing && tipAmount && parseFloat(tipAmount) > 0) {
+                    e.currentTarget.style.backgroundColor = 'var(--color-typewriter-red)';
+                  }
                 }}
               >
-                {isTipping ? 'Sending...' : `Send ${tipAmount} FLOW`}
+                {isProcessing ? 'Processing...' : `Send ${tipAmount} FLOW`}
               </button>
             </div>
           </div>

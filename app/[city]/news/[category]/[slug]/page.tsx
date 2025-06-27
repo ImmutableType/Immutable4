@@ -1,7 +1,7 @@
 // app/[city]/news/[category]/[slug]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useArticleDetail } from '../../../../../lib/reader/hooks/useArticleDetail';
 import { urlOptimizer } from '../../../../../lib/locations/seo/urlOptimizer';
 import ArticleHeader from '../../../../../components/article/ArticleHeader';
@@ -11,18 +11,19 @@ import EncryptionGate from '../../../../../components/article/EncryptionGate';
 import ArticleContent from '../../../../../components/article/ArticleContent';
 
 interface ArticlePageProps {
- params: {
+ params: Promise<{
    city: string;
    category: string;
    slug: string;
- };
+ }>;
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
+ const resolvedParams = use(params);
  const [decryptSuccess, setDecryptSuccess] = useState(false);
  
  // Extract article ID from slug
- const articleId = urlOptimizer.extractIdFromSlug(params.slug);
+ const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
  
  // Fetch article data
  const { article, isLoading, error } = useArticleDetail(articleId);
@@ -51,7 +52,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    if (!article) return null;
    return {
      name: article.authorName || article.author || "Anonymous",
-     bio: `${article.authorType} covering ${params.city} news. Verified contributor to ImmutableType's local journalism network.`,
+     bio: `${article.authorType} covering ${resolvedParams.city} news. Verified contributor to ImmutableType's local journalism network.`,
      articlesPublished: 247, // This would come from a real service
      profileUrl: `/profile/${article.author}`
    };
@@ -280,8 +281,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        <nav className="breadcrumb-nav">
          <div className="breadcrumb-container">
            <ArticleBreadcrumbs 
-             city={params.city}
-             category={params.category}
+             city={resolvedParams.city}
+             category={resolvedParams.category}
              state="florida"
              article={article}
            />
@@ -294,8 +295,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            {/* Enhanced Article Header */}
            <ArticleHeader 
              article={article}
-             city={params.city}
-             category={params.category}
+             city={resolvedParams.city}
+             category={resolvedParams.category}
            />
 
            {/* Article Meta Bar */}
@@ -341,7 +342,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            <h3 className="ownership-headline">Own This Article as an NFT</h3>
            <p className="ownership-description">
              Preserve this journalism permanently on the blockchain. Support the author 
-             and own a piece of {params.city}'s news history.
+             and own a piece of {resolvedParams.city}'s news history.
            </p>
            <a 
              href={journalist?.profileUrl || `/profile/${article.author}`}
@@ -353,7 +354,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
          {/* Reader License Story */}
          <div className="reader-license-story">
-           <h3 className="story-headline">Reader Licenses: Breaking the Grip of Mainstream Media</h3>
+           <h3 className="story-headline">Reader Licenses: Breaking the Grip of Mainstream Media DONKIES DDDD</h3>
            <div className="story-content">
              <p>
                Traditional media locks you into expensive monthly subscriptions for content you may never read. 

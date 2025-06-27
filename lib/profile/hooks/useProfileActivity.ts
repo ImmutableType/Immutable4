@@ -1,71 +1,69 @@
 // lib/profile/hooks/useProfileActivity.ts
 import { useState, useEffect } from 'react';
-import { ActivityItem } from '../types/activity';
-import { mockProfileService } from '../services/mockProfileService';
+import { ActivityItem, ActivityService } from '../services/activityService';
 
-export function useProfileActivity(profileId: string, limit = 10) {
+export function useProfileActivity(userAddressOrProfileId: string, limit = 20) {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [total, setTotal] = useState<number>(0);
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [offset, setOffset] = useState<number>(0);
 
-  useEffect(() => {
-    let isMounted = true;
+  const activityService = new ActivityService();
 
-    const fetchActivities = async () => {
-      if (!profileId) return;
-      
-      try {
-        setIsLoading(true);
-        const response = await mockProfileService.getProfileActivities(profileId, limit);
-        
-        if (isMounted) {
-          setActivities(response.activities);
-          setTotal(response.total);
-          setNextCursor(response.nextCursor);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Failed to fetch profile activities'));
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+  const loadActivities = async (reset: boolean = false) => {
+    if (!userAddressOrProfileId || isLoading) return;
 
-    fetchActivities();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [profileId, limit]);
-
-  const loadMore = async () => {
-    if (!nextCursor || isLoading || !profileId) return;
-    
     try {
       setIsLoading(true);
-      const response = await mockProfileService.getProfileActivities(profileId, limit, nextCursor);
+      setError(null);
+
+      const currentOffset = reset ? 0 : offset;
+      const newActivities = await activityService.getUserActivities(userAddressOrProfileId, limit, currentOffset);
       
-      setActivities(prev => [...prev, ...response.activities]);
-      setNextCursor(response.nextCursor);
+      if (reset) {
+        setActivities(newActivities);
+        setOffset(limit);
+      } else {
+        setActivities(prev => [...prev, ...newActivities]);
+        setOffset(prev => prev + limit);
+      }
+
+      setHasMore(newActivities.length === limit);
+      setTotal(reset ? newActivities.length : activities.length + newActivities.length);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to load more activities'));
+      console.error('Error loading activities:', err);
+      setError(err instanceof Error ? err : new Error('Failed to load activities'));
     } finally {
       setIsLoading(false);
     }
   };
+
+  const loadMore = () => {
+    if (hasMore && !isLoading) {
+      loadActivities(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userAddressOrProfileId) {
+      loadActivities(true);
+    } else {
+      setActivities([]);
+      setTotal(0);
+      setOffset(0);
+      setHasMore(false);
+    }
+  }, [userAddressOrProfileId]);
 
   return {
     activities,
     total,
     isLoading,
     error,
-    hasMore: !!nextCursor,
-    loadMore
+    hasMore,
+    loadMore,
+    refresh: () => loadActivities(true)
   };
 }

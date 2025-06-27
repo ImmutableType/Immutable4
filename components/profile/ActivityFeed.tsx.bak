@@ -1,6 +1,7 @@
 // components/profile/ActivityFeed.tsx
 import React from 'react';
-import { ActivityItem, ActivityType } from '../../lib/profile/types/activity';
+import Link from 'next/link';
+import { ActivityItem } from '../../lib/profile/types/activity';
 
 interface ActivityFeedProps {
   activities: ActivityItem[];
@@ -15,87 +16,40 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
   // Helper to get action text based on activity type
   const getActionText = (activity: ActivityItem) => {
-    // Use the action field directly, or fall back to type-based text
-    if (activity.action) {
-      return activity.action;
-    }
-
-    // Fallback based on type
     switch (activity.type) {
-      case 'gm':
-        return 'said Good Morning';
-      case 'bookmark':
-        return 'bookmarked content';
-      case 'community-article':
-        return 'published a community article';
-      case 'portfolio-article':
-        return 'published a portfolio article';
-      case 'native-article':
-        return 'published a native article';
-      case 'license-purchase':
-        return 'purchased an article license';
-      case 'leaderboard':
-        return 'updated the leaderboard';
-      case 'emoji-purchase':
-        return 'purchased EMOJI tokens';
-      case 'tip-sent':
-        return 'sent a tip';
-      case 'tip-received':
-        return 'received a tip';
+      case 'read':
+        return 'read an article';
+      case 'create':
+        return `created a ${activity.contentType}`;
+      case 'fund':
+        return `funded a ${activity.contentType}`;
+      case 'vote':
+        return `voted on a ${activity.contentType}`;
+      case 'tip':
+        return `tipped an author`;
+      case 'comment':
+        return `commented on a ${activity.contentType}`;
       default:
-        return 'performed an action';
+        return `interacted with a ${activity.contentType}`;
     }
-  };
-
-  // Helper to safely render details
-  const renderDetails = (activity: ActivityItem) => {
-    if (!activity.details) return null;
-    
-    const { details } = activity;
-    const parts: string[] = [];
-
-    if (details.title) {
-      parts.push(`"${details.title}"`);
-    }
-    
-    if (details.amount) {
-      const tipType = details.tipType || 'FLOW';
-      parts.push(`${details.amount} ${tipType}`);
-    }
-    
-    if (details.recipient) {
-      parts.push(`to ${details.recipient}`);
-    }
-
-    return parts.length > 0 ? parts.join(' • ') : null;
   };
 
   // Helper to get icon based on activity type
-  const getActivityIcon = (type: ActivityType) => {
+  const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'gm':
+      case 'read':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="5"></circle>
-            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
           </svg>
         );
-      case 'bookmark':
-        return (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
-        );
-      case 'community-article':
-      case 'portfolio-article':
-      case 'native-article':
+      case 'create':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
@@ -104,56 +58,34 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
             <circle cx="11" cy="11" r="2"></circle>
           </svg>
         );
-      case 'license-purchase':
-      case 'emoji-purchase':
+      case 'fund':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
             <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
           </svg>
         );
-      case 'leaderboard':
+      case 'vote':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 3v18h18"></path>
-            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+            <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         );
-      case 'tip-sent':
-      case 'tip-received':
+      case 'tip':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="1" x2="12" y2="23"></line>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
         );
-      default:
+      case 'comment':
         return (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="2"></circle>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
           </svg>
         );
-    }
-  };
-
-  // Helper to get color based on activity type
-  const getActivityColor = (type: ActivityType) => {
-    switch (type) {
-      case 'tip-sent':
-      case 'tip-received':
-      case 'emoji-purchase':
-      case 'license-purchase':
-        return 'var(--color-typewriter-red)';
-      case 'gm':
-      case 'leaderboard':
-      case 'community-article':
-      case 'portfolio-article':
-      case 'native-article':
-        return 'var(--color-verification-green)';
-      case 'bookmark':
-        return 'var(--color-blockchain-blue)';
       default:
-        return 'var(--color-black)';
+        return null;
     }
   };
 
@@ -208,7 +140,11 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: getActivityColor(activity.type),
+            color: activity.type === 'fund' || activity.type === 'tip' 
+              ? 'var(--color-typewriter-red)' 
+              : activity.type === 'vote' || activity.type === 'create'
+                ? 'var(--color-verification-green)'
+                : 'var(--color-black)',
             flexShrink: 0,
           }}>
             {getActivityIcon(activity.type)}
@@ -231,28 +167,44 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ activities, isLoading = fal
               </span>
             </div>
 
-            {/* Details */}
-            {renderDetails(activity) && (
+            <div style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '1rem',
+              marginBottom: '0.5rem',
+            }}>
+              <Link
+                href={`/${activity.contentType === 'article' ? 'reader' : 'news-proposals'}/${activity.contentId}`}
+                style={{
+                  color: 'var(--color-black)',
+                  textDecoration: 'none',
+                  fontWeight: 'bold',
+                }}
+              >
+                {activity.contentTitle}
+              </Link>
+            </div>
+
+            {activity.amount && (
+              <div style={{
+                fontFamily: 'var(--font-ui)',
+                fontSize: '0.9rem',
+                color: 'var(--color-typewriter-red)',
+              }}>
+                Amount: {activity.amount} FLOW
+              </div>
+            )}
+
+            {activity.details && (
               <div style={{
                 fontFamily: 'var(--font-body)',
                 fontSize: '0.9rem',
                 color: 'var(--color-black)',
                 opacity: 0.8,
-                marginBottom: '0.5rem',
+                marginTop: '0.5rem',
               }}>
-                {renderDetails(activity)}
+                {activity.details}
               </div>
             )}
-
-            {/* Blockchain Info */}
-            <div style={{
-              fontFamily: 'var(--font-ui)',
-              fontSize: '0.8rem',
-              color: 'var(--color-black)',
-              opacity: 0.6,
-            }}>
-              Block #{activity.blockNumber} • {activity.txHash.slice(0, 10)}...
-            </div>
           </div>
         </div>
       ))}

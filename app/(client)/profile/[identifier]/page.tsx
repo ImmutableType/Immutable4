@@ -5,19 +5,18 @@ import React, { useState, use, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useProfile } from '../../../../lib/profile/hooks/useProfile';
 import { useProfileActivity } from '../../../../lib/profile/hooks/useProfileActivity';
-import { useProfileArticles } from '../../../../lib/profile/hooks/useProfileArticles';
 import ProfileHeader from '../../../../components/profile/ProfileHeader';
 import ActivityFeed from '../../../../components/profile/ActivityFeed';
 import TokenGate from '../../../../components/publishing/TokenGate';
 import ArticleTypeSelector from '../../../../components/publishing/ArticleTypeSelector';
-import { usePublishedArticles } from '../../../../lib/publishing/hooks/usePublishedArticles';
 import { useRouter } from 'next/navigation';
 import { useHasPublisherToken } from '../../../../lib/hooks/useHasPublisherToken';
 import { useHasMembershipToken } from '../../../../lib/hooks/useHasMembershipToken';
 import Collection from '../../../../components/profile/Collection';
 import Bookmarks from '@/components/profile/Bookmarks';
-import CommunityCard from '@/components/cards/types/CommunityCard';
-import PortfolioCard from '@/components/cards/types/PortfolioCard';
+import ArticlesTab from '@/components/profile/ArticlesTab';
+import CuratedTab from '@/components/profile/CuratedTab';
+import PortfolioTab from '@/components/profile/PortfolioTab';
 
 // Membership token contract details
 const MEMBERSHIP_TOKEN_ADDRESS = '0xC90bE82B23Dca9453445b69fB22D5A90402654b2';
@@ -33,43 +32,10 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
   const { identifier } = use(params);
   const router = useRouter();
   
-  // Add this debug logging
-  console.log('ProfilePage - identifier:', identifier);
-  
   const { profile, isOwner, isLoading: profileLoading, error: profileError } = useProfile(identifier);
-  
-  // Add this debug logging
-  console.log('ProfilePage - profile state:', {
-    profile,
-    isOwner,
-    isLoading: profileLoading,
-    error: profileError
-  });
-  
   const { activities, isLoading: activitiesLoading, error: activitiesError, hasMore, loadMore } = useProfileActivity(identifier);
-  
-  // NEW: Profile articles hook
-  const {
-    articles,
-    cardData,
-    stats,
-    isLoading: articlesLoading,
-    error: articlesError,
-    communityArticles,
-    portfolioArticles,
-    currentFilter,
-    setFilter,
-    refresh: refreshArticles,
-    loadMore: loadMoreArticles,
-    hasMore: hasMoreArticles
-  } = useProfileArticles({
-    authorAddress: profile?.walletAddress,
-    authorName: profile?.displayName || 'Unknown Author',
-    authorId: profile?.id || '',
-    autoFetch: !!profile?.walletAddress
-  });
 
-  const [activeTab, setActiveTab] = useState<'activity' | 'articles' | 'proposals' | 'community-articles' | 'portfolio-articles' | 'collection' | 'bookmarked' | 'publish'>('activity');
+  const [activeTab, setActiveTab] = useState<'activity' | 'articles' | 'curated' | 'portfolio' | 'collection' | 'bookmarked' | 'publish'>('activity');
   const [membershipTokenId, setMembershipTokenId] = useState<string | undefined>(undefined);
   const [tokenImageUrl, setTokenImageUrl] = useState<string | undefined>(undefined);
   const { hasMembershipToken } = useHasMembershipToken();
@@ -276,59 +242,39 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
           </button>
           
           <button
-            onClick={() => setActiveTab('proposals')}
+            onClick={() => setActiveTab('curated')}
             style={{
               backgroundColor: 'transparent',
-              color: activeTab === 'proposals' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+              color: activeTab === 'curated' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
               fontFamily: 'var(--font-ui)',
-              fontWeight: activeTab === 'proposals' ? 'bold' : 'normal',
+              fontWeight: activeTab === 'curated' ? 'bold' : 'normal',
               padding: '0.75rem 1rem',
               border: 'none',
-              borderBottom: activeTab === 'proposals' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
+              borderBottom: activeTab === 'curated' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
               cursor: 'pointer',
               transition: 'color 0.2s ease',
               whiteSpace: 'nowrap',
             }}
           >
-            Proposals
+            Curated
           </button>
 
-          {/* NEW: Community Articles Tab */}
           <button
-            onClick={() => setActiveTab('community-articles')}
+            onClick={() => setActiveTab('portfolio')}
             style={{
               backgroundColor: 'transparent',
-              color: activeTab === 'community-articles' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+              color: activeTab === 'portfolio' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
               fontFamily: 'var(--font-ui)',
-              fontWeight: activeTab === 'community-articles' ? 'bold' : 'normal',
+              fontWeight: activeTab === 'portfolio' ? 'bold' : 'normal',
               padding: '0.75rem 1rem',
               border: 'none',
-              borderBottom: activeTab === 'community-articles' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
+              borderBottom: activeTab === 'portfolio' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
               cursor: 'pointer',
               transition: 'color 0.2s ease',
               whiteSpace: 'nowrap',
             }}
           >
-            Community Articles
-          </button>
-
-          {/* NEW: Portfolio Articles Tab */}
-          <button
-            onClick={() => setActiveTab('portfolio-articles')}
-            style={{
-              backgroundColor: 'transparent',
-              color: activeTab === 'portfolio-articles' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
-              fontFamily: 'var(--font-ui)',
-              fontWeight: activeTab === 'portfolio-articles' ? 'bold' : 'normal',
-              padding: '0.75rem 1rem',
-              border: 'none',
-              borderBottom: activeTab === 'portfolio-articles' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
-              cursor: 'pointer',
-              transition: 'color 0.2s ease',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Portfolio Articles
+            Portfolio
           </button>
 
           <button
@@ -337,7 +283,7 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
               backgroundColor: 'transparent',
               color: activeTab === 'collection' ? 'var(--color-typewriter-red)' : 'var(--color-black)',
               fontFamily: 'var(--font-ui)',
-              fontWeight: activeTab === 'portfolio-articles' ? 'bold' : 'normal',
+              fontWeight: activeTab === 'collection' ? 'bold' : 'normal',
               padding: '0.75rem 1rem',
               border: 'none',
               borderBottom: activeTab === 'collection' ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
@@ -390,6 +336,7 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
         </div>
       </div>
       
+      {/* Tab Content */}
       {activeTab === 'activity' && (
         <>
           <ActivityFeed 
@@ -436,321 +383,15 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
       )}
       
       {activeTab === 'articles' && (
-        <div style={{
-          padding: '2rem',
-          textAlign: 'center',
-          color: 'var(--color-black)',
-          opacity: 0.7,
-        }}>
-          {/* TODO: Connect to ArticleMinter contract for published articles */}
-          Articles tab content will be integrated with the Reader system.
-        </div>
+        <ArticlesTab profile={profile} />
       )}
       
-      {activeTab === 'proposals' && (
-        <div style={{
-          padding: '2rem',
-          textAlign: 'center',
-          color: 'var(--color-black)',
-          opacity: 0.7,
-        }}>
-          {/* TODO: Connect to ProposalRegistry contract for user's proposals */}
-          Proposals tab content will be integrated with the News Proposals system.
-        </div>
+      {activeTab === 'curated' && (
+        <CuratedTab profile={profile} />
       )}
 
-      {/* NEW: Community Articles Tab Content */}
-      {activeTab === 'community-articles' && (
-        <div>
-          {/* Header with stats */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem',
-          }}>
-            <h2 style={{
-              fontFamily: 'var(--font-headlines)',
-              fontSize: '1.5rem',
-              margin: 0,
-            }}>
-              Community Articles ({stats.totalCommunityArticles})
-            </h2>
-            
-            <button
-              onClick={refreshArticles}
-              disabled={articlesLoading}
-              style={{
-                backgroundColor: 'transparent',
-                color: 'var(--color-black)',
-                fontFamily: 'var(--font-ui)',
-                fontWeight: 500,
-                padding: '0.5rem 1rem',
-                border: '1px solid var(--color-digital-silver)',
-                borderRadius: '4px',
-                cursor: articlesLoading ? 'default' : 'pointer',
-                opacity: articlesLoading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>🔄</span>
-              Refresh
-            </button>
-          </div>
-
-          {/* Articles Grid */}
-          {articlesLoading && communityArticles.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-black)',
-              opacity: 0.7,
-            }}>
-              Loading community articles...
-            </div>
-          ) : articlesError ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-typewriter-red)',
-            }}>
-              Error loading articles: {articlesError.message}
-            </div>
-          ) : communityArticles.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-black)',
-              opacity: 0.7,
-            }}>
-              No community articles published yet.
-            </div>
-          ) : (
-            <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                gap: '1.5rem',
-                marginBottom: '2rem',
-              }}>
-                {communityArticles.map((article) => {
-                  const cardProps = {
-                    id: article.id,
-                    title: article.title,
-                    summary: (article.description || 'Community curated content').substring(0, 200),
-                    submitter: {
-                      name: article.authorName || 'Anonymous',
-                      id: article.author || '',
-                      stats: {
-                        curated: 0,
-                        reliability: 0,
-                        location: article.location || 'Miami, FL'
-                      }
-                    },
-                    sourceUrl: `https://immutable3.vercel.app/community/${article.id}`,
-                    sourceName: 'ImmutableType Community',
-                    createdAt: article.createdAt,
-                    sharedAt: article.createdAt,
-                    location: {
-                      city: 'Miami',
-                      state: 'FL',
-                      neighborhood: undefined
-                    },
-                    category: article.category || 'Community',
-                    tags: article.tags || [],
-                    voting: {
-                      upvotes: 0,
-                      downvotes: 0,
-                      percentage: 100
-                    },
-                    onClick: () => console.log(`Open community article ${article.id}`)
-                  };
-                  
-                  return (
-                    <CommunityCard 
-                      key={article.id}
-                      {...cardProps}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Load More Button */}
-              {hasMoreArticles && (
-                <div style={{
-                  textAlign: 'center',
-                  marginTop: '2rem',
-                }}>
-                  <button
-                    onClick={loadMoreArticles}
-                    disabled={articlesLoading}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: 'var(--color-black)',
-                      fontFamily: 'var(--font-ui)',
-                      fontWeight: 500,
-                      padding: '0.5rem 1.5rem',
-                      border: '1px solid var(--color-digital-silver)',
-                      borderRadius: '4px',
-                      cursor: articlesLoading ? 'default' : 'pointer',
-                      opacity: articlesLoading ? 0.7 : 1,
-                    }}
-                  >
-                    {articlesLoading ? 'Loading...' : 'Load More'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* NEW: Portfolio Articles Tab Content */}
-      {activeTab === 'portfolio-articles' && (
-        <div>
-          {/* Header with stats */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem',
-          }}>
-            <h2 style={{
-              fontFamily: 'var(--font-headlines)',
-              fontSize: '1.5rem',
-              margin: 0,
-            }}>
-              Portfolio Articles ({stats.totalPortfolioArticles})
-            </h2>
-            
-            <button
-              onClick={refreshArticles}
-              disabled={articlesLoading}
-              style={{
-                backgroundColor: 'transparent',
-                color: 'var(--color-black)',
-                fontFamily: 'var(--font-ui)',
-                fontWeight: 500,
-                padding: '0.5rem 1rem',
-                border: '1px solid var(--color-digital-silver)',
-                borderRadius: '4px',
-                cursor: articlesLoading ? 'default' : 'pointer',
-                opacity: articlesLoading ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>🔄</span>
-              Refresh
-            </button>
-          </div>
-
-          {/* Articles Grid */}
-          {articlesLoading && portfolioArticles.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-black)',
-              opacity: 0.7,
-            }}>
-              Loading portfolio articles...
-            </div>
-          ) : articlesError ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-typewriter-red)',
-            }}>
-              Error loading articles: {articlesError.message}
-            </div>
-          ) : portfolioArticles.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              color: 'var(--color-black)',
-              opacity: 0.7,
-            }}>
-              No portfolio articles published yet.
-            </div>
-          ) : (
-            <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
-                gap: '1.5rem',
-                marginBottom: '2rem',
-              }}>
-                {portfolioArticles.map((article) => {
-                  const cardProps = {
-                    id: article.id,
-                    title: article.title,
-                    summary: article.description || 'Portfolio verification content',
-                    author: {
-                      name: article.authorName || 'Anonymous',
-                      id: article.author || '',
-                      stats: {
-                        articlesPublished: 0,
-                        credibility: 0,
-                        location: article.location || 'Miami, FL'
-                      }
-                    },
-                    originalUrl: `https://immutable3.vercel.app/portfolio/${article.id}`,
-                    publicationName: 'ImmutableType Portfolio',
-                    originalAuthor: article.authorName,
-                    originalPublishDate: article.createdAt,
-                    createdAt: article.createdAt,
-                    verifiedAt: article.createdAt,
-                    location: {
-                      city: 'Miami',
-                      state: 'FL',
-                      neighborhood: undefined
-                    },
-                    category: article.category || 'Portfolio',
-                    tags: article.tags || [],
-                    portfolioType: 'verification' as const,
-                    onClick: () => console.log(`Open portfolio article ${article.id}`)
-                  };
-                  
-                  return (
-                    <PortfolioCard 
-                      key={article.id}
-                      {...cardProps}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Load More Button */}
-              {hasMoreArticles && (
-                <div style={{
-                  textAlign: 'center',
-                  marginTop: '2rem',
-                }}>
-                  <button
-                    onClick={loadMoreArticles}
-                    disabled={articlesLoading}
-                    style={{
-                      backgroundColor: 'transparent',
-                      color: 'var(--color-black)',
-                      fontFamily: 'var(--font-ui)',
-                      fontWeight: 500,
-                      padding: '0.5rem 1.5rem',
-                      border: '1px solid var(--color-digital-silver)',
-                      borderRadius: '4px',
-                      cursor: articlesLoading ? 'default' : 'pointer',
-                      opacity: articlesLoading ? 0.7 : 1,
-                    }}
-                  >
-                    {articlesLoading ? 'Loading...' : 'Load More'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+      {activeTab === 'portfolio' && (
+        <PortfolioTab profile={profile} />
       )}
       
       {activeTab === 'collection' && (
@@ -871,7 +512,7 @@ export default function ProfilePage({ params }: { params: Promise<{ identifier: 
                     }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 L12 15l-4 1 1-4 9.5-9.5z"></path>
                       </svg>
                     </div>
                     

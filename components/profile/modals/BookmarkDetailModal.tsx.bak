@@ -2,7 +2,6 @@
 'use client'
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
 
 interface BookmarkedContent {
   id: string;
@@ -46,8 +45,6 @@ const BookmarkDetailModal: React.FC<BookmarkDetailModalProps> = ({
   onClose,
   bookmark
 }) => {
-  const router = useRouter(); // Added router import
-
   if (!isOpen || !bookmark) return null;
 
   const formatAddress = (address: string) => {
@@ -85,24 +82,6 @@ const BookmarkDetailModal: React.FC<BookmarkDetailModalProps> = ({
         </svg>
       );
     }
-  };
-
-  // ✅ FIXED: Updated navigation to use Miami news route format
-  const handleReadContent = () => {
-    if (bookmark.contentType === 'article') {
-      // Route to Miami news format that works: /miami/news/general/[id]
-      router.push(`/miami/news/general/${bookmark.id}`);
-    } else {
-      // Handle proposals - route to news-proposals
-      router.push(`/news-proposals/${bookmark.id}`);
-    }
-    onClose(); // Close modal after navigation
-  };
-
-  const handleRemoveBookmark = () => {
-    // TODO: Implement actual bookmark removal logic
-    console.log('Remove bookmark:', bookmark.id);
-    onClose();
   };
 
   return (
@@ -407,7 +386,10 @@ const BookmarkDetailModal: React.FC<BookmarkDetailModalProps> = ({
             borderTop: '1px solid var(--color-digital-silver)',
           }}>
             <button
-              onClick={handleReadContent} // ✅ FIXED: Now uses correct routing
+              onClick={() => {
+                // TODO: Navigate to full content
+                console.log('Navigate to:', bookmark.contentType, bookmark.id);
+              }}
               style={{
                 backgroundColor: getTypeColor(),
                 color: 'white',
@@ -427,7 +409,10 @@ const BookmarkDetailModal: React.FC<BookmarkDetailModalProps> = ({
             </button>
 
             <button
-              onClick={handleRemoveBookmark}
+              onClick={() => {
+                // TODO: Remove bookmark functionality
+                console.log('Remove bookmark:', bookmark.id);
+              }}
               style={{
                 backgroundColor: 'transparent',
                 color: 'var(--color-typewriter-red)',

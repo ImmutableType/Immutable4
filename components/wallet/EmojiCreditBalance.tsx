@@ -2,10 +2,63 @@
 
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@/lib/hooks/useWallet';
+import { ethers } from 'ethers';
+
+const EMOJI_TOKEN_ADDRESS = '0x572F036576D1D9F41876e714D47f69CEa6933c36';
+const EMOJI_TOKEN_ABI = [
+  'function balanceOf(address owner) external view returns (uint256)',
+  'function symbol() external view returns (string)',
+  'function decimals() external view returns (uint8)'
+];
 
 export default function EmojiCreditBalance() {
   const { address, isConnected } = useWallet();
   const [emojiBalance, setEmojiBalance] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // 🔄 FETCH EMOJI BALANCE from blockchain
+  const fetchEmojiBalance = async () => {
+    if (!address || !isConnected) {
+      setEmojiBalance(0);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+      const contract = new ethers.Contract(EMOJI_TOKEN_ADDRESS, EMOJI_TOKEN_ABI, provider);
+      
+      const balance = await contract.balanceOf(address);
+      const decimals = await contract.decimals();
+      
+      // Convert from wei to EMOJI tokens
+      const formattedBalance = parseFloat(ethers.formatUnits(balance, decimals));
+      setEmojiBalance(Math.floor(formattedBalance)); // Show whole numbers
+      
+      console.log('✅ EMOJI balance updated:', formattedBalance);
+    } catch (error) {
+      console.error('❌ Error fetching EMOJI balance:', error);
+      setEmojiBalance(0);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 🔄 LISTEN FOR BALANCE CHANGES via custom event
+  useEffect(() => {
+    const handleBalanceChange = () => {
+      console.log('🔔 Balance change event received, refreshing...');
+      fetchEmojiBalance();
+    };
+    
+    window.addEventListener('emojiBalanceChanged', handleBalanceChange);
+    return () => window.removeEventListener('emojiBalanceChanged', handleBalanceChange);
+  }, [address, isConnected]);
+
+  // Initial balance fetch when wallet connects
+  useEffect(() => {
+    fetchEmojiBalance();
+  }, [address, isConnected]);
 
   if (!isConnected) {
     return (
@@ -48,7 +101,9 @@ export default function EmojiCreditBalance() {
         padding: '0.5rem 0'
       }}>
         <span style={{ fontSize: '0.9rem' }}>EMOJI Credits</span>
-        <strong style={{ color: '#e74c3c' }}>{emojiBalance.toLocaleString()}</strong>
+        <strong style={{ color: '#e74c3c' }}>
+          {isLoading ? 'Loading...' : emojiBalance.toLocaleString()}
+        </strong>
       </div>
 
       {/* Basic Stats */}

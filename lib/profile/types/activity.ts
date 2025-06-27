@@ -1,26 +1,34 @@
 // lib/profile/types/activity.ts
 export type ActivityType = 
-  | 'read'      // Read an article
-  | 'create'    // Created a proposal or article
-  | 'fund'      // Funded a proposal
-  | 'vote'      // Voted on a proposal
-  | 'tip'       // Tipped an author
-  | 'comment';  // Commented on content
+  | 'gm'                // Said Good Morning
+  | 'bookmark'          // Bookmarked/unbookmarked content
+  | 'community-article' // Published community article
+  | 'portfolio-article' // Published portfolio article
+  | 'native-article'    // Published native article
+  | 'license-purchase'  // Purchased article license
+  | 'leaderboard'       // Updated leaderboard
+  | 'emoji-purchase'    // Purchased EMOJI tokens
+  | 'tip-sent'          // Sent a tip
+  | 'tip-received';     // Received a tip
 
 export interface ActivityItem {
   id: string;
-  profileId: string;
   type: ActivityType;
+  action: string;
   timestamp: string;
-  contentId: string;          // Article or proposal ID
-  contentType: 'article' | 'proposal';
-  contentTitle: string;
-  amount?: number;            // For funding/tipping activities
-  details?: string;           // Additional context
+  txHash: string;
+  blockNumber: number;
+  details?: {
+    title?: string;
+    amount?: string;
+    recipient?: string;
+    contentType?: 'article' | 'proposal';
+    tipType?: 'FLOW' | 'EMOJI';
+  };
 }
 
 export interface ActivityResponse {
   activities: ActivityItem[];
   total: number;
-  nextCursor?: string;
+  hasMore: boolean;
 }

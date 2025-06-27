@@ -1,0 +1,450 @@
+// components/profile/Bookmarks.tsx
+'use client'
+
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import BookmarkCard from './BookmarkCard';
+import BookmarkDetailModal from './modals/BookmarkDetailModal';
+import BookmarkContractService, { ContentType, Bookmark } from '@/lib/blockchain/contracts/BookmarkContract';
+import { Profile } from '../../lib/profile/types/profile';
+
+interface BookmarksProps {
+  profile: Profile;
+  isOwner: boolean;
+}
+
+interface BookmarkedContent {
+  id: string;
+  title: string;
+  summary: string;
+  contentType: 'article' | 'proposal';
+  author?: {
+    name: string;
+    address: string;
+  };
+  proposer?: {
+    name: string;
+    address: string;
+  };
+  createdAt: string;
+  bookmarkedAt: string;
+  category?: string;
+  tags?: string[];
+  imageUrl?: string;
+  location?: {
+    city: string;
+    state: string;
+  };
+  metrics?: {
+    views?: number;
+    comments?: number;
+    reactions?: number;
+    fundingAmount?: number;
+    fundingGoal?: number;
+  };
+}
+
+const CONTRACT_ADDRESS = '0x66f856f960AEF5011FdCc7383B9F81d2515930c9';
+
+// Mock content lookup services (replace with real services when available)
+const mockArticleService = {
+  async getArticle(id: string) {
+    console.log(`🔍 Looking up article: ${id}`);
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return {
+      id,
+      title: `Breaking: Miami Beach Development Project Approved`,
+      summary: `City council approves controversial high-rise development after heated debate. The project will transform the downtown waterfront with mixed-use buildings.`,
+      author: { name: 'Sarah Rodriguez', address: '0x1234...5678' },
+      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+      category: 'Local Politics',
+      location: { city: 'Miami', state: 'FL' },
+      imageUrl: `https://api.dicebear.com/7.x/shapes/svg?seed=article-${id}`,
+      metrics: {
+        views: Math.floor(Math.random() * 1000) + 100,
+        comments: Math.floor(Math.random() * 50) + 5,
+        reactions: Math.floor(Math.random() * 200) + 20
+      }
+    };
+  }
+};
+
+const mockProposalService = {
+  async getProposal(id: string) {
+    console.log(`🔍 Looking up proposal: ${id}`);
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return {
+      id,
+      title: `Investigate Climate Change Impact on Local Fishing Industry`,
+      summary: `Community proposal to fund investigative journalism on how rising sea temperatures are affecting Miami's fishing community and local economy.`,
+      proposer: { name: 'Maria Santos', address: '0x5678...9abc' },
+      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+      category: 'Environment',
+      location: { city: 'Miami', state: 'FL' },
+      imageUrl: `https://api.dicebear.com/7.x/shapes/svg?seed=proposal-${id}`,
+      metrics: {
+        fundingAmount: Math.floor(Math.random() * 1000) + 200,
+        fundingGoal: Math.floor(Math.random() * 1000) + 1500,
+        comments: Math.floor(Math.random() * 30) + 3
+      }
+    };
+  }
+};
+
+const Bookmarks: React.FC<BookmarksProps> = ({ profile, isOwner }) => {
+  // State for bookmarks and data
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [enrichedBookmarks, setEnrichedBookmarks] = useState<BookmarkedContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [enriching, setEnriching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'articles' | 'proposals'>('all');
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalData, setModalData] = useState<BookmarkedContent | null>(null);
+
+  // Load bookmarks data from blockchain
+  useEffect(() => {
+    async function loadBookmarks() {
+      if (!profile.walletAddress) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log('🔖 Loading bookmarks for:', profile.walletAddress);
+
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const service = new BookmarkContractService(CONTRACT_ADDRESS, provider);
+        
+        // Get user's bookmarks
+        const userBookmarks = await service.getUserBookmarks(profile.walletAddress);
+        
+        console.log('📊 Raw bookmark data:', userBookmarks);
+        console.log('📊 Bookmark count:', userBookmarks.length);
+        
+        // Log detailed bookmark info
+        userBookmarks.forEach((bookmark, index) => {
+          console.log(`📑 Bookmark ${index + 1}:`, {
+            contentId: bookmark.contentId,
+            contentType: bookmark.contentType === ContentType.ARTICLE ? 'ARTICLE' : 'PROPOSAL',
+            timestamp: new Date(Number(bookmark.timestamp) * 1000).toLocaleString(),
+            isActive: bookmark.isActive
+          });
+        });
+        
+        setBookmarks(userBookmarks);
+      } catch (err: any) {
+        console.error('❌ Error loading bookmarks:', err);
+        setError(err.message || 'Failed to load bookmarks');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBookmarks();
+  }, [profile.walletAddress]);
+
+  // Enrich bookmarks with actual content data
+  useEffect(() => {
+    async function enrichBookmarks() {
+      if (bookmarks.length === 0) {
+        setEnrichedBookmarks([]);
+        return;
+      }
+
+      try {
+        setEnriching(true);
+        console.log('🔄 Enriching', bookmarks.length, 'bookmarks with content data...');
+
+        const enrichedData: BookmarkedContent[] = [];
+
+        for (const bookmark of bookmarks) {
+          try {
+            console.log(`🔍 Enriching ${bookmark.contentType === ContentType.ARTICLE ? 'article' : 'proposal'} #${bookmark.contentId}`);
+            
+            if (bookmark.contentType === ContentType.ARTICLE) {
+              const articleData = await mockArticleService.getArticle(bookmark.contentId);
+              enrichedData.push({
+                id: bookmark.contentId,
+                title: articleData.title,
+                summary: articleData.summary,
+                contentType: 'article',
+                author: articleData.author,
+                createdAt: articleData.createdAt,
+                bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+                category: articleData.category,
+                location: articleData.location,
+                imageUrl: articleData.imageUrl,
+                metrics: {
+                  views: articleData.metrics.views,
+                  comments: articleData.metrics.comments,
+                  reactions: articleData.metrics.reactions
+                }
+              });
+            } else {
+              const proposalData = await mockProposalService.getProposal(bookmark.contentId);
+              enrichedData.push({
+                id: bookmark.contentId,
+                title: proposalData.title,
+                summary: proposalData.summary,
+                contentType: 'proposal',
+                proposer: proposalData.proposer,
+                createdAt: proposalData.createdAt,
+                bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+                category: proposalData.category,
+                location: proposalData.location,
+                imageUrl: proposalData.imageUrl,
+                metrics: {
+                  fundingAmount: proposalData.metrics.fundingAmount,
+                  fundingGoal: proposalData.metrics.fundingGoal,
+                  comments: proposalData.metrics.comments
+                }
+              });
+            }
+          } catch (contentError) {
+            console.error(`❌ Failed to enrich content ${bookmark.contentId}:`, contentError);
+            // Fall back to placeholder data for this bookmark
+            enrichedData.push({
+              id: bookmark.contentId,
+              title: `${bookmark.contentType === ContentType.ARTICLE ? 'Article' : 'Proposal'} #${bookmark.contentId}`,
+              summary: 'Content details unavailable',
+              contentType: bookmark.contentType === ContentType.ARTICLE ? 'article' : 'proposal',
+              createdAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+              bookmarkedAt: new Date(Number(bookmark.timestamp) * 1000).toISOString(),
+              category: 'Unknown',
+              location: { city: 'Miami', state: 'FL' }
+            });
+          }
+        }
+
+        console.log('✅ Enrichment complete:', enrichedData);
+        setEnrichedBookmarks(enrichedData);
+      } catch (err: any) {
+        console.error('❌ Error enriching bookmarks:', err);
+        setError('Failed to load bookmark details');
+      } finally {
+        setEnriching(false);
+      }
+    }
+
+    enrichBookmarks();
+  }, [bookmarks]);
+
+  const openModal = (bookmark: BookmarkedContent) => {
+    setModalData(bookmark);
+    setModalOpen(true);
+  };
+
+  // Filter bookmarks
+  const filteredBookmarks = enrichedBookmarks.filter(bookmark => {
+    if (filter === 'all') return true;
+    if (filter === 'articles') return bookmark.contentType === 'article';
+    if (filter === 'proposals') return bookmark.contentType === 'proposal';
+    return true;
+  });
+
+  const articleBookmarks = enrichedBookmarks.filter(b => b.contentType === 'article');
+  const proposalBookmarks = enrichedBookmarks.filter(b => b.contentType === 'proposal');
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '200px',
+        color: 'var(--color-black)',
+        opacity: 0.7,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid var(--color-digital-silver)',
+            borderTop: '3px solid var(--color-verification-green)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 1rem auto',
+          }} />
+          <span style={{ fontFamily: 'var(--font-ui)' }}>Loading bookmarks...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        textAlign: 'center',
+        padding: '2rem',
+        color: 'var(--color-typewriter-red)',
+      }}>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          marginBottom: '1rem',
+        }}>
+          Error Loading Bookmarks
+        </h3>
+        <p>{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '1rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: 'var(--color-typewriter-red)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (bookmarks.length === 0) {
+    return (
+      <div style={{
+        textAlign: 'center',
+        padding: '4rem 2rem',
+        color: 'var(--color-black)',
+        opacity: 0.7,
+      }}>
+        <div style={{
+          fontSize: '3rem',
+          marginBottom: '1rem',
+        }}>
+          🔖
+        </div>
+        <h3 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.5rem',
+          margin: '0 0 1rem 0',
+        }}>
+          No Bookmarks Yet
+        </h3>
+        <p style={{
+          fontSize: '1rem',
+          lineHeight: '1.5',
+          maxWidth: '400px',
+          margin: '0 auto',
+        }}>
+          {isOwner 
+            ? "You haven't bookmarked any content yet. Start bookmarking articles and proposals to see them here."
+            : "This user hasn't bookmarked any content yet."
+          }
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Bookmarks Header */}
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{
+          fontFamily: 'var(--font-headlines)',
+          fontSize: '1.5rem',
+          margin: '0 0 0.5rem 0',
+        }}>
+          Bookmarked Content ({enrichedBookmarks.length})
+        </h2>
+        <p style={{
+          fontSize: '0.95rem',
+          color: 'var(--color-black)',
+          opacity: 0.7,
+          margin: '0 0 1.5rem 0',
+        }}>
+          {isOwner ? 'Articles and proposals you\'ve saved for later reading' : 'Content this user has bookmarked'}
+        </p>
+
+        {/* Debug Info */}
+        {enriching && (
+          <div style={{
+            backgroundColor: 'var(--color-parchment)',
+            padding: '1rem',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            fontFamily: 'var(--font-ui)',
+            fontSize: '0.9rem',
+          }}>
+            🔄 Loading bookmark details... ({enrichedBookmarks.length}/{bookmarks.length} loaded)
+          </div>
+        )}
+
+        {/* Filter Tabs */}
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          borderBottom: '1px solid var(--color-digital-silver)',
+          marginBottom: '1.5rem',
+        }}>
+          {[
+            { key: 'all', label: `All (${enrichedBookmarks.length})` },
+            { key: 'articles', label: `Articles (${articleBookmarks.length})` },
+            { key: 'proposals', label: `Proposals (${proposalBookmarks.length})` }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key as any)}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '0.75rem 0',
+                fontFamily: 'var(--font-ui)',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                color: filter === tab.key ? 'var(--color-typewriter-red)' : 'var(--color-black)',
+                borderBottom: filter === tab.key ? '2px solid var(--color-typewriter-red)' : '2px solid transparent',
+                fontWeight: filter === tab.key ? 'bold' : 'normal',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bookmarks Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: '1.5rem',
+      }}>
+        {filteredBookmarks.map((bookmark) => (
+          <BookmarkCard
+            key={`${bookmark.contentType}-${bookmark.id}`}
+            bookmark={bookmark}
+            onClick={() => openModal(bookmark)}
+          />
+        ))}
+      </div>
+
+      {/* Bookmark Detail Modal */}
+      <BookmarkDetailModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        bookmark={modalData}
+      />
+
+      {/* Spinner Animation CSS */}
+      <style jsx>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Bookmarks;
