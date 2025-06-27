@@ -1,4 +1,6 @@
 // lib/locations/hooks/useLocationArticles.ts
+'use client'; 
+
 import { useState, useEffect, useRef } from 'react';
 import { useArticles } from '../../reader/hooks/useArticles';
 

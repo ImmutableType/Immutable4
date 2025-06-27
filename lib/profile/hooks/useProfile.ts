@@ -1,4 +1,6 @@
 // lib/profile/hooks/useProfile.ts
+'use client';
+
 import { useState, useEffect } from 'react';
 import { Profile } from '../types/profile';
 import { useProfileNFT } from './useProfileNFT';
