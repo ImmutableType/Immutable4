@@ -38,7 +38,7 @@ export class TippingService {
       const connectedContract = this.contract.connect(signer);
       const tipAmount = ethers.parseEther(amount);
       
-      const tx = await connectedContract.sendTip(publisherProfileAddress, {
+      const tx = await (connectedContract as any).sendTip(publisherProfileAddress, {
         value: tipAmount
       });
       
