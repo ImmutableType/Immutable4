@@ -116,7 +116,7 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
       name: author.name,
       stats: {
         articlesPublished: author.stats?.articlesPublished
-      }
+      } as any
     },
     contentHash,
     engagementMetrics: {
