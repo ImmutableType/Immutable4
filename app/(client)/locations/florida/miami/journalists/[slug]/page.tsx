@@ -11,14 +11,15 @@ import { useLocationArticles } from '../../../../../../../lib/locations/hooks/us
 import ArticleCard from '@/components/cards/types/ArticleCard';
 
 interface JournalistPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
-export default function JournalistPage({ params }: JournalistPageProps) {
+export default async function JournalistPage({ params }: JournalistPageProps) {
+  const { slug } = await params;
   // Extract the profile ID from the slug
-  const profileId = urlOptimizer.extractIdFromSlug(params.slug);
+  const profileId = urlOptimizer.extractIdFromSlug(slug);
   // Use the existing hook to fetch profile details
   const { profile, isLoading, error } = useProfile(profileId);
   if (isLoading) return <div>Loading journalist profile...</div>;
