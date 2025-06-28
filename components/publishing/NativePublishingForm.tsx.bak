@@ -6,10 +6,10 @@ import { ethers } from 'ethers';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '../../lib/hooks/useWallet';
 import { useHasPublisherToken } from '../../lib/hooks/useHasPublisherToken';
-import { useArticleEncryption } from '../../lib/encryption/hooks/useArticleEncryption'; // NEW IMPORT
 import EncryptedArticleService from '../../lib/blockchain/contracts/EncryptedArticleService';
 import NativeFeePayment from './NativeFeePayment';
 import EncryptionStatus from './EncryptionStatus';
+
 
 interface NativePublishingFormProps {
   authorId: string;
@@ -20,25 +20,16 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
   const { address, isConnected } = useWallet();
   const { hasPublisherToken, isLoading: tokenLoading } = useHasPublisherToken();
   
-  // NEW: Real encryption hook
-  const { 
-    encryptContent, 
-    isEncrypting, 
-    lastEncryptionResult, 
-    estimateEncryptedSize,
-    clearLastResult 
-  } = useArticleEncryption();
-  
   // Form state
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     summary: '',
-    location: 'Miami, FL',
+    location: 'Miami, FL', // Default to Miami
     category: 'News',
     tags: [] as string[],
     nftCount: 100,
-    nftPrice: 10.0,
+    nftPrice: 10.0, // in FLOW
     journalistRetained: 25,
     readerLicenseRatio: 10
   });
@@ -46,6 +37,7 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
   const [tagInput, setTagInput] = useState('');
   const [showFeePayment, setShowFeePayment] = useState(false);
   const [encryptedContent, setEncryptedContent] = useState('');
+  const [isEncrypting, setIsEncrypting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [userStats, setUserStats] = useState({ articlesToday: 0, remainingToday: 3 });
 
@@ -76,27 +68,19 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
     loadUserStats();
   }, [address, isConnected]);
 
-  // REPLACED: Real ChaCha20 encryption instead of base64
-  const handleEncryptContent = async (content: string): Promise<string> => {
-    console.log('🔐 Starting real ChaCha20 encryption...');
+  // Simple client-side encryption (placeholder - in production use proper encryption)
+  const encryptContent = async (content: string): Promise<string> => {
+    setIsEncrypting(true);
     
-    try {
-      const result = await encryptContent(content);
-      
-      if (result.success && result.encryptedContent) {
-        console.log('✅ Encryption successful:', {
-          originalSize: content.length,
-          encryptedSize: result.encryptedContent.length,
-          format: result.encryptedContent.substring(0, 50) + '...'
-        });
-        return result.encryptedContent;
-      } else {
-        throw new Error(result.error || 'Encryption failed');
-      }
-    } catch (error) {
-      console.error('❌ Encryption failed:', error);
-      throw error;
-    }
+    // Simulate encryption process
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In production, implement proper encryption here
+    // For now, we'll just base64 encode with a prefix
+    const encrypted = `ENCRYPTED_V1:${btoa(unescape(encodeURIComponent(content)))}`;
+    
+    setIsEncrypting(false);
+    return encrypted;
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -178,18 +162,10 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
       return;
     }
     
-    // Clear previous encryption result
-    clearLastResult();
-    
-    // UPDATED: Use real ChaCha20 encryption
-    try {
-      const encrypted = await handleEncryptContent(formData.content);
-      setEncryptedContent(encrypted);
-      setShowFeePayment(true);
-    } catch (error) {
-      console.error('Encryption failed:', error);
-      alert(`Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    // Encrypt content
+    const encrypted = await encryptContent(formData.content);
+    setEncryptedContent(encrypted);
+    setShowFeePayment(true);
   };
 
   const handlePublishSuccess = (result: any) => {
@@ -200,9 +176,6 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
   const handleCancel = () => {
     if (showFeePayment) {
       setShowFeePayment(false);
-      // Clear encryption result when going back
-      setEncryptedContent('');
-      clearLastResult();
     } else {
       router.push(`/profile/${authorId}/publish`);
     }
@@ -277,7 +250,6 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
           Publish Native Article
         </h1>
         
-        {/* UPDATED: Show real encryption status */}
         <EncryptionStatus 
           isEncrypting={isEncrypting}
           encryptedContentLength={encryptedContent.length}
@@ -305,7 +277,7 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
     );
   }
 
-  // Main form (unchanged from original, except encryption status)
+  // Main form
   return (
     <div>
       <h1 style={{
@@ -336,27 +308,6 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
           {userStats.remainingToday} remaining
         </div>
       </div>
-
-      {/* NEW: Show encryption status during form filling */}
-      {formData.content && (
-        <div style={{
-          backgroundColor: 'var(--color-parchment)',
-          padding: '1rem',
-          borderRadius: '4px',
-          marginBottom: '1.5rem',
-          fontSize: '0.9rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <div>
-            <strong>Content ready for encryption:</strong> {formData.content.length} characters
-          </div>
-          <div style={{ color: 'var(--color-blockchain-blue)' }}>
-            Estimated encrypted size: ~{estimateEncryptedSize(formData.content)} bytes
-          </div>
-        </div>
-      )}
 
       <form onSubmit={(e) => e.preventDefault()}>
         {/* Article Information */}
@@ -450,7 +401,7 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
               fontWeight: 'bold',
               marginBottom: '0.5rem',
             }}>
-              Article Content * <span style={{ color: 'var(--color-blockchain-blue)', fontSize: '0.8rem' }}>(Will be encrypted with ChaCha20-Poly1305)</span>
+              Article Content *
             </label>
             <textarea
               value={formData.content}
@@ -814,48 +765,22 @@ const NativePublishingForm: React.FC<NativePublishingFormProps> = ({ authorId })
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={userStats.remainingToday <= 0 || isEncrypting}
+            disabled={userStats.remainingToday <= 0}
             style={{
-              backgroundColor: (userStats.remainingToday > 0 && !isEncrypting) ? 'var(--color-typewriter-red)' : 'var(--color-digital-silver)',
+              backgroundColor: userStats.remainingToday > 0 ? 'var(--color-typewriter-red)' : 'var(--color-digital-silver)',
               color: 'var(--color-white)',
               fontFamily: 'var(--font-ui)',
               padding: '0.75rem 2rem',
               border: 'none',
               borderRadius: '4px',
-              cursor: (userStats.remainingToday > 0 && !isEncrypting) ? 'pointer' : 'default',
+              cursor: userStats.remainingToday > 0 ? 'pointer' : 'default',
               fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
             }}
           >
-            {isEncrypting ? (
-              <>
-                <div style={{
-                  width: '16px',
-                  height: '16px',
-                  border: '2px solid transparent',
-                  borderTop: '2px solid white',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                }} />
-                Encrypting...
-              </>
-            ) : userStats.remainingToday > 0 ? 
-              'Continue to Publishing' : 
-              'Daily Limit Reached'
-            }
+            {userStats.remainingToday > 0 ? 'Continue to Publishing' : 'Daily Limit Reached'}
           </button>
         </div>
       </form>
-
-      {/* CSS for spinner animation */}
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };
