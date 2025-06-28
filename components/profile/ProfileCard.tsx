@@ -111,32 +111,28 @@ const ProfileCard: React.FC<ProfileCardProps> = ({ profile, isCompact = false })
         </p>
       )}
 
-      {/* Metrics */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        marginTop: isCompact ? '0.5rem' : '1rem',
-        fontSize: '0.85rem',
-        fontFamily: 'var(--font-ui)',
-      }}>
-        <div>
-          <span style={{ fontWeight: 'bold' }}>{profile.metrics.articlesPublished}</span> Articles
-        </div>
-        <div>
-          <span style={{ fontWeight: 'bold' }}>{profile.metrics.proposalsCreated}</span> Proposals
-        </div>
-        {!isCompact && (
-          <>
-            <div>
-              <span style={{ fontWeight: 'bold' }}>{profile.metrics.proposalsFunded}</span> Funded
-            </div>
-            <div>
-              <span style={{ fontWeight: 'bold' }}>{profile.metrics.totalTipsReceived}</span> Tips
-            </div>
-          </>
-        )}
-      </div>
+
+
+
+
+
+
+{/* Location or Member Date */}
+{profile.location && (
+  <div style={{
+    fontSize: '0.85rem',
+    color: 'var(--color-digital-silver)',
+    marginTop: isCompact ? '0.5rem' : '1rem',
+  }}>
+    📍 {profile.location}
+  </div>
+)}
+
+
+
+
+
+
 
       {/* View Profile Button - Only on non-compact cards */}
       {!isCompact && (

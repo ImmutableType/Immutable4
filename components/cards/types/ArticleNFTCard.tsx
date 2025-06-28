@@ -360,13 +360,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
 
   // ADDED: Smart button configuration
   const getButtonConfig = () => {
-    if (ownership.isAuthor) {
-      return {
-        text: 'Your Article',
-        disabled: true,
-        backgroundColor: 'var(--color-verification-green)'
-      };
-    }
+
     
     if (ownership.isOwned) {
       return {
