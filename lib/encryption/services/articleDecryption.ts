@@ -48,12 +48,16 @@ import {
         // Parse encrypted content
         const encryptedData = this.parseEncryptedContent(encryptedContent);
         
-        // Derive decryption key
+        // 🔧 FIX: Extract numeric article ID and use "0" as license token for compatibility
+        const numericArticleId = articleId.replace(/^native_/, '');
+        
         const keyParams: KeyDerivationParams = {
           userAddress,
-          articleId,
-          licenseTokenId
+          articleId: numericArticleId,  // "14" instead of "native_14"
+          licenseTokenId: "0"           // "0" for publishing compatibility, not NFT token ID
         };
+        
+        console.log('🔑 Using key params for decryption:', keyParams);
         
         keyDerivationService.validateParams(keyParams);
         const decryptionKey = await keyDerivationService.deriveDecryptionKey(keyParams);
