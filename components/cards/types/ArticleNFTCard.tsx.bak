@@ -141,7 +141,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
           const price = await ammContract.calculatePurchasePrice(parseInt(article.id), 1);
           return ethers.formatEther(price);
         } catch (fallbackError) {
-          console.warn(`Unable to fetch license price for article ${article.id}, using default`);
+            console.debug(`Unable to fetch license price for article ${article.id}, using default`);
           return '0.1'; // Default fallback
         }
       }
@@ -360,13 +360,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
 
   // ADDED: Smart button configuration
   const getButtonConfig = () => {
-    if (ownership.isAuthor) {
-      return {
-        text: 'Your Article',
-        disabled: true,
-        backgroundColor: 'var(--color-verification-green)'
-      };
-    }
+
     
     if (ownership.isOwned) {
       return {

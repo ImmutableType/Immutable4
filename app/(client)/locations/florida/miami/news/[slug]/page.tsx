@@ -84,7 +84,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
         const existingSession = localStorage.getItem(sessionKey);
         let needsActivation = false;
         
-        if (accessInfo.hasAccess && accessInfo.licenseTokenId) {
+        if (accessInfo.hasAccess && accessInfo.tokenId) {
           // Check if this is a new reader license that needs activation
           if (!existingSession) {
             needsActivation = true;
@@ -94,7 +94,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
         setAccessDetails({
           hasAccess: accessInfo.hasAccess,
           accessType: accessInfo.hasAccess ? 'reader_license' : 'none',
-          tokenId: accessInfo.licenseTokenId || undefined,
+          tokenId: accessInfo.tokenId || undefined,
           expiryTime: accessInfo.expiryTime ? Number(accessInfo.expiryTime) : undefined,
           needsActivation
         });
@@ -416,7 +416,7 @@ try {
             Quick Reader License
           </h3>
           <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', opacity: 0.9 }}>
-            Unlock this article for 7 days with a micro-payment DONKEY 
+            Unlock this article for 7 days with a micro-payment
           </p>
           <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
             $0.15 FLOW

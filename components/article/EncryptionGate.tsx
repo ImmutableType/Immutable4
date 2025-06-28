@@ -1,67 +1,56 @@
-// components/article/EncryptionGate.tsx (ENHANCED VERSION - Agent A1 + A2 + A3)
+// components/article/EncryptionGate.tsx (FIXED - NFT + READER LICENSE + DECRYPTION)
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Article } from '../../lib/reader/types/article';
 import { useWallet } from '../../lib/hooks/useWallet';
 import { useContentDecryption } from '../../lib/encryption/hooks/useContentDecryption';
-import { ReaderLicenseAMMService } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
+import { ReaderLicenseAMMService, LicenseAccess } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
 
 interface EncryptionGateProps {
   article: Article;
   onDecrypt?: (success: boolean) => void;
 }
 
-interface AccessDetails {
-  hasAccess: boolean;
-  accessType: 'nft_owner' | 'reader_license' | 'none';
-  tokenId?: string;
-  expiryTime?: number;
-  needsActivation?: boolean;
-}
-
 const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) => {
   const { address: userAddress, isConnected, connect } = useWallet();
   const { decryptContent } = useContentDecryption();
   
-  // ✅ Enhanced State Management (Agent A2)
+  // ✅ Enhanced State Management
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState<'license' | 'nft'>('license');
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // ✅ Enhanced Access Detection (Agent A2)
-  const [accessDetails, setAccessDetails] = useState<AccessDetails | null>(null);
+  // ✅ FIXED: Access Detection State
+  const [accessDetails, setAccessDetails] = useState<LicenseAccess | null>(null);
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   
-  // ✅ Decryption State (Agent A1 + A2)
+  // ✅ Decryption State
   const [decryptedContent, setDecryptedContent] = useState('');
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
   
-  // ✅ Reader License Activation (Agent A2)
+  // ✅ Reader License Activation
   const [showActivationConfirm, setShowActivationConfirm] = useState(false);
   const [activatingLicense, setActivatingLicense] = useState(false);
   
-  // ✅ Purchase Infrastructure (Current + Enhanced)
+  // ✅ Purchase Infrastructure
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [licenseSellers, setLicenseSellers] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
 
-  // Initialize license service
+  // Initialize license service with correct address
   const [licenseService, setLicenseService] = useState<ReaderLicenseAMMService | null>(null);
 
   useEffect(() => {
     if (window.ethereum) {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const service = new ReaderLicenseAMMService(
-        '0x4E0f2A3A8AfEd1f86D83AAB1a989E01c316996d2',
-        provider
-      );
+      const service = new ReaderLicenseAMMService(undefined, provider); // Use default addresses
       setLicenseService(service);
     }
   }, []);
 
-  // ✅ ENHANCED ACCESS DETECTION (Agent A2)
+  // ✅ ENHANCED ACCESS DETECTION - Uses new getAccessDetails method
   useEffect(() => {
     const checkAccess = async () => {
       if (!userAddress || !article || !licenseService) return;
@@ -69,35 +58,18 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       setIsCheckingAccess(true);
       try {
         const numericId = article.id.toString().replace(/[^0-9]/g, '');
+        console.log('🔍 ENCRYPTION GATE: Checking access for article:', numericId, 'user:', userAddress);
         
-        // Enhanced access details check
-        const accessInfo = await licenseService.getAccessDetails(
-          numericId, 
-          userAddress
-        );
+        // ✅ FIXED: Use enhanced access detection
+        const accessInfo = await licenseService.getAccessDetails(numericId, userAddress);
         
-        // Check for existing active sessions in localStorage
-        const sessionKey = `article_${article.id}_${userAddress}`;
-        const existingSession = localStorage.getItem(sessionKey);
-        let needsActivation = false;
-        
-        if (accessInfo.hasAccess && accessInfo.licenseTokenId) {
-          // Check if this is a new reader license that needs activation
-          if (!existingSession) {
-            needsActivation = true;
-          }
-        }
-        
-        setAccessDetails({
-          hasAccess: accessInfo.hasAccess,
-          accessType: accessInfo.hasAccess ? 'reader_license' : 'none',
-          tokenId: accessInfo.licenseTokenId || undefined,
-          expiryTime: accessInfo.expiryTime ? Number(accessInfo.expiryTime) : undefined,
-          needsActivation
-        });
+        console.log('🔍 ENCRYPTION GATE: Access result:', accessInfo);
+        setAccessDetails(accessInfo);
 
-        // Also fetch purchase info
-        await fetchLicenseInfo();
+        // Also fetch purchase info for non-owners
+        if (!accessInfo.hasAccess) {
+          await fetchLicenseInfo();
+        }
         
       } catch (err) {
         console.error('❌ Access check failed:', err);
@@ -116,15 +88,22 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     checkAccess();
   }, [userAddress, article, licenseService]);
 
-  // ✅ DECRYPTION LOGIC (Agent A1 + A2)
+  // ✅ FIXED DECRYPTION LOGIC with correct parameter order
   useEffect(() => {
     const handleDecryption = async () => {
       if (!article || !accessDetails?.hasAccess || !accessDetails.tokenId || !userAddress) {
         return;
       }
 
+      // Skip activation requirement - direct decryption for NFT owners
+      if (accessDetails.needsActivation && accessDetails.accessType !== 'nft_owner') {
+        console.log('🔓 Reader license needs activation - skipping auto-decryption');
+        return;
+      }
+
       const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
       if (!isEncrypted) {
+        console.log('📄 Content not encrypted, using plain content');
         setDecryptedContent(article.content || '');
         return;
       }
@@ -136,15 +115,24 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       if (cachedContent) {
         console.log('📱 Using cached decrypted content');
         setDecryptedContent(cachedContent);
+        onDecrypt?.(true);
         return;
       }
 
-      // Decrypt content using Agent A1's infrastructure
+      // ✅ FIXED: Correct parameter order for decryption
       setIsDecrypting(true);
       setDecryptionError(null);
       
       try {
         console.log('🔓 Decrypting content for article:', article.id);
+        console.log('🔓 Parameters:', {
+          encryptedContent: article.content.substring(0, 50) + '...',
+          articleId: article.id.toString(),
+          licenseTokenId: accessDetails.tokenId,
+          userAddress
+        });
+        
+        // ✅ FIXED: Correct parameter order - (encryptedContent, articleId, licenseTokenId)
         const result = await decryptContent(
           article.content,
           article.id.toString(),
@@ -157,7 +145,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           // Cache the decrypted content
           const expiryTime = accessDetails.accessType === 'nft_owner' 
             ? Date.now() + (365 * 24 * 60 * 60 * 1000) // 1 year for NFT owners
-            : (accessDetails.expiryTime || Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days for licenses
+            : (accessDetails.expiryTime ? Number(accessDetails.expiryTime) * 1000 : Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days for licenses
             
           localStorage.setItem(cacheKey, result.content);
           localStorage.setItem(`${cacheKey}_expiry`, expiryTime.toString());
@@ -178,7 +166,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     handleDecryption();
   }, [article, accessDetails, userAddress, decryptContent, onDecrypt]);
 
-  // ✅ LICENSE INFO FETCHING (Current + Enhanced)
+  // ✅ LICENSE INFO FETCHING
   const fetchLicenseInfo = async () => {
     if (!licenseService || !article) return;
 
@@ -199,7 +187,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     }
   };
 
-  // ✅ READER LICENSE ACTIVATION (Agent A2)
+  // ✅ READER LICENSE ACTIVATION
   const handleActivateReaderLicense = async () => {
     if (!accessDetails?.tokenId || !userAddress || !article) return;
     
@@ -210,7 +198,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       const activationData = {
         tokenId: accessDetails.tokenId,
         activatedAt: Date.now(),
-        expiryTime: accessDetails.expiryTime || Date.now() + (7 * 24 * 60 * 60 * 1000)
+        expiryTime: accessDetails.expiryTime ? Number(accessDetails.expiryTime) * 1000 : Date.now() + (7 * 24 * 60 * 60 * 1000)
       };
       
       localStorage.setItem(sessionKey, JSON.stringify(activationData));
@@ -227,7 +215,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     }
   };
 
-  // ✅ ENHANCED PURCHASE HANDLER (Current + Improved)
+  // ✅ FIXED: Real Purchase Handler with correct buy + burn flow
   const handleRealPurchase = async () => {
     if (!isConnected) {
       await connect();
@@ -251,31 +239,39 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         throw new Error('No licenses available for purchase');
       }
 
+      console.log('🔄 Starting purchase flow for article:', articleId);
+      
       // Step 1: Buy license from first available seller
-      console.log('Purchasing license from:', licenseSellers[0]);
+      console.log('💰 Purchasing license from:', licenseSellers[0]);
       const buyTx = await licenseService.buyLicense(articleId, licenseSellers[0], signer);
-      console.log('Purchase transaction sent:', buyTx.hash);
+      console.log('✅ Purchase transaction sent:', buyTx.hash);
       
       await buyTx.wait();
-      console.log('Purchase confirmed');
+      console.log('✅ Purchase confirmed');
 
       // Step 2: Burn license for 7-day access
-      console.log('Burning license for access...');
+      console.log('🔥 Burning license for access...');
       const burnTx = await licenseService.burnLicenseForAccess(articleId, signer);
-      console.log('Burn transaction sent:', burnTx.hash);
+      console.log('✅ Burn transaction sent:', burnTx.hash);
       
       await burnTx.wait();
-      console.log('Burn confirmed');
+      console.log('✅ Burn confirmed - access granted');
 
-      // Step 3: Refresh access details
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Step 3: Refresh access details instead of full reload
+      setShowPurchaseModal(false);
+      setIsProcessing(false);
+      
+      // Re-check access after successful purchase
+      setTimeout(async () => {
+        if (licenseService) {
+          const updatedAccess = await licenseService.getAccessDetails(articleId, userAddress);
+          setAccessDetails(updatedAccess);
+        }
+      }, 2000);
 
     } catch (error: any) {
-      console.error('Purchase failed:', error);
+      console.error('❌ Purchase failed:', error);
       setError(error.message || 'Purchase failed. Please try again.');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -292,10 +288,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
   if (accessDetails?.hasAccess && !accessDetails.needsActivation) {
     return (
       <main style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-        {/* ✅ Access Status Display */}
+        {/* ✅ Enhanced Access Status Display */}
         <div style={{
           padding: '1rem',
-          backgroundColor: 'var(--color-verification-green)',
+          backgroundColor: accessDetails.accessType === 'nft_owner' ? '#1D7F6E' : 'var(--color-verification-green)',
           color: 'white',
           borderRadius: '8px',
           marginBottom: '2rem',
@@ -303,14 +299,16 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           alignItems: 'center',
           gap: '0.75rem'
         }}>
-          <span style={{ fontSize: '1.5rem' }}>✅</span>
+          <span style={{ fontSize: '1.5rem' }}>
+            {accessDetails.accessType === 'nft_owner' ? '🎨' : '✅'}
+          </span>
           <div>
             <div style={{ fontWeight: '600' }}>
-              {accessDetails.accessType === 'nft_owner' ? 'Article Owned (NFT)' : 'Reader License Active'}
+              {accessDetails.accessType === 'nft_owner' ? 'NFT Owner - Permanent Access' : 'Reader License Active'}
             </div>
             <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-              {accessDetails.accessType === 'nft_owner' ? 'Permanent access' : 
-               accessDetails.expiryTime ? `Expires: ${new Date(accessDetails.expiryTime).toLocaleDateString()}` : '7-day access'}
+              {accessDetails.accessType === 'nft_owner' ? 'You own this article as an NFT' : 
+               accessDetails.expiryTime ? `Expires: ${new Date(Number(accessDetails.expiryTime) * 1000).toLocaleDateString()}` : '7-day access'}
             </div>
           </div>
         </div>
@@ -331,10 +329,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
               marginBottom: '1rem',
               color: 'var(--color-typewriter-red)'
             }}>
-              ImmutableType is decrypting your premium content...
+              Decrypting your content...
             </h3>
             <p style={{ fontSize: '1rem', color: 'var(--color-digital-silver)', margin: 0 }}>
-              The first blockchain platform supporting local journalism
+              {accessDetails.accessType === 'nft_owner' ? 'NFT ownership verified' : 'Reader license validated'}
             </p>
           </div>
         )}
@@ -419,10 +417,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             marginBottom: '1rem',
             margin: 0
           }}>
-            Start Your 7-Day Reading Period
+            Activate Your Reader License
           </h3>
           <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', opacity: 0.9 }}>
-            7 days of access for less than a penny a day! 
+            Start your 7-day reading period for this article
           </p>
           <button
             onClick={() => setShowActivationConfirm(true)}
@@ -558,10 +556,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
               marginBottom: '0.5rem',
               color: 'var(--color-typewriter-red)'
             }}>
-              Encrypted Premium Content
+              Premium Content
             </h3>
             <p style={{ fontSize: '1rem', color: 'var(--color-digital-silver)', margin: 0 }}>
-              This article contains exclusive insights worth unlocking
+              We don't find access for your wallet
             </p>
           </div>
         </div>

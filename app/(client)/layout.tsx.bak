@@ -7,13 +7,14 @@ import { ethers } from 'ethers'
 import { WalletConnect } from '../../components/wallet/WalletConnect'
 import { useWallet } from '../../lib/hooks/useWallet'
 
-// Contract addresses and ABIs
+// Contract addresses - REAL DEPLOYED ADDRESSES
 const EMOJI_TOKEN_ADDRESS = '0x572F036576D1D9F41876e714D47f69CEa6933c36';
 const BOOKMARK_CONTRACT_ADDRESS = '0x66f856f960AEF5011FdCc7383B9F81d2515930c9';
-const COMMUNITY_ARTICLES_ADDRESS = '0x[DEPLOY_ADDRESS]'; // TODO: Deploy and update
-const PORTFOLIO_ARTICLES_ADDRESS = '0x[DEPLOY_ADDRESS]'; // TODO: Deploy and update
+const COMMUNITY_ARTICLES_ADDRESS = '0xD3d12E3b86Ed9f8Cdd095E0f90EDF7eE61Eb8611';
+const PORTFOLIO_ARTICLES_ADDRESS = '0xF2Da11169CE742Ea0B75B7207E774449e26f8ee1';
 const LEADERBOARD_V4_ADDRESS = '0x5001A51d7479a9cd91Ac4CBEB81931f197F63d56';
 
+// Contract ABIs - Minimal required functions
 const EMOJI_TOKEN_ABI = ["function balanceOf(address) view returns (uint256)"];
 const BOOKMARK_ABI = ["function getUserBookmarkCount(address) view returns (uint256)"];
 const ARTICLES_ABI = ["function getUserPostingStats(address) view returns (uint256 totalPosts, uint256 postsToday, uint256 remainingToday)"];
@@ -37,7 +38,6 @@ export default function ClientLayout({
     emojiBalance: '0',
     bookmarkCount: 0,
     curatedCount: 0,
-    userRank: 0,
     userScore: 0,
     loading: true
   })
@@ -82,7 +82,6 @@ export default function ClientLayout({
           emojiBalance: '0',
           bookmarkCount: 0,
           curatedCount: 0,
-          userRank: 0,
           userScore: 0,
           loading: false
         })
@@ -116,11 +115,9 @@ export default function ClientLayout({
           console.error('Error loading bookmark count:', error)
         }
 
-        // Load curated count (Community + Portfolio articles)
+        // Load curated count (Community + Portfolio articles) - NOW WITH REAL ADDRESSES
         let curatedCount = 0
         try {
-          // TODO: Uncomment when contracts are deployed
-          /*
           const communityContract = new ethers.Contract(COMMUNITY_ARTICLES_ADDRESS, ARTICLES_ABI, rpcProvider)
           const portfolioContract = new ethers.Contract(PORTFOLIO_ARTICLES_ADDRESS, ARTICLES_ABI, rpcProvider)
           
@@ -128,23 +125,17 @@ export default function ClientLayout({
           const [portfolioStats] = await portfolioContract.getUserPostingStats(address)
           
           curatedCount = Number(communityStats) + Number(portfolioStats)
-          */
-          console.debug('Curated count (TODO - contracts not deployed):', curatedCount)
+          console.debug('Curated count:', curatedCount, '(Community:', Number(communityStats), 'Portfolio:', Number(portfolioStats), ')')
         } catch (error) {
           console.error('Error loading curated count:', error)
         }
 
-        // Load leaderboard rank
-        let userRank = 0
+        // Load leaderboard score - USE ON-CHAIN CONTRACT DATA (SOURCE OF TRUTH)
         let userScore = 0
         try {
           const leaderboard = new ethers.Contract(LEADERBOARD_V4_ADDRESS, LEADERBOARD_V4_ABI, rpcProvider)
           userScore = Number(await leaderboard.getUserLiveScore(address))
-          
-          // TODO: To get actual rank, we'd need to fetch all users and sort
-          // For now, just show the score
-          userRank = userScore > 0 ? 999 : 0 // Placeholder until we implement full ranking
-          console.debug('User score:', userScore)
+          console.debug('User score (on-chain):', userScore)
         } catch (error) {
           console.error('Error loading leaderboard data:', error)
         }
@@ -153,7 +144,6 @@ export default function ClientLayout({
           emojiBalance,
           bookmarkCount,
           curatedCount,
-          userRank,
           userScore,
           loading: false
         })
@@ -166,6 +156,19 @@ export default function ClientLayout({
 
     loadDashboardData()
   }, [address, isConnected])
+
+// Listen for EMOJI purchase events
+useEffect(() => {
+  const handleBalanceChange = () => {
+    console.log('🔔 EMOJI balance change event received, refreshing dashboard...');
+    if (address && isConnected) {
+      console.log('EMOJI balance change detected - would refresh here');
+    }
+  };
+  
+  window.addEventListener('emojiBalanceChanged', handleBalanceChange);
+  return () => window.removeEventListener('emojiBalanceChanged', handleBalanceChange);
+}, [address, isConnected]);
   
   return (
     <div style={{ 
@@ -465,7 +468,7 @@ export default function ClientLayout({
                     <span style={{ fontSize: '12px', color: '#666' }}>Curated</span>
                   </div>
                   
-                  {/* Leaderboard Rank - Real blockchain data */}
+                  {/* Leaderboard Score - Real blockchain data (SOURCE OF TRUTH) */}
                   <div style={{
                     display: 'flex',
                     flexDirection: 'column',

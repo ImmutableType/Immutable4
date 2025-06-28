@@ -1,73 +1,189 @@
-// components/article/EncryptionGate.tsx (REAL BLOCKCHAIN VERSION)
+// components/article/EncryptionGate.tsx (ENHANCED VERSION - Agent A1 + A2 + A3)
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Article } from '../../lib/reader/types/article';
 import { useWallet } from '../../lib/hooks/useWallet';
+import { useContentDecryption } from '../../lib/encryption/hooks/useContentDecryption';
 import { ReaderLicenseAMMService } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
-import { CONTRACT_ADDRESSES } from '../../lib/constants/deployments';
 
 interface EncryptionGateProps {
   article: Article;
   onDecrypt?: (success: boolean) => void;
 }
 
+interface AccessDetails {
+  hasAccess: boolean;
+  accessType: 'nft_owner' | 'reader_license' | 'none';
+  tokenId?: string;
+  expiryTime?: number;
+  needsActivation?: boolean;
+}
+
 const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) => {
-  const { address, provider, isConnected, connect } = useWallet();
+  const { address: userAddress, isConnected, connect } = useWallet();
+  const { decryptContent } = useContentDecryption();
+  
+  // ✅ Enhanced State Management (Agent A2)
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchaseType, setPurchaseType] = useState<'license' | 'nft'>('license');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [hasReaderLicense, setHasReaderLicense] = useState(false);
+  
+  // ✅ Enhanced Access Detection (Agent A2)
+  const [accessDetails, setAccessDetails] = useState<AccessDetails | null>(null);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  
+  // ✅ Decryption State (Agent A1 + A2)
+  const [decryptedContent, setDecryptedContent] = useState('');
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptionError, setDecryptionError] = useState<string | null>(null);
+  
+  // ✅ Reader License Activation (Agent A2)
+  const [showActivationConfirm, setShowActivationConfirm] = useState(false);
+  const [activatingLicense, setActivatingLicense] = useState(false);
+  
+  // ✅ Purchase Infrastructure (Current + Enhanced)
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [licenseSellers, setLicenseSellers] = useState<string[]>([]);
-  const [accessExpiryTime, setAccessExpiryTime] = useState<bigint | null>(null);
   const [error, setError] = useState<string>('');
 
   // Initialize license service
   const [licenseService, setLicenseService] = useState<ReaderLicenseAMMService | null>(null);
 
   useEffect(() => {
-    if (provider) {
-      const service = new ReaderLicenseAMMService(CONTRACT_ADDRESSES.READER_LICENSE_AMM, provider);
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const service = new ReaderLicenseAMMService(
+        '0x4E0f2A3A8AfEd1f86D83AAB1a989E01c316996d2',
+        provider
+      );
       setLicenseService(service);
     }
-  }, [provider]);
+  }, []);
 
-  // Check user's access status when wallet connects or article changes
+  // ✅ ENHANCED ACCESS DETECTION (Agent A2)
   useEffect(() => {
-    if (isConnected && address && licenseService && article.id) {
-      checkReaderAccess();
-      fetchLicenseInfo();
-    }
-  }, [isConnected, address, licenseService, article.id]);
-
-  const checkReaderAccess = async () => {
-    if (!licenseService || !address) return;
-
-    try {
-      // Extract numeric ID from article ID (remove any prefixes)
-      const articleId = article.id.replace(/[^0-9]/g, '');
+    const checkAccess = async () => {
+      if (!userAddress || !article || !licenseService) return;
       
-      const hasAccess = await licenseService.hasActiveAccess(articleId, address);
-      setHasReaderLicense(hasAccess);
-
-      if (hasAccess) {
-        // Get access expiry time
-        const accessInfo = await licenseService.getAccessInfo(articleId, address);
-        if (accessInfo) {
-          setAccessExpiryTime(accessInfo.expiryTime);
+      setIsCheckingAccess(true);
+      try {
+        const numericId = article.id.toString().replace(/[^0-9]/g, '');
+        
+        // Enhanced access details check
+        const accessInfo = await licenseService.getAccessDetails(
+          numericId, 
+          userAddress
+        );
+        
+        // Check for existing active sessions in localStorage
+        const sessionKey = `article_${article.id}_${userAddress}`;
+        const existingSession = localStorage.getItem(sessionKey);
+        let needsActivation = false;
+        
+        if (accessInfo.hasAccess && accessInfo.licenseTokenId) {
+          // Check if this is a new reader license that needs activation
+          if (!existingSession) {
+            needsActivation = true;
+          }
         }
-      }
-    } catch (error) {
-      console.error('Error checking reader access:', error);
-    }
-  };
+        
+        setAccessDetails({
+          hasAccess: accessInfo.hasAccess,
+          accessType: accessInfo.hasAccess ? 'reader_license' : 'none',
+          tokenId: accessInfo.licenseTokenId || undefined,
+          expiryTime: accessInfo.expiryTime ? Number(accessInfo.expiryTime) : undefined,
+          needsActivation
+        });
 
+        // Also fetch purchase info
+        await fetchLicenseInfo();
+        
+      } catch (err) {
+        console.error('❌ Access check failed:', err);
+        setAccessDetails({
+          hasAccess: false,
+          accessType: 'none'
+        });
+        
+        // Still try to fetch purchase info for non-owners
+        await fetchLicenseInfo();
+      } finally {
+        setIsCheckingAccess(false);
+      }
+    };
+
+    checkAccess();
+  }, [userAddress, article, licenseService]);
+
+  // ✅ DECRYPTION LOGIC (Agent A1 + A2)
+  useEffect(() => {
+    const handleDecryption = async () => {
+      if (!article || !accessDetails?.hasAccess || !accessDetails.tokenId || !userAddress) {
+        return;
+      }
+
+      const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
+      if (!isEncrypted) {
+        setDecryptedContent(article.content || '');
+        return;
+      }
+
+      // Check localStorage cache first
+      const cacheKey = `decrypted_${article.id}_${userAddress}_${accessDetails.tokenId}`;
+      const cachedContent = localStorage.getItem(cacheKey);
+      
+      if (cachedContent) {
+        console.log('📱 Using cached decrypted content');
+        setDecryptedContent(cachedContent);
+        return;
+      }
+
+      // Decrypt content using Agent A1's infrastructure
+      setIsDecrypting(true);
+      setDecryptionError(null);
+      
+      try {
+        console.log('🔓 Decrypting content for article:', article.id);
+        const result = await decryptContent(
+          article.content,
+          article.id.toString(),
+          accessDetails.tokenId
+        );
+
+        if (result.success && result.content) {
+          setDecryptedContent(result.content);
+          
+          // Cache the decrypted content
+          const expiryTime = accessDetails.accessType === 'nft_owner' 
+            ? Date.now() + (365 * 24 * 60 * 60 * 1000) // 1 year for NFT owners
+            : (accessDetails.expiryTime || Date.now() + (7 * 24 * 60 * 60 * 1000)); // 7 days for licenses
+            
+          localStorage.setItem(cacheKey, result.content);
+          localStorage.setItem(`${cacheKey}_expiry`, expiryTime.toString());
+          
+          console.log('✅ Content decrypted and cached successfully');
+          onDecrypt?.(true);
+        } else {
+          throw new Error(result.error || 'Decryption failed');
+        }
+      } catch (err) {
+        console.error('❌ Decryption failed:', err);
+        setDecryptionError(`Decryption failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setIsDecrypting(false);
+      }
+    };
+
+    handleDecryption();
+  }, [article, accessDetails, userAddress, decryptContent, onDecrypt]);
+
+  // ✅ LICENSE INFO FETCHING (Current + Enhanced)
   const fetchLicenseInfo = async () => {
-    if (!licenseService) return;
+    if (!licenseService || !article) return;
 
     try {
-      const articleId = article.id.replace(/[^0-9]/g, '');
+      const articleId = article.id.toString().replace(/[^0-9]/g, '');
       
       // Get current price
       const price = await licenseService.getCurrentPrice(articleId);
@@ -75,20 +191,50 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
 
       // Get available license sellers
       const { holders } = await licenseService.getLicenseHolders(articleId);
-      setLicenseSellers(holders.filter(holder => holder !== address)); // Exclude self
+      setLicenseSellers(holders.filter(holder => holder !== userAddress)); // Exclude self
     } catch (error) {
       console.error('Error fetching license info:', error);
       setCurrentPrice('0.05'); // Fallback price
+      setLicenseSellers([]); // No licenses available
     }
   };
 
+  // ✅ READER LICENSE ACTIVATION (Agent A2)
+  const handleActivateReaderLicense = async () => {
+    if (!accessDetails?.tokenId || !userAddress || !article) return;
+    
+    setActivatingLicense(true);
+    try {
+      // Record the activation in localStorage
+      const sessionKey = `article_${article.id}_${userAddress}`;
+      const activationData = {
+        tokenId: accessDetails.tokenId,
+        activatedAt: Date.now(),
+        expiryTime: accessDetails.expiryTime || Date.now() + (7 * 24 * 60 * 60 * 1000)
+      };
+      
+      localStorage.setItem(sessionKey, JSON.stringify(activationData));
+      
+      // Update access details to remove activation requirement
+      setAccessDetails(prev => prev ? { ...prev, needsActivation: false } : null);
+      setShowActivationConfirm(false);
+      
+      console.log('✅ Reader license activated successfully');
+    } catch (err) {
+      console.error('❌ License activation failed:', err);
+    } finally {
+      setActivatingLicense(false);
+    }
+  };
+
+  // ✅ ENHANCED PURCHASE HANDLER (Current + Improved)
   const handleRealPurchase = async () => {
     if (!isConnected) {
       await connect();
       return;
     }
 
-    if (!licenseService || !provider || !address) {
+    if (!licenseService || !userAddress) {
       setError('Wallet not properly connected');
       return;
     }
@@ -97,8 +243,9 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     setError('');
 
     try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const articleId = article.id.replace(/[^0-9]/g, '');
+      const articleId = article.id.toString().replace(/[^0-9]/g, '');
 
       if (licenseSellers.length === 0) {
         throw new Error('No licenses available for purchase');
@@ -120,22 +267,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       await burnTx.wait();
       console.log('Burn confirmed');
 
-      // Step 3: Verify access granted
-      const hasAccess = await licenseService.hasActiveAccess(articleId, address);
-      
-      if (hasAccess) {
-        setHasReaderLicense(true);
-        setShowPurchaseModal(false);
-        onDecrypt?.(true);
-        
-        // Get new expiry time
-        const accessInfo = await licenseService.getAccessInfo(articleId, address);
-        if (accessInfo) {
-          setAccessExpiryTime(accessInfo.expiryTime);
-        }
-      } else {
-        throw new Error('Access verification failed after purchase');
-      }
+      // Step 3: Refresh access details
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
 
     } catch (error: any) {
       console.error('Purchase failed:', error);
@@ -153,52 +288,78 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     }
   };
 
-  // Calculate remaining access time
-  const getRemainingTime = () => {
-    if (!accessExpiryTime) return '';
-    
-    const now = BigInt(Math.floor(Date.now() / 1000));
-    const remaining = accessExpiryTime - now;
-    
-    if (remaining <= 0) return 'Expired';
-    
-    const days = Number(remaining) / (24 * 60 * 60);
-    if (days >= 1) {
-      return `${Math.floor(days)} days remaining`;
-    } else {
-      const hours = Number(remaining) / (60 * 60);
-      return `${Math.floor(hours)} hours remaining`;
-    }
-  };
-
-  // If user has access, show decrypted content
-  if (article.hasAccess || hasReaderLicense) {
+  // ✅ IF USER HAS ACCESS - SHOW DECRYPTED CONTENT
+  if (accessDetails?.hasAccess && !accessDetails.needsActivation) {
     return (
       <main style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-        {/* Success Banner */}
+        {/* ✅ Access Status Display */}
         <div style={{
           padding: '1rem',
-          background: 'linear-gradient(135deg, var(--color-verification-green), #1a6b5c)',
+          backgroundColor: 'var(--color-verification-green)',
           color: 'white',
           borderRadius: '8px',
           marginBottom: '2rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          flexWrap: 'wrap'
+          gap: '0.75rem'
         }}>
-          <span style={{ fontSize: '1.5rem' }}>🔓</span>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>
-              Article Unlocked Successfully
+          <span style={{ fontSize: '1.5rem' }}>✅</span>
+          <div>
+            <div style={{ fontWeight: '600' }}>
+              {accessDetails.accessType === 'nft_owner' ? 'Article Owned (NFT)' : 'Reader License Active'}
             </div>
             <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-              {accessExpiryTime ? `Reader license active - ${getRemainingTime()}` : 'Full access granted'}
+              {accessDetails.accessType === 'nft_owner' ? 'Permanent access' : 
+               accessDetails.expiryTime ? `Expires: ${new Date(accessDetails.expiryTime).toLocaleDateString()}` : '7-day access'}
             </div>
           </div>
         </div>
 
-        {/* Decrypted Content */}
+        {/* ✅ Decryption Loading State */}
+        {isDecrypting && (
+          <div style={{
+            padding: '2rem',
+            backgroundColor: 'var(--color-parchment)',
+            borderRadius: '12px',
+            marginBottom: '2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔓</div>
+            <h3 style={{
+              fontFamily: 'var(--font-headlines)',
+              fontSize: '1.5rem',
+              marginBottom: '1rem',
+              color: 'var(--color-typewriter-red)'
+            }}>
+              ImmutableType is decrypting your premium content...
+            </h3>
+            <p style={{ fontSize: '1rem', color: 'var(--color-digital-silver)', margin: 0 }}>
+              The first blockchain platform supporting local journalism
+            </p>
+          </div>
+        )}
+
+        {/* ✅ Error Handling for Decryption */}
+        {decryptionError && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#ffebee',
+            color: '#c62828',
+            borderRadius: '8px',
+            marginBottom: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: '600' }}>Decryption Error</div>
+              <div style={{ fontSize: '0.9rem' }}>{decryptionError}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ DECRYPTED CONTENT DISPLAY */}
         <div style={{
           fontSize: '1.1rem',
           lineHeight: '1.8',
@@ -206,19 +367,160 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           wordBreak: 'break-word',
           overflowWrap: 'break-word'
         }}>
-          {article.content.split('\n').map((paragraph: string, index: number) => (
-            paragraph.trim() && (
-              <p key={index} style={{ marginBottom: '1.5rem' }}>
-                {paragraph}
-              </p>
-            )
-          ))}
+          {(() => {
+            const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
+            const contentToDisplay = isEncrypted ? decryptedContent : article.content;
+            
+            if (!contentToDisplay) {
+              return article.summary && (
+                <p style={{ marginBottom: '1.5rem', textAlign: 'justify', fontStyle: 'italic' }}>
+                  {article.summary}
+                </p>
+              );
+            }
+            
+            // Enhanced paragraph preservation
+            return contentToDisplay.split(/\n\s*\n/).map((paragraph: string, index: number) => {
+              const trimmedParagraph = paragraph.trim();
+              if (!trimmedParagraph) return null;
+              
+              return (
+                <p key={index} style={{ 
+                  marginBottom: '1.5rem', 
+                  textAlign: 'justify',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {trimmedParagraph}
+                </p>
+              );
+            }).filter(Boolean);
+          })()}
         </div>
       </main>
     );
   }
 
-  // Encryption gate for locked content
+  // ✅ READER LICENSE ACTIVATION NEEDED
+  if (accessDetails?.needsActivation) {
+    return (
+      <>
+        <div style={{
+          padding: '2rem',
+          backgroundColor: 'var(--color-blockchain-blue)',
+          color: 'white',
+          borderRadius: '12px',
+          marginBottom: '2rem',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚡</div>
+          <h3 style={{
+            fontFamily: 'var(--font-headlines)',
+            fontSize: '1.5rem',
+            marginBottom: '1rem',
+            margin: 0
+          }}>
+            Start Your 7-Day Reading Period
+          </h3>
+          <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', opacity: 0.9 }}>
+            7 days of access for less than a penny a day! 
+          </p>
+          <button
+            onClick={() => setShowActivationConfirm(true)}
+            style={{
+              backgroundColor: 'var(--color-white)',
+              color: 'var(--color-blockchain-blue)',
+              border: 'none',
+              padding: '1rem 2rem',
+              borderRadius: '8px',
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-ui)'
+            }}
+          >
+            Start Reading →
+          </button>
+        </div>
+
+        {/* ✅ Activation Confirmation Modal */}
+        {showActivationConfirm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '1rem'
+          }}>
+            <div style={{
+              backgroundColor: 'var(--color-white)',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '100%',
+              padding: '2rem'
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚡</div>
+                <h3 style={{
+                  fontFamily: 'var(--font-headlines)',
+                  fontSize: '1.4rem',
+                  marginBottom: '0.5rem',
+                  color: 'var(--color-blockchain-blue)'
+                }}>
+                  Start 7-Day Reading Period?
+                </h3>
+              </div>
+
+              {!activatingLicense ? (
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => setShowActivationConfirm(false)}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem',
+                      border: '2px solid var(--color-digital-silver)',
+                      backgroundColor: 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleActivateReaderLicense}
+                    style={{
+                      flex: 2,
+                      padding: '0.75rem',
+                      backgroundColor: 'var(--color-blockchain-blue)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Start Reading Period
+                  </button>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚡</div>
+                  <p>Activating your reading period...</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ✅ ENCRYPTION GATE FOR LOCKED CONTENT
   return (
     <main style={{ 
       wordBreak: 'break-word', 
@@ -240,121 +542,46 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         </div>
       )}
 
-      {/* Responsive Encryption Gate */}
+      {/* Enhanced Encryption Gate */}
       <div style={{
-        padding: '1.5rem',
-        background: 'linear-gradient(135deg, var(--color-parchment), #f8f6f0)',
+        padding: '2rem',
+        backgroundColor: 'var(--color-parchment)',
         borderRadius: '12px',
-        marginBottom: '2rem',
-        border: '1px solid var(--color-digital-silver)',
-        maxWidth: '100%',
-        overflow: 'hidden'
+        marginBottom: '2rem'
       }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '1rem',
-          marginBottom: '1.5rem',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ fontSize: '2rem', flexShrink: 0 }}>🔐</div>
-          <div style={{ flex: 1, minWidth: '200px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ fontSize: '2rem' }}>🔐</div>
+          <div>
             <h3 style={{
               fontFamily: 'var(--font-headlines)',
-              fontSize: 'clamp(1.3rem, 4vw, 1.8rem)',
+              fontSize: '1.5rem',
               marginBottom: '0.5rem',
-              color: 'var(--color-typewriter-red)',
-              lineHeight: '1.2'
+              color: 'var(--color-typewriter-red)'
             }}>
               Encrypted Premium Content
             </h3>
-            <p style={{
-              fontSize: '0.95rem',
-              color: 'var(--color-digital-silver)',
-              margin: 0,
-              lineHeight: '1.4'
-            }}>
+            <p style={{ fontSize: '1rem', color: 'var(--color-digital-silver)', margin: 0 }}>
               This article contains exclusive insights worth unlocking
             </p>
           </div>
         </div>
 
-        {/* Content Preview */}
-        <div style={{
-          backgroundColor: 'var(--color-white)',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          border: '1px solid var(--color-digital-silver)',
-          marginBottom: '1.5rem',
-          maxWidth: '100%',
-          overflow: 'hidden'
-        }}>
-          {/* Summary */}
-          {article.summary && (
-            <div style={{
-              fontSize: '1.1rem',
-              lineHeight: '1.6',
-              color: 'var(--color-black)',
-              fontStyle: 'italic',
-              marginBottom: '1.5rem',
-              padding: '1rem',
-              backgroundColor: 'rgba(43, 57, 144, 0.05)',
-              borderLeft: '3px solid var(--color-blockchain-blue)',
-              borderRadius: '0 4px 4px 0',
-              wordBreak: 'break-word',
-              overflowWrap: 'break-word'
-            }}>
-              <strong>What you'll discover:</strong> {article.summary}
-            </div>
-          )}
-
-          {/* Content Preview */}
+        {article.summary && (
           <div style={{
-            position: 'relative',
-            fontSize: '1rem',
-            lineHeight: '1.7',
+            fontSize: '1.2rem',
+            lineHeight: '1.6',
             color: 'var(--color-black)',
-            maxWidth: '100%',
-            overflow: 'hidden'
+            fontStyle: 'italic',
+            marginBottom: '2rem',
+            padding: '1.5rem',
+            backgroundColor: 'var(--color-white)',
+            borderRadius: '8px'
           }}>
-            <p style={{ 
-              marginBottom: '1rem',
-              wordBreak: 'break-word',
-              overflowWrap: 'break-word'
-            }}>
-              {article.content && article.content.length > 250 ? 
-                `${article.content.substring(0, 250)}...` : 
-                'Premium content preview available after unlock...'
-              }
-            </p>
-            
-            {/* Fade overlay */}
-            <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '80px',
-              background: 'linear-gradient(transparent, var(--color-white) 70%)',
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center',
-              paddingBottom: '1rem'
-            }}>
-              <div style={{
-                fontSize: '0.9rem',
-                color: 'var(--color-digital-silver)',
-                fontStyle: 'italic',
-                textAlign: 'center'
-              }}>
-                Continue reading with premium access...
-              </div>
-            </div>
+            <strong>What you'll discover:</strong> {article.summary}
           </div>
-        </div>
+        )}
 
-        {/* Purchase Button */}
+        {/* Purchase Section */}
         <div style={{ textAlign: 'center' }}>
           {!isConnected ? (
             <button
@@ -403,7 +630,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         </div>
       </div>
 
-      {/* Purchase Modal */}
+      {/* ✅ ENHANCED PURCHASE MODAL */}
       {showPurchaseModal && (
         <div style={{
           position: 'fixed',
@@ -423,8 +650,6 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             borderRadius: '12px',
             maxWidth: '400px',
             width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
             padding: '2rem'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
@@ -437,11 +662,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
               }}>
                 Purchase Reader License
               </h3>
-              <p style={{
-                color: 'var(--color-digital-silver)',
-                fontSize: '0.9rem',
-                margin: 0
-              }}>
+              <p style={{ color: 'var(--color-digital-silver)', fontSize: '0.9rem', margin: 0 }}>
                 7-day access to this article
               </p>
             </div>
@@ -486,8 +707,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                       border: '2px solid var(--color-digital-silver)',
                       backgroundColor: 'transparent',
                       borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
+                      cursor: 'pointer'
                     }}
                   >
                     Cancel
@@ -502,8 +722,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                       border: 'none',
                       borderRadius: '6px',
                       cursor: 'pointer',
-                      fontWeight: '500',
-                      fontSize: '0.9rem'
+                      fontWeight: '500'
                     }}
                   >
                     Purchase Access

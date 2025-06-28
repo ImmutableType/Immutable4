@@ -1,4 +1,4 @@
-// lib/encryption/hooks/useContentDecryption.ts (FIXED PARAMETER ORDER)
+// lib/encryption/hooks/useContentDecryption.ts
 'use client';
 import { useState, useCallback, useEffect } from 'react';
 import { DecryptionResult, LicenseAccess } from '../types/encryption';
@@ -44,24 +44,20 @@ export const useContentDecryption = (): UseContentDecryptionResult => {
         articleId,
         userAddress: address,
         licenseTokenId,
-        contentLength: encryptedContent.length,
-        contentPreview: encryptedContent.substring(0, 50) + '...'
+        contentLength: encryptedContent.length
       });
 
-      // ✅ FIXED: Pass parameters in correct order to articleDecryptionService
-      // Service expects: (encryptedContent, userAddress, articleId, licenseTokenId)
       const result = await articleDecryptionService.decryptArticle(
-        encryptedContent,    // 1. Encrypted content string
-        address,            // 2. User wallet address  
-        articleId,          // 3. Article ID
-        licenseTokenId      // 4. License token ID
+        encryptedContent,
+        address,
+        articleId,
+        licenseTokenId
       );
 
       console.log('🔄 useContentDecryption: Decryption result:', {
         success: result.success,
         cached: result.cached,
         hasContent: !!result.content,
-        contentLength: result.content?.length || 0,
         error: result.error
       });
 
@@ -86,7 +82,7 @@ export const useContentDecryption = (): UseContentDecryptionResult => {
 
   const clearCache = useCallback(() => {
     articleDecryptionService.clearCache();
-    console.log('🧹 useContentDecryption: Cache cleared');
+    console.log('🧹 Cache cleared');
   }, []);
 
   const getCacheStats = useCallback(() => {
@@ -99,15 +95,6 @@ export const useContentDecryption = (): UseContentDecryptionResult => {
       clearCache();
     }
   }, [address, clearCache]);
-
-  // ✅ Enhanced logging for debugging
-  useEffect(() => {
-    if (address) {
-      console.log('🔗 useContentDecryption: Wallet connected:', address);
-    } else {
-      console.log('🔌 useContentDecryption: Wallet disconnected');
-    }
-  }, [address]);
 
   return {
     decryptContent,
