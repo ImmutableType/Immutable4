@@ -22,12 +22,12 @@ interface ArticlePageProps {
 }
 
 interface JournalistInfo {
-  name: string;
-  bio: string;
-  profileUrl: string;
-  walletAddress: string;
-  memberSince: string;
-  hasProfile: boolean;
+ name: string;
+ bio: string;
+ profileUrl: string;
+ walletAddress: string;
+ memberSince: string;
+ hasProfile: boolean;
 }
 
 export default function ArticlePage({ params }: ArticlePageProps) {
@@ -122,7 +122,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    return <ArticleNotFound />;
  }
 
- // Apply theme styles to container when content is decrypted
+ // Apply theme styles to container and wrapper
  const containerStyle = hasAccess || decryptSuccess ? {
    backgroundColor: theme.bgColor,
    color: theme.textColor,
@@ -135,168 +135,171 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    color: theme.textColor,
    fontSize: fontSize,
    fontFamily: fontFamily,
-   transition: 'all 0.3s ease'
- } : {};
+   transition: 'all 0.3s ease',
+   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+   borderRadius: '8px'
+ } : {
+   backgroundColor: '#ffffff',
+   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+   borderRadius: '8px'
+ };
 
  return (
    <>
-  <style jsx>{`
-  .article-container {
-    min-height: 100vh;
-  }
+     <style jsx>{`
+       .article-container {
+         min-height: 100vh;
+       }
 
-  .article-content-wrapper {
-    max-width: 65ch;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    margin-top: 2rem;
-    margin-bottom: 2rem;
-  }
+       .article-content-wrapper {
+         max-width: 65ch;
+         margin: 0 auto;
+         padding: 2rem 1.5rem;
+         margin-top: 2rem;
+         margin-bottom: 2rem;
+       }
 
-  /* Kindle-like minimal header when user has access */
-  .minimal-header {
-    margin-bottom: 2rem;
-  }
+       /* Kindle-like minimal header when user has access */
+       .minimal-header {
+         margin-bottom: 2rem;
+       }
 
-  .minimal-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 0.75rem;
-    font-family: 'Special Elite', 'Courier New', monospace;
-    line-height: 1.3;
-  }
+       .minimal-title {
+         font-size: 1.8rem;
+         font-weight: 700;
+         margin-bottom: 0.75rem;
+         font-family: 'Special Elite', 'Courier New', monospace;
+         line-height: 1.3;
+       }
 
-  .minimal-author-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  }
+       .minimal-author-info {
+         display: flex;
+         align-items: center;
+         gap: 0.5rem;
+         font-size: 0.9rem;
+         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+       }
 
-  .author-name {
-    font-weight: 600;
-  }
+       .author-name {
+         font-weight: 600;
+       }
 
-  .author-date {
-    opacity: 0.7;
-  }
+       .author-date {
+         opacity: 0.7;
+       }
 
-  .verified-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: #dcfce7;
-    color: #166534;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
+       .verified-badge {
+         display: inline-flex;
+         align-items: center;
+         gap: 0.25rem;
+         background: #dcfce7;
+         color: #166534;
+         padding: 0.25rem 0.5rem;
+         border-radius: 4px;
+         font-size: 0.75rem;
+         font-weight: 600;
+       }
 
-  /* Journalist Bio Section - Moved to bottom */
-  .journalist-bio {
-    background: #f0f7ff;
-    border-left: 4px solid #2B3990;
-    padding: 1.5rem;
-    margin: 3rem 0 2rem 0;
-    border-radius: 0 8px 8px 0;
-  }
+       /* Journalist Bio Section - Moved to bottom */
+       .journalist-bio {
+         border-left: 4px solid #2B3990;
+         padding: 1.5rem;
+         margin: 3rem 0 2rem 0;
+         border-radius: 0 8px 8px 0;
+       }
 
-  .bio-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-  }
+       .bio-header {
+         display: flex;
+         justify-content: space-between;
+         align-items: flex-start;
+         margin-bottom: 1rem;
+       }
 
-  .journalist-info {
-    flex: 1;
-  }
+       .journalist-info {
+         flex: 1;
+       }
 
-  .journalist-name {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-weight: 600;
-    font-size: 18px;
-    margin-bottom: 0.25rem;
-  }
+       .journalist-name {
+         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+         font-weight: 600;
+         font-size: 18px;
+         margin-bottom: 0.25rem;
+       }
 
-  .journalist-meta {
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-  }
+       .journalist-meta {
+         font-size: 0.875rem;
+         margin-bottom: 0.5rem;
+       }
 
-  .bio-text {
-    font-size: 14px;
-    line-height: 1.5;
-  }
+       .bio-text {
+         font-size: 14px;
+         line-height: 1.5;
+       }
 
-  /* Reader License Story */
-  .reader-license-story {
-    background: #ffffff;
-    border: 2px solid #2B3990;
-    border-radius: 12px;
-    padding: 2.5rem;
-    margin: 3rem 0;
-  }
+       /* Reader License Story */
+       .reader-license-story {
+         background: #ffffff;
+         border: 2px solid #2B3990;
+         border-radius: 12px;
+         padding: 2.5rem;
+         margin: 3rem 0;
+       }
 
-  .story-headline {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: #333333;
-    margin-bottom: 1.5rem;
-    text-align: center;
-  }
+       .story-headline {
+         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+         font-size: 28px;
+         font-weight: 700;
+         color: #333333;
+         margin-bottom: 1.5rem;
+         text-align: center;
+       }
 
-  .story-content p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #666666;
-    margin-bottom: 1.5rem;
-  }
+       .story-content p {
+         font-size: 16px;
+         line-height: 1.6;
+         color: #666666;
+         margin-bottom: 1.5rem;
+       }
 
-  /* Breadcrumb Enhancement */
-  .breadcrumb-nav {
-    padding: 1rem 0;
-    border-bottom: 1px solid #e8e8e8;
-  }
+       /* Breadcrumb Enhancement */
+       .breadcrumb-nav {
+         padding: 1rem 0;
+         border-bottom: 1px solid #e8e8e8;
+       }
 
-  .breadcrumb-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-  }
+       .breadcrumb-container {
+         max-width: 1200px;
+         margin: 0 auto;
+         padding: 0 1.5rem;
+       }
 
-  /* Mobile Optimizations */
-  @media (max-width: 768px) {
-    .article-content-wrapper {
-      margin: 0;
-      border-radius: 0;
-      padding: 1.5rem 1rem;
-    }
+       /* Mobile Optimizations */
+       @media (max-width: 768px) {
+         .article-content-wrapper {
+           margin: 0;
+           border-radius: 0;
+           padding: 1.5rem 1rem;
+         }
 
-    .minimal-title {
-      font-size: 1.5rem;
-    }
+         .minimal-title {
+           font-size: 1.5rem;
+         }
 
-    .bio-header {
-      flex-direction: column;
-      gap: 0.5rem;
-      align-items: flex-start;
-    }
+         .bio-header {
+           flex-direction: column;
+           gap: 0.5rem;
+           align-items: flex-start;
+         }
 
-    .minimal-author-info {
-      flex-wrap: wrap;
-    }
-  }
-`}</style>
+         .minimal-author-info {
+           flex-wrap: wrap;
+         }
+       }
+     `}</style>
 
      <div className="article-container" style={containerStyle}>
        {/* Enhanced Breadcrumbs */}
-       <nav className="breadcrumb-nav" style={{ backgroundColor: theme.bgColor }}>
+       <nav className="breadcrumb-nav" style={{ backgroundColor: theme.bgColor, borderBottomColor: theme.borderColor }}>
          <div className="breadcrumb-container">
            <ArticleBreadcrumbs 
              city={resolvedParams.city}
@@ -348,15 +351,15 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              </>
            )}
 
-          {/* EncryptionGate handles ALL content access and purchasing */}
-<EncryptionGate 
-  article={article}
-  onDecrypt={handleDecryptSuccess}
-  journalistInfo={journalistInfo}
-  theme={theme}
-  fontSize={fontSize}
-  fontFamily={fontFamily}
-/>
+           {/* EncryptionGate handles ALL content access and purchasing */}
+           <EncryptionGate 
+             article={article}
+             onDecrypt={handleDecryptSuccess}
+             journalistInfo={journalistInfo}
+             theme={theme}
+             fontSize={fontSize}
+             fontFamily={fontFamily}
+           />
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (
@@ -365,7 +368,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
            {/* Journalist Bio Section - ONLY show for non-access state */}
            {!hasAccess && !decryptSuccess && journalistInfo && (
-             <div className="journalist-bio">
+             <div className="journalist-bio" style={{ background: theme.bioBgColor }}>
                <div className="bio-header">
                  <div className="journalist-info">
                    <div className="journalist-name">{journalistInfo.name}</div>
