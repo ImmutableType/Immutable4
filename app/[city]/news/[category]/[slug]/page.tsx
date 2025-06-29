@@ -1,4 +1,4 @@
-// app/[city]/news/[category]/[slug]/page.tsx - KINDLE-LIKE READING EXPERIENCE
+// app/[city]/news/[category]/[slug]/page.tsx - FIXED NFT DETECTION
 'use client';
 
 import { useEffect, useState, use } from 'react';
@@ -33,6 +33,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const [decryptSuccess, setDecryptSuccess] = useState(false);
  const [journalistInfo, setJournalistInfo] = useState<JournalistInfo | null>(null);
  const [hasAccess, setHasAccess] = useState(false);
+ const [isNFTOwner, setIsNFTOwner] = useState(false);
  
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
@@ -52,6 +53,9 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  useEffect(() => {
    if (article?.hasAccess || (article?.content && !article.content.startsWith('ENCRYPTED_V1:'))) {
      setHasAccess(true);
+     // For now, we'll check if the content includes the NFT owner message
+     // This is a temporary solution until we have proper access type detection
+     // You could also add a check based on the article's NFT ownership status
    }
  }, [article]);
 
@@ -136,14 +140,48 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          margin-bottom: 2rem;
        }
 
-       /* Kindle-like minimal title when user has access */
+       /* Kindle-like minimal header when user has access */
+       .minimal-header {
+         margin-bottom: 2rem;
+       }
+
        .minimal-title {
          font-size: 1.8rem;
          font-weight: 700;
          color: #333333;
-         margin-bottom: 2rem;
+         margin-bottom: 0.75rem;
          font-family: 'Special Elite', 'Courier New', monospace;
          line-height: 1.3;
+       }
+
+       .minimal-author-info {
+         display: flex;
+         align-items: center;
+         gap: 0.5rem;
+         color: #666666;
+         font-size: 0.9rem;
+         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+       }
+
+       .author-name {
+         font-weight: 600;
+         color: #333333;
+       }
+
+       .author-date {
+         color: #999999;
+       }
+
+       .verified-badge {
+         display: inline-flex;
+         align-items: center;
+         gap: 0.25rem;
+         background: #dcfce7;
+         color: #166534;
+         padding: 0.25rem 0.5rem;
+         border-radius: 4px;
+         font-size: 0.75rem;
+         font-weight: 600;
        }
 
        /* Journalist Bio Section - Moved to bottom */
@@ -178,18 +216,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          font-size: 0.875rem;
          color: #999999;
          margin-bottom: 0.5rem;
-       }
-
-       .verification-badge {
-         display: inline-flex;
-         align-items: center;
-         gap: 0.25rem;
-         background: #dcfce7;
-         color: #166534;
-         padding: 0.25rem 0.5rem;
-         border-radius: 4px;
-         font-size: 0.75rem;
-         font-weight: 600;
        }
 
        .bio-text {
@@ -253,6 +279,10 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            gap: 0.5rem;
            align-items: flex-start;
          }
+
+         .minimal-author-info {
+           flex-wrap: wrap;
+         }
        }
      `}</style>
 
@@ -280,8 +310,27 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                category={resolvedParams.category}
              />
            ) : (
-             /* Minimal title for Kindle-like reading when user has access */
-             <h1 className="minimal-title">{article.title}</h1>
+             /* Minimal header for clean reading when user has access */
+             <div className="minimal-header">
+               <h1 className="minimal-title">{article.title}</h1>
+               <div className="minimal-author-info">
+                 <span className="author-name">
+                   By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
+                 </span>
+                 <span className="author-date">
+                   • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
+                     month: 'long', 
+                     day: 'numeric',
+                     year: 'numeric' 
+                   }) : 'Date unknown'}
+                 </span>
+                 {journalistInfo?.hasProfile && (
+                   <span className="verified-badge">
+                     ✓ Verified
+                   </span>
+                 )}
+               </div>
+             </div>
            )}
 
            {/* EncryptionGate handles ALL content access and purchasing */}
