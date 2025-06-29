@@ -1,4 +1,4 @@
-// components/article/EncryptionGate.tsx - FIXED BASED ON WORKING .BAK
+// components/article/EncryptionGate.tsx - NFT BANNER MOVED TO BOTTOM
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
@@ -266,31 +266,6 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         maxWidth: '65ch',
         margin: '0 auto'
       }}>
-        {/* Simple Access Status Display */}
-        <div style={{
-          padding: '1rem',
-          backgroundColor: accessDetails.accessType === 'nft_owner' ? '#1D7F6E' : '#2B3990',
-          color: 'white',
-          borderRadius: '8px',
-          marginBottom: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
-        }}>
-          <span style={{ fontSize: '1.5rem' }}>
-            {accessDetails.accessType === 'nft_owner' ? '🎨' : '✅'}
-          </span>
-          <div>
-            <div style={{ fontWeight: '600' }}>
-              {accessDetails.accessType === 'nft_owner' ? 'NFT Owner - Permanent Access' : 'Reader License Active'}
-            </div>
-            <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-              {accessDetails.accessType === 'nft_owner' ? 'You own this article as an NFT' : 
-               accessDetails.expiryTime ? `Expires: ${new Date(Number(accessDetails.expiryTime) * 1000).toLocaleDateString()}` : '7-day access'}
-            </div>
-          </div>
-        </div>
-
         {/* Simple Decryption Loading State */}
         {isDecrypting && (
           <div style={{
@@ -334,7 +309,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         <div style={{
           fontSize: '1.1rem',
           lineHeight: '1.8',
-          color: '#333333', // ✅ FIXED CONTRAST
+          color: '#333333',
           wordBreak: 'break-word',
           overflowWrap: 'break-word'
         }}>
@@ -348,7 +323,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                   marginBottom: '1.5rem', 
                   textAlign: 'justify', 
                   fontStyle: 'italic',
-                  color: '#333333' // ✅ FIXED CONTRAST
+                  color: '#333333'
                 }}>
                   {article.summary}
                 </p>
@@ -371,6 +346,48 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             }).filter(Boolean);
           })()}
         </div>
+
+        {/* NFT OWNERSHIP BANNER - MOVED TO BOTTOM */}
+        {accessDetails.accessType === 'nft_owner' && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#1D7F6E',
+            color: 'white',
+            borderRadius: '8px',
+            marginTop: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>🎨</span>
+            <div>
+              <div style={{ fontWeight: '600' }}>NFT Owner - Permanent Access</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>You own this article as an NFT</div>
+            </div>
+          </div>
+        )}
+
+        {/* READER LICENSE BANNER - Also at bottom for consistency */}
+        {accessDetails.accessType !== 'nft_owner' && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#2B3990',
+            color: 'white',
+            borderRadius: '8px',
+            marginTop: '2rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem'
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>✅</span>
+            <div>
+              <div style={{ fontWeight: '600' }}>Reader License Active</div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                {accessDetails.expiryTime ? `Expires: ${new Date(Number(accessDetails.expiryTime) * 1000).toLocaleDateString()}` : '7-day access'}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     );
   }
@@ -525,22 +542,20 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           </div>
         </div>
 
-        // In components/article/EncryptionGate.tsx, find the summary section and update:
-
-{article.summary && (
-  <div style={{
-    fontSize: '1.1rem',
-    lineHeight: '1.6',
-    color: '#333333', // ✅ FIXED CONTRAST - inline override
-    fontStyle: 'italic',
-    marginBottom: '2rem',
-    padding: '1.5rem',
-    backgroundColor: 'white',
-    borderRadius: '8px'
-  }}>
-    <strong>What you'll discover:</strong> {article.summary}
-  </div>
-)}
+        {article.summary && (
+          <div style={{
+            fontSize: '1.1rem',
+            lineHeight: '1.6',
+            color: '#333333',
+            fontStyle: 'italic',
+            marginBottom: '2rem',
+            padding: '1.5rem',
+            backgroundColor: 'white',
+            borderRadius: '8px'
+          }}>
+            <strong>What you'll discover:</strong> {article.summary}
+          </div>
+        )}
 
         {/* Purchase Section */}
         <div style={{ textAlign: 'center' }}>
