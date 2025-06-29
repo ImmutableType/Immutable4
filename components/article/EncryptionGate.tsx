@@ -6,15 +6,27 @@ import { Article } from '../../lib/reader/types/article';
 import { useWallet } from '../../lib/hooks/useWallet';
 import { useContentDecryption } from '../../lib/encryption/hooks/useContentDecryption';
 import { ReaderLicenseAMMService, LicenseAccess } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
+import { useReadingPreferences } from '../../lib/hooks/useReadingPreferences';
+
+interface JournalistInfo {
+  name: string;
+  bio: string;
+  profileUrl: string;
+  walletAddress: string;
+  memberSince: string;
+  hasProfile: boolean;
+}
 
 interface EncryptionGateProps {
   article: Article;
   onDecrypt?: (success: boolean) => void;
+  journalistInfo?: JournalistInfo | null;
 }
 
-const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) => {
+const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt, journalistInfo }) => {
   const { address: userAddress, isConnected, connect } = useWallet();
   const { decryptContent } = useContentDecryption();
+  const { theme } = useReadingPreferences();
   
   // Basic State Management
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -309,7 +321,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         <div style={{
           fontSize: '1.1rem',
           lineHeight: '1.8',
-          color: '#333333',
+          color: theme.textColor,
           wordBreak: 'break-word',
           overflowWrap: 'break-word'
         }}>
@@ -323,7 +335,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                   marginBottom: '1.5rem', 
                   textAlign: 'justify', 
                   fontStyle: 'italic',
-                  color: '#333333'
+                  color: theme.textColor
                 }}>
                   {article.summary}
                 </p>
@@ -346,6 +358,64 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             }).filter(Boolean);
           })()}
         </div>
+
+        {/* Journalist Bio Section - Show at bottom for all decrypted content */}
+        {journalistInfo && (
+          <div style={{
+            background: theme.bioBgColor,
+            borderLeft: `4px solid ${theme.linkColor}`,
+            padding: '1.5rem',
+            margin: '3rem 0 2rem 0',
+            borderRadius: '0 8px 8px 0'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'flex-start', 
+              marginBottom: '1rem' 
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 600,
+                  color: theme.textColor,
+                  fontSize: '18px',
+                  marginBottom: '0.25rem'
+                }}>
+                  {journalistInfo.name}
+                </div>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  color: theme.textColor, 
+                  opacity: 0.7,
+                  marginBottom: '0.5rem' 
+                }}>
+                  Member since {journalistInfo.memberSince} • {journalistInfo.walletAddress.slice(0, 6)}...{journalistInfo.walletAddress.slice(-4)}
+                </div>
+                {journalistInfo.hasProfile && (
+                  <a 
+                    href={journalistInfo.profileUrl}
+                    style={{ 
+                      color: theme.linkColor,
+                      textDecoration: 'none',
+                      fontSize: '0.875rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    View Profile →
+                  </a>
+                )}
+              </div>
+            </div>
+            <div style={{ 
+              color: theme.textColor, 
+              fontSize: '14px', 
+              lineHeight: '1.5' 
+            }}>
+              {journalistInfo.bio}
+            </div>
+          </div>
+        )}
 
         {/* NFT OWNERSHIP BANNER - MOVED TO BOTTOM */}
         {accessDetails.accessType === 'nft_owner' && (
