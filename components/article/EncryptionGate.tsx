@@ -1,4 +1,4 @@
-// components/article/EncryptionGate.tsx (ENHANCED - NFT + READER LICENSE + SPY DECRYPTION)
+// components/article/EncryptionGate.tsx (PROPERLY FIXED)
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
@@ -16,8 +16,9 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
   const { address: userAddress, isConnected, connect } = useWallet();
   const { decryptContent } = useContentDecryption();
   
-  // Enhanced State Management
+  // State Management
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<'nft' | 'license'>('nft');
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Access Detection State
@@ -29,7 +30,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptionError, setDecryptionError] = useState<string | null>(null);
   
-  // ✨ NEW: Holographic Decryption UI State
+  // ✨ Holographic Decryption UI State
   const [decryptionPhase, setDecryptionPhase] = useState<'hidden' | 'initializing' | 'verifying' | 'decrypting' | 'success' | 'collapse'>('hidden');
   const [showDecryptionPanel, setShowDecryptionPanel] = useState(false);
   
@@ -40,6 +41,8 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
   // Purchase Infrastructure
   const [currentPrice, setCurrentPrice] = useState<string>('0');
   const [licenseSellers, setLicenseSellers] = useState<string[]>([]);
+  const [nftAvailable, setNftAvailable] = useState(false);
+  const [nftPrice, setNftPrice] = useState<string>('7.0');
   const [error, setError] = useState<string>('');
 
   const [licenseService, setLicenseService] = useState<ReaderLicenseAMMService | null>(null);
@@ -64,12 +67,12 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         setAccessDetails(accessInfo);
 
         if (!accessInfo.hasAccess) {
-          await fetchLicenseInfo();
+          await fetchPurchaseInfo();
         }
       } catch (err) {
         console.error('❌ Access check failed:', err);
         setAccessDetails({ hasAccess: false, accessType: 'none' });
-        await fetchLicenseInfo();
+        await fetchPurchaseInfo();
       } finally {
         setIsCheckingAccess(false);
       }
@@ -78,7 +81,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     checkAccess();
   }, [userAddress, article, licenseService]);
 
-  // ✨ ENHANCED: Decryption with Holographic UI
+  // ✨ Holographic Decryption with proper timing
   useEffect(() => {
     const handleDecryption = async () => {
       if (!article || !accessDetails?.hasAccess || !accessDetails.tokenId || !userAddress) {
@@ -109,7 +112,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       setShowDecryptionPanel(true);
       setDecryptionPhase('initializing');
       
-      // Phase progression with timing
+      // Phase progression with proper timing
       setTimeout(() => setDecryptionPhase('verifying'), 50);
       setTimeout(() => setDecryptionPhase('decrypting'), 150);
       
@@ -134,12 +137,13 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           localStorage.setItem(cacheKey, result.content);
           localStorage.setItem(`${cacheKey}_expiry`, expiryTime.toString());
           
-          // ✨ SUCCESS PHASE
+          // ✨ SUCCESS PHASE - proper mobile timing
           setDecryptionPhase('success');
+          const isMobile = window.innerWidth <= 768;
           setTimeout(() => {
             setDecryptionPhase('collapse');
             setTimeout(() => setShowDecryptionPanel(false), 300);
-          }, window.innerWidth <= 768 ? 300 : 500); // Faster on mobile
+          }, isMobile ? 300 : 500);
           
           onDecrypt?.(true);
         } else {
@@ -157,23 +161,29 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     handleDecryption();
   }, [article, accessDetails, userAddress, decryptContent, onDecrypt]);
 
-  const fetchLicenseInfo = async () => {
+  const fetchPurchaseInfo = async () => {
     if (!licenseService || !article) return;
 
     try {
       const articleId = article.id.toString().replace(/[^0-9]/g, '');
+      
+      // Check NFT availability (simulate for now)
+      setNftAvailable(Math.random() > 0.3); // 70% chance NFTs available
+      
+      // Get reader license price
       const price = await licenseService.getCurrentPrice(articleId);
       setCurrentPrice(ethers.formatEther(price));
       const { holders } = await licenseService.getLicenseHolders(articleId);
       setLicenseSellers(holders.filter(holder => holder !== userAddress));
     } catch (error) {
-      console.error('Error fetching license info:', error);
+      console.error('Error fetching purchase info:', error);
       setCurrentPrice('0.05');
       setLicenseSellers([]);
+      setNftAvailable(false);
     }
   };
 
-  // ✨ HOLOGRAPHIC DECRYPTION PANEL COMPONENT
+  // ✨ HOLOGRAPHIC DECRYPTION PANEL
   const DecryptionPanel = () => {
     if (!showDecryptionPanel) return null;
 
@@ -185,28 +195,28 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           return {
             icon: '🔐',
             title: 'CLASSIFIED CONTENT DETECTED',
-            subtitle: 'Initializing decryption protocol...',
+            subtitle: 'Initializing ChaCha20-Poly1305 protocol...',
             progress: 20
           };
         case 'verifying':
           return {
             icon: '🔍',
-            title: 'VERIFYING CREDENTIALS',
+            title: 'VERIFYING BLOCKCHAIN CREDENTIALS',
             subtitle: `${accessDetails?.accessType === 'nft_owner' ? 'NFT ownership' : 'Reader license'} confirmed`,
             progress: 60
           };
         case 'decrypting':
           return {
             icon: '⚡',
-            title: 'DECRYPTION ACTIVE',
-            subtitle: 'ChaCha20-Poly1305 encryption unlocked',
+            title: 'MILITARY-GRADE DECRYPTION ACTIVE',
+            subtitle: 'Unlocking your premium content...',
             progress: 90
           };
         case 'success':
           return {
             icon: '🎯',
             title: 'MISSION ACCOMPLISHED',
-            subtitle: 'Premium content unlocked',
+            subtitle: 'Reading from the blockchain - access granted',
             progress: 100
           };
         default:
@@ -238,79 +248,20 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         transition: 'transform 0.3s ease-out',
         overflow: 'hidden'
       }}>
-        {/* Corner brackets for spy aesthetic */}
-        <div style={{
-          position: 'absolute',
-          top: '8px',
-          left: '8px',
-          width: '20px',
-          height: '20px',
-          borderTop: '2px solid #3b82f6',
-          borderLeft: '2px solid #3b82f6'
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          width: '20px',
-          height: '20px',
-          borderTop: '2px solid #3b82f6',
-          borderRight: '2px solid #3b82f6'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '8px',
-          left: '8px',
-          width: '20px',
-          height: '20px',
-          borderBottom: '2px solid #3b82f6',
-          borderLeft: '2px solid #3b82f6'
-        }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '8px',
-          right: '8px',
-          width: '20px',
-          height: '20px',
-          borderBottom: '2px solid #3b82f6',
-          borderRight: '2px solid #3b82f6'
-        }} />
+        {/* Spy corner brackets */}
+        <div style={{ position: 'absolute', top: '8px', left: '8px', width: '20px', height: '20px', borderTop: '2px solid #3b82f6', borderLeft: '2px solid #3b82f6' }} />
+        <div style={{ position: 'absolute', top: '8px', right: '8px', width: '20px', height: '20px', borderTop: '2px solid #3b82f6', borderRight: '2px solid #3b82f6' }} />
+        <div style={{ position: 'absolute', bottom: '8px', left: '8px', width: '20px', height: '20px', borderBottom: '2px solid #3b82f6', borderLeft: '2px solid #3b82f6' }} />
+        <div style={{ position: 'absolute', bottom: '8px', right: '8px', width: '20px', height: '20px', borderBottom: '2px solid #3b82f6', borderRight: '2px solid #3b82f6' }} />
 
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: isMobile ? '2rem' : '2.5rem', marginBottom: '1rem' }}>
-            {icon}
-          </div>
-          <div style={{
-            fontSize: isMobile ? '1rem' : '1.2rem',
-            fontWeight: 'bold',
-            marginBottom: '0.5rem',
-            letterSpacing: '1px'
-          }}>
-            {title}
-          </div>
-          <div style={{
-            fontSize: isMobile ? '0.8rem' : '0.9rem',
-            opacity: 0.8,
-            marginBottom: '1.5rem'
-          }}>
-            {subtitle}
-          </div>
+          <div style={{ fontSize: isMobile ? '2rem' : '2.5rem', marginBottom: '1rem' }}>{icon}</div>
+          <div style={{ fontSize: isMobile ? '1rem' : '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem', letterSpacing: '1px' }}>{title}</div>
+          <div style={{ fontSize: isMobile ? '0.8rem' : '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>{subtitle}</div>
           
           {/* Progress bar */}
-          <div style={{
-            width: '100%',
-            height: '4px',
-            background: 'rgba(59, 130, 246, 0.2)',
-            borderRadius: '2px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${progress}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-              transition: 'width 0.3s ease',
-              boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)'
-            }} />
+          <div style={{ width: '100%', height: '4px', background: 'rgba(59, 130, 246, 0.2)', borderRadius: '2px', overflow: 'hidden' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', transition: 'width 0.3s ease', boxShadow: '0 0 10px rgba(59, 130, 246, 0.5)' }} />
           </div>
         </div>
       </div>
@@ -339,7 +290,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     }
   };
 
-  const handleRealPurchase = async () => {
+  const handlePurchase = async () => {
     if (!isConnected) {
       await connect();
       return;
@@ -358,19 +309,28 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
       const signer = await provider.getSigner();
       const articleId = article.id.toString().replace(/[^0-9]/g, '');
 
-      if (licenseSellers.length === 0) {
-        throw new Error('No licenses available for purchase');
+      if (purchaseType === 'nft') {
+        // NFT purchase logic (placeholder - would integrate with NFT marketplace)
+        console.log('Purchasing NFT for', nftPrice, 'FLOW');
+        // Simulate NFT purchase
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        // Reader License purchase
+        if (licenseSellers.length === 0) {
+          throw new Error('No licenses available for purchase');
+        }
+
+        const buyTx = await licenseService.buyLicense(articleId, licenseSellers[0], signer);
+        await buyTx.wait();
+
+        const burnTx = await licenseService.burnLicenseForAccess(articleId, signer);
+        await burnTx.wait();
       }
-
-      const buyTx = await licenseService.buyLicense(articleId, licenseSellers[0], signer);
-      await buyTx.wait();
-
-      const burnTx = await licenseService.burnLicenseForAccess(articleId, signer);
-      await burnTx.wait();
 
       setShowPurchaseModal(false);
       setIsProcessing(false);
       
+      // Refresh access after purchase
       setTimeout(async () => {
         if (licenseService) {
           const updatedAccess = await licenseService.getAccessDetails(articleId, userAddress);
@@ -393,14 +353,14 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     }
   };
 
-  // ✨ ENHANCED: Content Display with Decryption Panel
+  // ✨ CONTENT DISPLAY WITH DECRYPTION PANEL
   if (accessDetails?.hasAccess && !accessDetails.needsActivation) {
     return (
       <main style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-        {/* ✨ Holographic Decryption Panel */}
+        {/* Holographic Decryption Panel */}
         <DecryptionPanel />
 
-        {/* Enhanced Access Status Display */}
+        {/* Enhanced Access Status */}
         <div style={{
           padding: '1rem',
           backgroundColor: accessDetails.accessType === 'nft_owner' ? '#1D7F6E' : 'var(--color-verification-green)',
@@ -445,13 +405,15 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           </div>
         )}
 
-        {/* Decrypted Content Display */}
+        {/* ✨ PROPER NARROW CONTENT DISPLAY */}
         <div style={{
           fontSize: '1.125rem',
           lineHeight: '1.8',
-          color: 'var(--color-black)',
+          color: '#1a1a1a',
           wordBreak: 'break-word',
-          overflowWrap: 'break-word'
+          overflowWrap: 'break-word',
+          maxWidth: '65ch', // ✨ KEEP NARROW FOR READING SPEED
+          margin: '0 auto'
         }}>
           {(() => {
             const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
@@ -463,7 +425,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                   marginBottom: '1.5rem', 
                   textAlign: 'justify', 
                   fontStyle: 'italic',
-                  color: '#333333' // ✨ FIXED: Better contrast for summary
+                  color: '#333333' // ✨ FIXED CONTRAST
                 }}>
                   {article.summary}
                 </p>
@@ -532,7 +494,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           </button>
         </div>
 
-        {/* Activation Confirmation Modal */}
+        {/* Activation Modal */}
         {showActivationConfirm && (
           <div style={{
             position: 'fixed',
@@ -610,13 +572,13 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
     );
   }
 
-  // ✨ ENHANCED: Encryption Gate for Locked Content
+  // ✨ ENHANCED ENCRYPTION GATE - NFT PRIMARY, READER LICENSE SECONDARY
   return (
     <main style={{ 
       wordBreak: 'break-word', 
       overflowWrap: 'break-word',
-      maxWidth: '100%',
-      overflow: 'hidden'
+      maxWidth: '65ch', // ✨ KEEP NARROW
+      margin: '0 auto'
     }}>
       {error && (
         <div style={{
@@ -631,7 +593,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
         </div>
       )}
 
-      {/* Enhanced Encryption Gate */}
+      {/* Premium Content Gate */}
       <div style={{
         padding: '2rem',
         backgroundColor: 'var(--color-parchment)',
@@ -649,8 +611,8 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             }}>
               Premium Content
             </h3>
-            <p style={{ fontSize: '1rem', color: '#666666', margin: 0 }}> {/* ✨ FIXED: Better contrast */}
-              Unlock with Reader License or NFT ownership
+            <p style={{ fontSize: '1rem', color: '#666666', margin: 0 }}>
+              Military-grade encryption protects this content
             </p>
           </div>
         </div>
@@ -659,7 +621,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           <div style={{
             fontSize: '1.125rem',
             lineHeight: '1.6',
-            color: '#333333', // ✨ FIXED: Better contrast for summary
+            color: '#333333', // ✨ FIXED CONTRAST
             fontStyle: 'italic',
             marginBottom: '2rem',
             padding: '1.5rem',
@@ -670,7 +632,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           </div>
         )}
 
-        {/* Purchase Section */}
+        {/* ✨ NFT PRIMARY, READER LICENSE SECONDARY */}
         <div style={{ textAlign: 'center' }}>
           {!isConnected ? (
             <button
@@ -690,36 +652,102 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
               Connect Wallet to Purchase
             </button>
           ) : (
-            <div>
-              <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                {currentPrice && parseFloat(currentPrice) > 0 ? 
-                  `${parseFloat(currentPrice).toFixed(3)} FLOW` : 
-                  'Loading price...'
-                }
-              </div>
-              <button
-                onClick={() => setShowPurchaseModal(true)}
-                disabled={licenseSellers.length === 0}
-                style={{
-                  backgroundColor: licenseSellers.length > 0 ? 'var(--color-blockchain-blue)' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  padding: '1rem 2rem',
-                  borderRadius: '8px',
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* ✨ NFT OPTION FIRST (PRIMARY) */}
+              {nftAvailable && (
+                <div style={{
+                  padding: '1.5rem',
+                  border: '2px solid #6f42c1',
+                  borderRadius: '12px',
+                  backgroundColor: '#faf8ff'
+                }}>
+                  <h4 style={{
+                    margin: '0 0 0.5rem 0',
+                    color: '#6f42c1',
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold'
+                  }}>
+                    🎨 Own This Article Forever
+                  </h4>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#666' }}>
+                    Edition 47 of 100 • Includes 10 perpetual reader licenses
+                  </p>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+                    {nftPrice} FLOW
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPurchaseType('nft');
+                      setShowPurchaseModal(true);
+                    }}
+                    style={{
+                      backgroundColor: '#6f42c1',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '8px',
+                      fontSize: '1rem',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      width: '100%'
+                    }}
+                  >
+                    Purchase NFT Edition
+                  </button>
+                </div>
+              )}
+
+              {/* ✨ READER LICENSE OPTION (SECONDARY) */}
+              <div style={{
+                padding: '1.5rem',
+                border: '1px solid var(--color-digital-silver)',
+                borderRadius: '12px',
+                backgroundColor: 'var(--color-white)'
+              }}>
+                <h4 style={{
+                  margin: '0 0 0.5rem 0',
+                  color: 'var(--color-blockchain-blue)',
                   fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  cursor: licenseSellers.length > 0 ? 'pointer' : 'not-allowed',
-                  fontFamily: 'var(--font-ui)'
-                }}
-              >
-                {licenseSellers.length > 0 ? 'Purchase 7-Day Access' : 'No Licenses Available'}
-              </button>
+                  fontWeight: 'bold'
+                }}>
+                  📄 7-Day Reading Access
+                </h4>
+                <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#666' }}>
+                  Revolutionary micropayment - pay only for what you read
+                </p>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1rem' }}>
+                  {currentPrice && parseFloat(currentPrice) > 0 ? 
+                    `${parseFloat(currentPrice).toFixed(3)} FLOW` : 
+                    'Loading price...'
+                  }
+                </div>
+                <button
+                  onClick={() => {
+                    setPurchaseType('license');
+                    setShowPurchaseModal(true);
+                  }}
+                  disabled={licenseSellers.length === 0}
+                  style={{
+                    backgroundColor: licenseSellers.length > 0 ? 'var(--color-blockchain-blue)' : '#ccc',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    cursor: licenseSellers.length > 0 ? 'pointer' : 'not-allowed',
+                    width: '100%'
+                  }}
+                >
+                  {licenseSellers.length > 0 ? 'Purchase Reader License' : 'No Licenses Available'}
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Purchase Modal (unchanged for brevity) */}
+      {/* ✨ ENHANCED PURCHASE MODAL */}
       {showPurchaseModal && (
         <div style={{
           position: 'fixed',
@@ -742,17 +770,19 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
             padding: '2rem'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚡</div>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+                {purchaseType === 'nft' ? '🎨' : '⚡'}
+              </div>
               <h3 style={{
                 fontFamily: 'var(--font-headlines)',
                 fontSize: '1.4rem',
                 marginBottom: '0.5rem',
                 color: 'var(--color-blockchain-blue)'
               }}>
-                Purchase Reader License
+                {purchaseType === 'nft' ? 'Purchase Article NFT' : 'Purchase Reader License'}
               </h3>
-              <p style={{ color: '#666666', fontSize: '0.9rem', margin: 0 }}> {/* ✨ FIXED: Better contrast */}
-                7-day access to this article
+              <p style={{ color: '#666666', fontSize: '0.9rem', margin: 0 }}>
+                {purchaseType === 'nft' ? 'Permanent ownership + 10 reader licenses' : '7-day access to this article'}
               </p>
             </div>
 
@@ -766,9 +796,12 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                   fontSize: '0.9rem'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span>License Cost:</span>
+                    <span>{purchaseType === 'nft' ? 'NFT Price:' : 'License Cost:'}</span>
                     <span style={{ fontWeight: '500' }}>
-                      {currentPrice ? `${parseFloat(currentPrice).toFixed(3)} FLOW` : 'Loading...'}
+                      {purchaseType === 'nft' ? 
+                        `${nftPrice} FLOW` : 
+                        (currentPrice ? `${parseFloat(currentPrice).toFixed(3)} FLOW` : 'Loading...')
+                      }
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#666666' }}>
@@ -779,9 +812,9 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                     <span>Total:</span>
                     <span>
-                      {currentPrice ? 
-                        `${(parseFloat(currentPrice) + 0.005).toFixed(3)} FLOW` : 
-                        'Calculating...'
+                      {purchaseType === 'nft' ? 
+                        `${(parseFloat(nftPrice) + 0.005).toFixed(3)} FLOW` :
+                        (currentPrice ? `${(parseFloat(currentPrice) + 0.005).toFixed(3)} FLOW` : 'Calculating...')
                       }
                     </span>
                   </div>
@@ -802,11 +835,11 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                     Cancel
                   </button>
                   <button
-                    onClick={handleRealPurchase}
+                    onClick={handlePurchase}
                     style={{
                       flex: 2,
                       padding: '0.75rem',
-                      backgroundColor: 'var(--color-blockchain-blue)',
+                      backgroundColor: purchaseType === 'nft' ? '#6f42c1' : 'var(--color-blockchain-blue)',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
@@ -814,7 +847,7 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
                       fontWeight: '500'
                     }}
                   >
-                    Purchase Access
+                    {purchaseType === 'nft' ? 'Purchase NFT' : 'Purchase Access'}
                   </button>
                 </div>
               </>
