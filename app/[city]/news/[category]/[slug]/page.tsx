@@ -1,4 +1,4 @@
-// app/[city]/news/[category]/[slug]/page.tsx - CLEANED UP VERSION
+// app/[city]/news/[category]/[slug]/page.tsx - KINDLE-LIKE READING EXPERIENCE
 'use client';
 
 import { useEffect, useState, use } from 'react';
@@ -8,7 +8,6 @@ import { ProfileNFTService } from '../../../../../lib/blockchain/contracts/Profi
 import { ethers } from 'ethers';
 import ArticleHeader from '../../../../../components/article/ArticleHeader';
 import ArticleBreadcrumbs from '../../../../../components/article/ArticleBreadcrumbs';
-import EngagementBar from '../../../../../components/article/EngagementBar';
 import EncryptionGate from '../../../../../components/article/EncryptionGate';
 import ArticleContent from '../../../../../components/article/ArticleContent';
 
@@ -33,6 +32,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const resolvedParams = use(params);
  const [decryptSuccess, setDecryptSuccess] = useState(false);
  const [journalistInfo, setJournalistInfo] = useState<JournalistInfo | null>(null);
+ const [hasAccess, setHasAccess] = useState(false);
  
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
@@ -43,9 +43,17 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const handleDecryptSuccess = (success: boolean) => {
    if (success) {
      setDecryptSuccess(true);
+     setHasAccess(true);
      console.log('Article unlocked successfully');
    }
  };
+
+ // Check if user has access
+ useEffect(() => {
+   if (article?.hasAccess || (article?.content && !article.content.startsWith('ENCRYPTED_V1:'))) {
+     setHasAccess(true);
+   }
+ }, [article]);
 
  // Fetch journalist info from ProfileNFT service
  useEffect(() => {
@@ -109,9 +117,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    return <ArticleNotFound />;
  }
 
- // Check if content is decrypted
- const isContentDecrypted = decryptSuccess || (article.hasAccess && !article.content?.startsWith('ENCRYPTED_V1:'));
-
  return (
    <>
      <style jsx>{`
@@ -131,16 +136,14 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          margin-bottom: 2rem;
        }
 
-       /* Article Summary - Only shown when encrypted */
-       .article-summary {
-         font-size: 1.1rem;
-         line-height: 1.6;
-         color: #666666;
-         font-style: italic;
+       /* Kindle-like minimal title when user has access */
+       .minimal-title {
+         font-size: 1.8rem;
+         font-weight: 700;
+         color: #333333;
          margin-bottom: 2rem;
-         padding: 1.5rem;
-         background: #f9f9f9;
-         border-left: 3px solid #2B3990;
+         font-family: 'Special Elite', 'Courier New', monospace;
+         line-height: 1.3;
        }
 
        /* Journalist Bio Section - Moved to bottom */
@@ -241,6 +244,10 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            padding: 1.5rem 1rem;
          }
 
+         .minimal-title {
+           font-size: 1.5rem;
+         }
+
          .bio-header {
            flex-direction: column;
            gap: 0.5rem;
@@ -265,18 +272,16 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        {/* Main Article Container */}
        <div className="article-content-wrapper">
          <article>
-           {/* Minimal Article Header - Just title and essential metadata */}
-           <ArticleHeader 
-             article={article}
-             city={resolvedParams.city}
-             category={resolvedParams.category}
-           />
-
-           {/* Article Summary - ONLY shown when content is encrypted (for SEO) */}
-           {!isContentDecrypted && article.summary && (
-             <div className="article-summary">
-               {article.summary}
-             </div>
+           {/* Conditional Header - Full header ONLY when content is locked */}
+           {!hasAccess && !decryptSuccess ? (
+             <ArticleHeader 
+               article={article}
+               city={resolvedParams.city}
+               category={resolvedParams.category}
+             />
+           ) : (
+             /* Minimal title for Kindle-like reading when user has access */
+             <h1 className="minimal-title">{article.title}</h1>
            )}
 
            {/* EncryptionGate handles ALL content access and purchasing */}
@@ -290,8 +295,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              <ArticleContent article={article} />
            )}
 
-           {/* Journalist Bio Section - MOVED TO BOTTOM */}
-           {journalistInfo && (
+           {/* Journalist Bio Section - ONLY show for non-access state */}
+           {!hasAccess && !decryptSuccess && journalistInfo && (
              <div className="journalist-bio">
                <div className="bio-header">
                  <div className="journalist-info">
@@ -311,32 +316,29 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            )}
          </article>
 
-         {/* Reader License Story */}
-         <div className="reader-license-story">
-           <h3 className="story-headline">Reader Licenses: Revolutionary Micropayments for Journalism</h3>
-           <div className="story-content">
-             <p>
-               Traditional media locks you into expensive monthly subscriptions for content you may never read. 
-               Reader Licenses revolutionize news consumption—pay only $0.05-$0.08 per article you actually want to access.
-             </p>
-             <p>
-               No bundled content. No monthly commitments. No editorial boards influenced by corporate advertisers. 
-               Just direct support for independent journalists who serve your community.
-             </p>
-             <p>
-               Powered by blockchain technology, Reader Licenses ensure journalists receive immediate payment 
-               while giving you complete control over the content you choose to unlock. 
-               This is journalism freed from external influence—accountable only to readers like you.
-             </p>
+         {/* Reader License Story - ONLY show when content is locked */}
+         {!hasAccess && !decryptSuccess && (
+           <div className="reader-license-story">
+             <h3 className="story-headline">Reader Licenses: Revolutionary Micropayments for Journalism</h3>
+             <div className="story-content">
+               <p>
+                 Traditional media locks you into expensive monthly subscriptions for content you may never read. 
+                 Reader Licenses revolutionize news consumption—pay only $0.05-$0.08 per article you actually want to access.
+               </p>
+               <p>
+                 No bundled content. No monthly commitments. No editorial boards influenced by corporate advertisers. 
+                 Just direct support for independent journalists who serve your community.
+               </p>
+               <p>
+                 Powered by blockchain technology, Reader Licenses ensure journalists receive immediate payment 
+                 while giving you complete control over the content you choose to unlock. 
+                 This is journalism freed from external influence—accountable only to readers like you.
+               </p>
+             </div>
            </div>
-         </div>
+         )}
 
-         {/* Engagement Features */}
-         <div className="engagement-section" style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e8e8e8' }}>
-           <EngagementBar 
-             article={article}
-           />
-         </div>
+         {/* NO ENGAGEMENT BAR - Social sharing removed completely */}
        </div>
      </div>
    </>
