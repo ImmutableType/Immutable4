@@ -139,26 +139,21 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  return (
    <>
      <style jsx>{`
-       .article-container {
-         background: #fafafa;
-         min-height: 100vh;
-       }
+  .article-container {
+    /* Remove this line: background: #fafafa; */
+    min-height: 100vh;
+  }
 
-       .article-content-wrapper {
-         max-width: 65ch;
-         margin: 0 auto;
-         padding: 2rem 1.5rem;
-         background: #ffffff;
-         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-         border-radius: 8px;
-         margin-top: 2rem;
-         margin-bottom: 2rem;
-       }
-
-       /* Kindle-like minimal header when user has access */
-       .minimal-header {
-         margin-bottom: 2rem;
-       }
+  .article-content-wrapper {
+    max-width: 65ch;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+    /* Remove this line: background: #ffffff; */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
 
        .minimal-title {
          font-size: 1.8rem;
