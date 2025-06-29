@@ -525,20 +525,22 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt }) =
           </div>
         </div>
 
-        {article.summary && (
-          <div style={{
-            fontSize: '1.1rem',
-            lineHeight: '1.6',
-            color: '#333333', // ✅ FIXED CONTRAST
-            fontStyle: 'italic',
-            marginBottom: '2rem',
-            padding: '1.5rem',
-            backgroundColor: 'white',
-            borderRadius: '8px'
-          }}>
-            <strong>What you'll discover:</strong> {article.summary}
-          </div>
-        )}
+        // In components/article/EncryptionGate.tsx, find the summary section and update:
+
+{article.summary && (
+  <div style={{
+    fontSize: '1.1rem',
+    lineHeight: '1.6',
+    color: '#333333', // ✅ FIXED CONTRAST - inline override
+    fontStyle: 'italic',
+    marginBottom: '2rem',
+    padding: '1.5rem',
+    backgroundColor: 'white',
+    borderRadius: '8px'
+  }}>
+    <strong>What you'll discover:</strong> {article.summary}
+  </div>
+)}
 
         {/* Purchase Section */}
         <div style={{ textAlign: 'center' }}>
