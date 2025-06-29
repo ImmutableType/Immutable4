@@ -303,7 +303,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
      <div className="article-container" style={containerStyle}>
        {/* Reading Controls - Only show when content is decrypted */}
-       {(hasAccess || decryptSuccess) && <ReadingControls />}
+       {(hasAccess || decryptSuccess || (article?.content && !article.content.startsWith('ENCRYPTED_V1:'))) && <ReadingControls />}
+
 
        {/* Enhanced Breadcrumbs */}
        <nav className="breadcrumb-nav">
