@@ -138,9 +138,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
  return (
    <>
-     <style jsx>{`
+  <style jsx>{`
   .article-container {
-    /* Remove this line: background: #fafafa; */
     min-height: 100vh;
   }
 
@@ -148,153 +147,151 @@ export default function ArticlePage({ params }: ArticlePageProps) {
     max-width: 65ch;
     margin: 0 auto;
     padding: 2rem 1.5rem;
-    /* Remove this line: background: #ffffff; */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     border-radius: 8px;
     margin-top: 2rem;
     margin-bottom: 2rem;
   }
 
-       .minimal-title {
-         font-size: 1.8rem;
-         font-weight: 700;
-         color: #333333;
-         margin-bottom: 0.75rem;
-         font-family: 'Special Elite', 'Courier New', monospace;
-         line-height: 1.3;
-       }
+  /* Kindle-like minimal header when user has access */
+  .minimal-header {
+    margin-bottom: 2rem;
+  }
 
-       .minimal-author-info {
-         display: flex;
-         align-items: center;
-         gap: 0.5rem;
-         color: #666666;
-         font-size: 0.9rem;
-         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-       }
+  .minimal-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    font-family: 'Special Elite', 'Courier New', monospace;
+    line-height: 1.3;
+  }
 
-       .author-name {
-         font-weight: 600;
-         color: #333333;
-       }
+  .minimal-author-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
 
-       .author-date {
-         color: #999999;
-       }
+  .author-name {
+    font-weight: 600;
+  }
 
-       .verified-badge {
-         display: inline-flex;
-         align-items: center;
-         gap: 0.25rem;
-         background: #dcfce7;
-         color: #166534;
-         padding: 0.25rem 0.5rem;
-         border-radius: 4px;
-         font-size: 0.75rem;
-         font-weight: 600;
-       }
+  .author-date {
+    opacity: 0.7;
+  }
 
-       /* Journalist Bio Section - Moved to bottom */
-       .journalist-bio {
-         background: #f0f7ff;
-         border-left: 4px solid #2B3990;
-         padding: 1.5rem;
-         margin: 3rem 0 2rem 0;
-         border-radius: 0 8px 8px 0;
-       }
+  .verified-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #dcfce7;
+    color: #166534;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
 
-       .bio-header {
-         display: flex;
-         justify-content: space-between;
-         align-items: flex-start;
-         margin-bottom: 1rem;
-       }
+  /* Journalist Bio Section - Moved to bottom */
+  .journalist-bio {
+    background: #f0f7ff;
+    border-left: 4px solid #2B3990;
+    padding: 1.5rem;
+    margin: 3rem 0 2rem 0;
+    border-radius: 0 8px 8px 0;
+  }
 
-       .journalist-info {
-         flex: 1;
-       }
+  .bio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
 
-       .journalist-name {
-         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-         font-weight: 600;
-         color: #333333;
-         font-size: 18px;
-         margin-bottom: 0.25rem;
-       }
+  .journalist-info {
+    flex: 1;
+  }
 
-       .journalist-meta {
-         font-size: 0.875rem;
-         color: #999999;
-         margin-bottom: 0.5rem;
-       }
+  .journalist-name {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin-bottom: 0.25rem;
+  }
 
-       .bio-text {
-         color: #666666;
-         font-size: 14px;
-         line-height: 1.5;
-       }
+  .journalist-meta {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
 
-       /* Reader License Story */
-       .reader-license-story {
-         background: #ffffff;
-         border: 2px solid #2B3990;
-         border-radius: 12px;
-         padding: 2.5rem;
-         margin: 3rem 0;
-       }
+  .bio-text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
 
-       .story-headline {
-         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-         font-size: 28px;
-         font-weight: 700;
-         color: #333333;
-         margin-bottom: 1.5rem;
-         text-align: center;
-       }
+  /* Reader License Story */
+  .reader-license-story {
+    background: #ffffff;
+    border: 2px solid #2B3990;
+    border-radius: 12px;
+    padding: 2.5rem;
+    margin: 3rem 0;
+  }
 
-       .story-content p {
-         font-size: 16px;
-         line-height: 1.6;
-         color: #666666;
-         margin-bottom: 1.5rem;
-       }
+  .story-headline {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: #333333;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
 
-       /* Breadcrumb Enhancement */
-       .breadcrumb-nav {
-         background: #ffffff;
-         padding: 1rem 0;
-         border-bottom: 1px solid #e8e8e8;
-       }
+  .story-content p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #666666;
+    margin-bottom: 1.5rem;
+  }
 
-       .breadcrumb-container {
-         max-width: 1200px;
-         margin: 0 auto;
-         padding: 0 1.5rem;
-       }
+  /* Breadcrumb Enhancement */
+  .breadcrumb-nav {
+    background: #ffffff;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e8e8e8;
+  }
 
-       /* Mobile Optimizations */
-       @media (max-width: 768px) {
-         .article-content-wrapper {
-           margin: 0;
-           border-radius: 0;
-           padding: 1.5rem 1rem;
-         }
+  .breadcrumb-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
 
-         .minimal-title {
-           font-size: 1.5rem;
-         }
+  /* Mobile Optimizations */
+  @media (max-width: 768px) {
+    .article-content-wrapper {
+      margin: 0;
+      border-radius: 0;
+      padding: 1.5rem 1rem;
+    }
 
-         .bio-header {
-           flex-direction: column;
-           gap: 0.5rem;
-           align-items: flex-start;
-         }
+    .minimal-title {
+      font-size: 1.5rem;
+    }
 
-         .minimal-author-info {
-           flex-wrap: wrap;
-         }
-       }
-     `}</style>
+    .bio-header {
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .minimal-author-info {
+      flex-wrap: wrap;
+    }
+  }
+`}</style>
 
      <div className="article-container" style={containerStyle}>
        {/* Reading Controls - Only show when content is decrypted */}
