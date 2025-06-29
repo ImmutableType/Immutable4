@@ -1,7 +1,7 @@
 // components/article/ReadingControls.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useReadingPreferences, ReadingPreferences } from '../../lib/hooks/useReadingPreferences';
 
 const ReadingControls: React.FC = () => {
@@ -14,26 +14,9 @@ const ReadingControls: React.FC = () => {
     updateFontFamily
   } = useReadingPreferences();
 
-  const [isVisible, setIsVisible] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Show controls after scrolling past the title
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrolled = window.scrollY > 200;
-      setIsVisible(scrolled);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  if (!isVisible) return null;
-
   const controlsStyle: React.CSSProperties = {
-    position: 'fixed',
-    top: '1rem',
-    right: '1rem',
     backgroundColor: theme.bgColor,
     border: `1px solid ${theme.borderColor}`,
     borderRadius: '8px',
@@ -42,8 +25,7 @@ const ReadingControls: React.FC = () => {
     alignItems: 'center',
     gap: '0.5rem',
     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-    zIndex: 100,
-    transition: 'all 0.3s ease'
+    justifyContent: 'center'
   };
 
   const buttonStyle: React.CSSProperties = {

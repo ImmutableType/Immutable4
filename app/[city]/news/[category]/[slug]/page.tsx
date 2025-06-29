@@ -114,14 +114,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    fetchJournalistInfo();
  }, [article, resolvedParams.city]);
 
- // ADDED: Debugging for ReadingControls visibility
- console.log('ReadingControls visibility check:', { 
-   hasAccess, 
-   decryptSuccess, 
-   articleContent: article?.content?.substring(0, 20),
-   isEncrypted: article?.content?.startsWith('ENCRYPTED_V1:')
- });
-
  if (isLoading) {
    return <ArticleLoadingSkeleton />;
  }
@@ -303,9 +295,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 `}</style>
 
      <div className="article-container" style={containerStyle}>
-       {/* Reading Controls - Only show when content is decrypted */}
-       {(hasAccess || decryptSuccess) && <ReadingControls />}
-
        {/* Enhanced Breadcrumbs */}
        <nav className="breadcrumb-nav">
          <div className="breadcrumb-container">
@@ -362,6 +351,13 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (
              <ArticleContent article={article} />
+           )}
+
+           {/* READING CONTROLS - JUST PUT IT HERE FOR UNLOCKED CONTENT */}
+           {(hasAccess || decryptSuccess) && (
+             <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+               <ReadingControls />
+             </div>
            )}
 
            {/* Journalist Bio Section - ONLY show for non-access state */}
