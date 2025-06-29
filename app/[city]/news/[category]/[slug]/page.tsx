@@ -10,6 +10,8 @@ import ArticleHeader from '../../../../../components/article/ArticleHeader';
 import ArticleBreadcrumbs from '../../../../../components/article/ArticleBreadcrumbs';
 import EncryptionGate from '../../../../../components/article/EncryptionGate';
 import ArticleContent from '../../../../../components/article/ArticleContent';
+import ReadingControls from '../../../../../components/article/ReadingControls';
+import { useReadingPreferences } from '../../../../../lib/hooks/useReadingPreferences';
 
 interface ArticlePageProps {
  params: Promise<{
@@ -34,6 +36,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const [journalistInfo, setJournalistInfo] = useState<JournalistInfo | null>(null);
  const [hasAccess, setHasAccess] = useState(false);
  const [isNFTOwner, setIsNFTOwner] = useState(false);
+ const { theme, fontSize, fontFamily } = useReadingPreferences();
  
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
@@ -53,9 +56,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  useEffect(() => {
    if (article?.hasAccess || (article?.content && !article.content.startsWith('ENCRYPTED_V1:'))) {
      setHasAccess(true);
-     // For now, we'll check if the content includes the NFT owner message
-     // This is a temporary solution until we have proper access type detection
-     // You could also add a check based on the article's NFT ownership status
    }
  }, [article]);
 
@@ -120,6 +120,21 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  if (error || !article) {
    return <ArticleNotFound />;
  }
+
+ // Apply theme styles to container when content is decrypted
+ const containerStyle = hasAccess || decryptSuccess ? {
+   backgroundColor: theme.bgColor,
+   color: theme.textColor,
+   transition: 'all 0.3s ease'
+ } : {};
+
+ const wrapperStyle = hasAccess || decryptSuccess ? {
+   backgroundColor: theme.bgColor,
+   color: theme.textColor,
+   fontSize: fontSize,
+   fontFamily: fontFamily,
+   transition: 'all 0.3s ease'
+ } : {};
 
  return (
    <>
@@ -286,7 +301,10 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        }
      `}</style>
 
-     <div className="article-container">
+     <div className="article-container" style={containerStyle}>
+       {/* Reading Controls - Only show when content is decrypted */}
+       {(hasAccess || decryptSuccess) && <ReadingControls />}
+
        {/* Enhanced Breadcrumbs */}
        <nav className="breadcrumb-nav">
          <div className="breadcrumb-container">
@@ -300,7 +318,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        </nav>
 
        {/* Main Article Container */}
-       <div className="article-content-wrapper">
+       <div className="article-content-wrapper" style={wrapperStyle}>
          <article>
            {/* Conditional Header - Full header ONLY when content is locked */}
            {!hasAccess && !decryptSuccess ? (
@@ -312,12 +330,12 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            ) : (
              /* Minimal header for clean reading when user has access */
              <div className="minimal-header">
-               <h1 className="minimal-title">{article.title}</h1>
-               <div className="minimal-author-info">
-                 <span className="author-name">
+               <h1 className="minimal-title" style={{ color: theme.textColor }}>{article.title}</h1>
+               <div className="minimal-author-info" style={{ color: theme.textColor }}>
+                 <span className="author-name" style={{ color: theme.textColor }}>
                    By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
                  </span>
-                 <span className="author-date">
+                 <span className="author-date" style={{ opacity: 0.7 }}>
                    • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
                      month: 'long', 
                      day: 'numeric',
@@ -337,6 +355,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
            <EncryptionGate 
              article={article}
              onDecrypt={handleDecryptSuccess}
+             journalistInfo={journalistInfo}
            />
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
@@ -386,8 +405,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              </div>
            </div>
          )}
-
-         {/* NO ENGAGEMENT BAR - Social sharing removed completely */}
        </div>
      </div>
    </>
