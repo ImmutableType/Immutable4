@@ -300,7 +300,13 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({
         wordBreak: 'break-word', 
         overflowWrap: 'break-word',
         maxWidth: '65ch',
-        margin: '0 auto'
+        margin: '0 auto',
+        backgroundColor: theme.bgColor,
+        color: theme.textColor,
+        padding: '2rem',
+        borderRadius: '8px',
+        fontSize: fontSize,
+        fontFamily: fontFamily
       }}>
         {/* Simple Decryption Loading State */}
         {isDecrypting && (

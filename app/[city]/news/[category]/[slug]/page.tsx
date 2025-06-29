@@ -122,39 +122,21 @@ export default function ArticlePage({ params }: ArticlePageProps) {
    return <ArticleNotFound />;
  }
 
- // Apply theme styles to container and wrapper
- const containerStyle = hasAccess || decryptSuccess ? {
-   backgroundColor: theme.bgColor,
-   color: theme.textColor,
-   transition: 'all 0.3s ease',
-   minHeight: '100vh'
- } : {};
-
- const wrapperStyle = hasAccess || decryptSuccess ? {
-   backgroundColor: theme.bgColor,
-   color: theme.textColor,
-   fontSize: fontSize,
-   fontFamily: fontFamily,
-   transition: 'all 0.3s ease',
-   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-   borderRadius: '8px'
- } : {
-   backgroundColor: '#ffffff',
-   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-   borderRadius: '8px'
- };
-
  return (
    <>
      <style jsx>{`
        .article-container {
          min-height: 100vh;
+         background: #fafafa;
        }
 
        .article-content-wrapper {
          max-width: 65ch;
          margin: 0 auto;
          padding: 2rem 1.5rem;
+         background: #ffffff;
+         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+         border-radius: 8px;
          margin-top: 2rem;
          margin-bottom: 2rem;
        }
@@ -202,6 +184,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
        /* Journalist Bio Section - Moved to bottom */
        .journalist-bio {
+         background: #f0f7ff;
          border-left: 4px solid #2B3990;
          padding: 1.5rem;
          margin: 3rem 0 2rem 0;
@@ -263,6 +246,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
        /* Breadcrumb Enhancement */
        .breadcrumb-nav {
+         background: #ffffff;
          padding: 1rem 0;
          border-bottom: 1px solid #e8e8e8;
        }
@@ -297,9 +281,9 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        }
      `}</style>
 
-     <div className="article-container" style={containerStyle}>
+     <div className="article-container">
        {/* Enhanced Breadcrumbs */}
-       <nav className="breadcrumb-nav" style={{ backgroundColor: theme.bgColor, borderBottomColor: theme.borderColor }}>
+       <nav className="breadcrumb-nav">
          <div className="breadcrumb-container">
            <ArticleBreadcrumbs 
              city={resolvedParams.city}
@@ -311,7 +295,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        </nav>
 
        {/* Main Article Container */}
-       <div className="article-content-wrapper" style={wrapperStyle}>
+       <div className="article-content-wrapper">
          <article>
            {/* Conditional Header - Full header ONLY when content is locked */}
            {!hasAccess && !decryptSuccess ? (
@@ -324,12 +308,12 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              <>
                {/* Minimal header for clean reading when user has access */}
                <div className="minimal-header">
-                 <h1 className="minimal-title" style={{ color: theme.textColor }}>{article.title}</h1>
-                 <div className="minimal-author-info" style={{ color: theme.textColor }}>
-                   <span className="author-name" style={{ color: theme.textColor }}>
+                 <h1 className="minimal-title">{article.title}</h1>
+                 <div className="minimal-author-info">
+                   <span className="author-name">
                      By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
                    </span>
-                   <span className="author-date" style={{ opacity: 0.7 }}>
+                   <span className="author-date">
                      • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
                        month: 'long', 
                        day: 'numeric',
@@ -368,7 +352,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
            {/* Journalist Bio Section - ONLY show for non-access state */}
            {!hasAccess && !decryptSuccess && journalistInfo && (
-             <div className="journalist-bio" style={{ background: theme.bioBgColor }}>
+             <div className="journalist-bio">
                <div className="bio-header">
                  <div className="journalist-info">
                    <div className="journalist-name">{journalistInfo.name}</div>
