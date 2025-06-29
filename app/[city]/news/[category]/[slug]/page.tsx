@@ -348,12 +348,15 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              </>
            )}
 
-           {/* EncryptionGate handles ALL content access and purchasing */}
-           <EncryptionGate 
-             article={article}
-             onDecrypt={handleDecryptSuccess}
-             journalistInfo={journalistInfo}
-           />
+          {/* EncryptionGate handles ALL content access and purchasing */}
+<EncryptionGate 
+  article={article}
+  onDecrypt={handleDecryptSuccess}
+  journalistInfo={journalistInfo}
+  theme={theme}
+  fontSize={fontSize}
+  fontFamily={fontFamily}
+/>
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (

@@ -6,7 +6,7 @@ import { Article } from '../../lib/reader/types/article';
 import { useWallet } from '../../lib/hooks/useWallet';
 import { useContentDecryption } from '../../lib/encryption/hooks/useContentDecryption';
 import { ReaderLicenseAMMService, LicenseAccess } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
-import { useReadingPreferences } from '../../lib/hooks/useReadingPreferences';
+import { Theme } from '../../lib/hooks/useReadingPreferences';
 
 interface JournalistInfo {
   name: string;
@@ -21,12 +21,27 @@ interface EncryptionGateProps {
   article: Article;
   onDecrypt?: (success: boolean) => void;
   journalistInfo?: JournalistInfo | null;
+  theme?: Theme;
+  fontSize?: string;
+  fontFamily?: string;
 }
 
-const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt, journalistInfo }) => {
+const EncryptionGate: React.FC<EncryptionGateProps> = ({ 
+  article, 
+  onDecrypt, 
+  journalistInfo,
+  theme = {
+    bgColor: '#ffffff',
+    textColor: '#333333',
+    linkColor: '#2B3990',
+    borderColor: '#e8e8e8',
+    bioBgColor: '#f0f7ff'
+  },
+  fontSize = '1rem',
+  fontFamily = "'Spectral', Georgia, serif"
+}) => {
   const { address: userAddress, isConnected, connect } = useWallet();
   const { decryptContent } = useContentDecryption();
-  const { theme } = useReadingPreferences();
   
   // Basic State Management
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
@@ -326,9 +341,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt, jou
           </div>
         )}
 
-        {/* ✅ CONTENT DISPLAY with proper contrast */}
+        {/* ✅ CONTENT DISPLAY with theme styles applied */}
         <div style={{
-          fontSize: '1.1rem',
+          fontSize: fontSize,
+          fontFamily: fontFamily,
           lineHeight: '1.8',
           color: theme.textColor,
           wordBreak: 'break-word',
