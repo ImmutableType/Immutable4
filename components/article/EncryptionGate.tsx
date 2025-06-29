@@ -105,6 +105,8 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt, jou
       if (!isEncrypted) {
         console.log('📄 Content not encrypted, using plain content');
         setDecryptedContent(article.content || '');
+        // ADDED: notify parent that content is accessible
+        onDecrypt?.(true);
         return;
       }
 
@@ -157,6 +159,13 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({ article, onDecrypt, jou
 
     handleDecryption();
   }, [article, accessDetails, userAddress, decryptContent, onDecrypt]);
+
+  // ADDED: Notify parent when we have access and are showing content
+  useEffect(() => {
+    if (accessDetails?.hasAccess && !accessDetails.needsActivation) {
+      onDecrypt?.(true);
+    }
+  }, [accessDetails, onDecrypt]);
 
   const fetchLicenseInfo = async () => {
     if (!licenseService || !article) return;

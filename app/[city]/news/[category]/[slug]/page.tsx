@@ -45,6 +45,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const { article, isLoading, error } = useArticleDetail(articleId);
 
  const handleDecryptSuccess = (success: boolean) => {
+   console.log('🎯 Decrypt callback fired with success:', success);
    if (success) {
      setDecryptSuccess(true);
      setHasAccess(true);
@@ -112,6 +113,14 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
    fetchJournalistInfo();
  }, [article, resolvedParams.city]);
+
+ // ADDED: Debugging for ReadingControls visibility
+ console.log('ReadingControls visibility check:', { 
+   hasAccess, 
+   decryptSuccess, 
+   articleContent: article?.content?.substring(0, 20),
+   isEncrypted: article?.content?.startsWith('ENCRYPTED_V1:')
+ });
 
  if (isLoading) {
    return <ArticleLoadingSkeleton />;
@@ -295,8 +304,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
      <div className="article-container" style={containerStyle}>
        {/* Reading Controls - Only show when content is decrypted */}
-       {(hasAccess || decryptSuccess || (article?.content && !article.content.startsWith('ENCRYPTED_V1:'))) && <ReadingControls />}
-
+       {(hasAccess || decryptSuccess) && <ReadingControls />}
 
        {/* Enhanced Breadcrumbs */}
        <nav className="breadcrumb-nav">
