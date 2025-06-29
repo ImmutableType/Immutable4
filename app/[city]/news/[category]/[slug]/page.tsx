@@ -126,7 +126,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const containerStyle = hasAccess || decryptSuccess ? {
    backgroundColor: theme.bgColor,
    color: theme.textColor,
-   transition: 'all 0.3s ease'
+   transition: 'all 0.3s ease',
+   minHeight: '100vh'
  } : {};
 
  const wrapperStyle = hasAccess || decryptSuccess ? {
@@ -259,7 +260,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
   /* Breadcrumb Enhancement */
   .breadcrumb-nav {
-    background: #ffffff;
     padding: 1rem 0;
     border-bottom: 1px solid #e8e8e8;
   }
@@ -296,7 +296,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
      <div className="article-container" style={containerStyle}>
        {/* Enhanced Breadcrumbs */}
-       <nav className="breadcrumb-nav">
+       <nav className="breadcrumb-nav" style={{ backgroundColor: theme.bgColor }}>
          <div className="breadcrumb-container">
            <ArticleBreadcrumbs 
              city={resolvedParams.city}
@@ -318,27 +318,34 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                category={resolvedParams.category}
              />
            ) : (
-             /* Minimal header for clean reading when user has access */
-             <div className="minimal-header">
-               <h1 className="minimal-title" style={{ color: theme.textColor }}>{article.title}</h1>
-               <div className="minimal-author-info" style={{ color: theme.textColor }}>
-                 <span className="author-name" style={{ color: theme.textColor }}>
-                   By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
-                 </span>
-                 <span className="author-date" style={{ opacity: 0.7 }}>
-                   • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
-                     month: 'long', 
-                     day: 'numeric',
-                     year: 'numeric' 
-                   }) : 'Date unknown'}
-                 </span>
-                 {journalistInfo?.hasProfile && (
-                   <span className="verified-badge">
-                     ✓ Verified
+             <>
+               {/* Minimal header for clean reading when user has access */}
+               <div className="minimal-header">
+                 <h1 className="minimal-title" style={{ color: theme.textColor }}>{article.title}</h1>
+                 <div className="minimal-author-info" style={{ color: theme.textColor }}>
+                   <span className="author-name" style={{ color: theme.textColor }}>
+                     By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
                    </span>
-                 )}
+                   <span className="author-date" style={{ opacity: 0.7 }}>
+                     • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
+                       month: 'long', 
+                       day: 'numeric',
+                       year: 'numeric' 
+                     }) : 'Date unknown'}
+                   </span>
+                   {journalistInfo?.hasProfile && (
+                     <span className="verified-badge">
+                       ✓ Verified
+                     </span>
+                   )}
+                 </div>
                </div>
-             </div>
+               
+               {/* READING CONTROLS - RIGHT AFTER MINIMAL HEADER */}
+               <div style={{ marginBottom: '2rem' }}>
+                 <ReadingControls />
+               </div>
+             </>
            )}
 
            {/* EncryptionGate handles ALL content access and purchasing */}
@@ -353,13 +360,6 @@ export default function ArticlePage({ params }: ArticlePageProps) {
              <ArticleContent article={article} />
            )}
 
-           {/* READING CONTROLS - JUST PUT IT HERE FOR UNLOCKED CONTENT */}
-           {(hasAccess || decryptSuccess) && (
-             <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-               <ReadingControls />
-             </div>
-           )}
-
            {/* Journalist Bio Section - ONLY show for non-access state */}
            {!hasAccess && !decryptSuccess && journalistInfo && (
              <div className="journalist-bio">
@@ -369,7 +369,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
                    <div className="journalist-meta">
                      Member since {journalistInfo.memberSince} • {journalistInfo.walletAddress.slice(0, 6)}...{journalistInfo.walletAddress.slice(-4)}
                    </div>
-                   {journalistInfo.hasProfile && (
+                   {journalistInfo?.hasProfile && (
                      <div className="verification-badge">
                        ✓ Verified Local Journalist
                      </div>
