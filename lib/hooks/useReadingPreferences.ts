@@ -17,11 +17,11 @@ export interface ReadingPreferences {
 
 const themes: Record<ReadingPreferences['theme'], Theme> = {
   light: {
-    bgColor: '#ffffff',
-    textColor: '#333333',
-    linkColor: '#2B3990',
-    borderColor: '#e8e8e8',
-    bioBgColor: '#f0f7ff'
+    bgColor: 'var(--color-white)',
+    textColor: 'var(--color-black)',
+    linkColor: 'var(--color-blockchain-blue)',
+    borderColor: 'var(--color-digital-silver)',
+    bioBgColor: 'var(--color-parchment)'
   },
   sepia: {
     bgColor: '#fbf0d9',
@@ -54,8 +54,8 @@ const fontSizes = {
 };
 
 const fontFamilies = {
-  serif: "'Spectral', Georgia, serif",
-  sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  serif: 'var(--font-body)',
+  sans: 'var(--font-ui)'
 };
 
 export function useReadingPreferences() {
