@@ -37,7 +37,26 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const [hasAccess, setHasAccess] = useState(false);
  const [isNFTOwner, setIsNFTOwner] = useState(false);
  const { theme, fontSize, fontFamily, preferences } = useReadingPreferences();
+
+ const [refreshKey, setRefreshKey] = useState(0);
+// Around line 38, after const { theme, fontSize, fontFamily, preferences } = useReadingPreferences();
+// Force re-render when reading preferences change
+useEffect(() => {
+  const handleStorageChange = () => {
+    // Force a re-render by updating state, NOT reloading
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // Listen for custom event from reading preferences
+  window.addEventListener('readingPreferencesChanged', handleStorageChange);
+  
+  return () => {
+    window.removeEventListener('readingPreferencesChanged', handleStorageChange);
+  };
+}, []);
  
+
+
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
  
@@ -348,14 +367,14 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
            {/* EncryptionGate handles ALL content access and purchasing */}
            <EncryptionGate 
-              key={`${preferences.theme}-${preferences.fontSize}-${preferences.fontFamily}`} // ADD THIS LINE
-             article={article}
-             onDecrypt={handleDecryptSuccess}
-             journalistInfo={journalistInfo}
-             theme={theme}
-             fontSize={fontSize}
-             fontFamily={fontFamily}
-           />
+  key={`${preferences.theme}-${preferences.fontSize}-${preferences.fontFamily}-${refreshKey}`}
+  article={article}
+  onDecrypt={handleDecryptSuccess}
+  journalistInfo={journalistInfo}
+  theme={theme}
+  fontSize={fontSize}
+  fontFamily={fontFamily}
+/>
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (

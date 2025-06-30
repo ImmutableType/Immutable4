@@ -58,6 +58,8 @@ const fontFamilies = {
   sans: 'var(--font-ui)'
 };
 
+const STORAGE_KEY = 'reading-preferences';
+
 export function useReadingPreferences() {
   const [preferences, setPreferences] = useState<ReadingPreferences>({
     theme: 'light',
@@ -67,7 +69,7 @@ export function useReadingPreferences() {
 
   // Load preferences on mount
   useEffect(() => {
-    const stored = localStorage.getItem('reading-preferences');
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -78,21 +80,31 @@ export function useReadingPreferences() {
     }
   }, []);
 
-  // Save preferences whenever they change
-  useEffect(() => {
-    localStorage.setItem('reading-preferences', JSON.stringify(preferences));
-  }, [preferences]);
-
   const updateTheme = (theme: ReadingPreferences['theme']) => {
-    setPreferences(prev => ({ ...prev, theme }));
+    const newPreferences = { ...preferences, theme };
+    setPreferences(newPreferences);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
+    
+    // Emit custom event
+    window.dispatchEvent(new Event('readingPreferencesChanged'));
   };
 
   const updateFontSize = (fontSize: ReadingPreferences['fontSize']) => {
-    setPreferences(prev => ({ ...prev, fontSize }));
+    const newPreferences = { ...preferences, fontSize };
+    setPreferences(newPreferences);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
+    
+    // Emit custom event
+    window.dispatchEvent(new Event('readingPreferencesChanged'));
   };
 
   const updateFontFamily = (fontFamily: ReadingPreferences['fontFamily']) => {
-    setPreferences(prev => ({ ...prev, fontFamily }));
+    const newPreferences = { ...preferences, fontFamily };
+    setPreferences(newPreferences);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newPreferences));
+    
+    // Emit custom event
+    window.dispatchEvent(new Event('readingPreferencesChanged'));
   };
 
   const increaseFontSize = () => {
