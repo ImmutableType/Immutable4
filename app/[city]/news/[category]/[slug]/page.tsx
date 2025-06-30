@@ -348,6 +348,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
            {/* EncryptionGate handles ALL content access and purchasing */}
            <EncryptionGate 
+              key={`${preferences.theme}-${preferences.fontSize}-${preferences.fontFamily}`} // ADD THIS LINE
              article={article}
              onDecrypt={handleDecryptSuccess}
              journalistInfo={journalistInfo}
