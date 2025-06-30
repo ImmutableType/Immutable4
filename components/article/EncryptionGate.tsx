@@ -7,6 +7,7 @@ import { useWallet } from '../../lib/hooks/useWallet';
 import { useContentDecryption } from '../../lib/encryption/hooks/useContentDecryption';
 import { ReaderLicenseAMMService, LicenseAccess } from '../../lib/blockchain/contracts/ReaderLicenseAMMService';
 import { Theme } from '../../lib/hooks/useReadingPreferences';
+import ArticleContent from './ArticleContent';
 
 interface JournalistInfo {
   name: string;

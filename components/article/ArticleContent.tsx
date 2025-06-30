@@ -5,9 +5,29 @@ import { Article } from '../../lib/reader/types/article';
 
 interface ArticleContentProps {
   article: Article;
+  theme?: {
+    bgColor: string;
+    textColor: string;
+    linkColor: string;
+    borderColor: string;
+    bioBgColor: string;
+  };
+  fontSize?: string;
+  fontFamily?: string;
 }
 
-const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
+const ArticleContent: React.FC<ArticleContentProps> = ({ 
+  article,
+  theme = {
+    bgColor: '#ffffff',
+    textColor: '#333333',
+    linkColor: '#2B3990',
+    borderColor: '#e8e8e8',
+    bioBgColor: '#f0f7ff'
+  },
+  fontSize = '1.1rem',
+  fontFamily = "'Spectral', Georgia, serif"
+}) => {
   // Enhanced content rendering with better typography
   const renderContent = (content: string) => {
     return content.split('\n').map((paragraph: string, index: number) => {
@@ -15,10 +35,11 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
         return (
           <p key={index} style={{ 
             marginBottom: '1.5rem',
-            fontSize: '1.1rem',
+            fontSize: fontSize,
             lineHeight: '1.8',
-            color: 'var(--color-black)',
-            textAlign: 'justify'
+            color: theme.textColor,
+            textAlign: 'justify',
+            fontFamily: fontFamily
           }}>
             {paragraph}
           </p>
@@ -29,12 +50,20 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
   };
 
   return (
-    <main>
+    <main style={{
+      backgroundColor: theme.bgColor,
+      color: theme.textColor,
+      padding: '2rem',
+      borderRadius: '8px',
+      maxWidth: '65ch',
+      margin: '0 auto'
+    }}>
       {/* Article Body */}
       <div style={{
-        fontSize: '1.1rem',
+        fontSize: fontSize,
         lineHeight: '1.8',
-        color: 'var(--color-black)'
+        color: theme.textColor,
+        fontFamily: fontFamily
       }}>
         {renderContent(article.content)}
       </div>
@@ -43,7 +72,7 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
       <footer style={{
         marginTop: '3rem',
         paddingTop: '2rem',
-        borderTop: '1px solid var(--color-digital-silver)'
+        borderTop: `1px solid ${theme.borderColor}`
       }}>
         <div style={{
           display: 'grid',
@@ -56,11 +85,12 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
             <h3 style={{
               fontFamily: 'var(--font-headlines)',
               fontSize: '1.2rem',
-              marginBottom: '1rem'
+              marginBottom: '1rem',
+              color: theme.textColor
             }}>
               Article Metrics
             </h3>
-            <div style={{ fontSize: '0.9rem', color: 'var(--color-digital-silver)' }}>
+            <div style={{ fontSize: '0.9rem', color: theme.textColor, opacity: 0.7 }}>
               <div>Views: {article.readerMetrics.viewCount.toLocaleString()}</div>
               <div>Comments: {article.readerMetrics.commentCount}</div>
               <div>Tips Received: {article.readerMetrics.tipAmount} FLOW</div>
@@ -73,17 +103,18 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
               <h3 style={{
                 fontFamily: 'var(--font-headlines)',
                 fontSize: '1.2rem',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                color: theme.textColor
               }}>
                 Community Funded
               </h3>
-              <div style={{ fontSize: '0.9rem', color: 'var(--color-digital-silver)' }}>
+              <div style={{ fontSize: '0.9rem', color: theme.textColor, opacity: 0.7 }}>
                 This article was funded by community proposal.
                 <br />
                 <a 
                   href={`/news-proposals/${article.proposalId}`}
                   style={{
-                    color: 'var(--color-blockchain-blue)',
+                    color: theme.linkColor,
                     textDecoration: 'none'
                   }}
                   onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
@@ -106,15 +137,16 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
           }}>
             <span style={{
               fontSize: '0.9rem',
-              color: 'var(--color-digital-silver)',
+              color: theme.textColor,
+              opacity: 0.7,
               marginRight: '0.5rem'
             }}>
               Tags:
             </span>
             {article.tags.map((tag: string, index: number) => (
               <span key={index} style={{
-                backgroundColor: 'var(--color-parchment)',
-                color: 'var(--color-black)',
+                backgroundColor: theme.bioBgColor,
+                color: theme.textColor,
                 borderRadius: '4px',
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.85rem',
@@ -129,10 +161,11 @@ const ArticleContent: React.FC<ArticleContentProps> = ({ article }) => {
         {/* Blockchain Verification Footer */}
         <div style={{
           fontSize: '0.8rem',
-          color: 'var(--color-digital-silver)',
+          color: theme.textColor,
+          opacity: 0.6,
           textAlign: 'center',
           paddingTop: '1rem',
-          borderTop: '1px solid var(--color-parchment)'
+          borderTop: `1px solid ${theme.borderColor}`
         }}>
           This article is permanently stored on the Flow EVM blockchain and cannot be altered or removed.
           {article.contentHash && (

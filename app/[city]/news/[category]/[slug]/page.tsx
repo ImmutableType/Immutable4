@@ -127,14 +127,14 @@ export default function ArticlePage({ params }: ArticlePageProps) {
      <style jsx>{`
        .article-container {
          min-height: 100vh;
-         background: #fafafa;
+         background: ${theme.bgColor};
        }
 
        .article-content-wrapper {
          max-width: 65ch;
          margin: 0 auto;
          padding: 2rem 1.5rem;
-         background: #ffffff;
+         background: ${theme.bgColor};
          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
          border-radius: 8px;
          margin-top: 2rem;
@@ -152,6 +152,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          margin-bottom: 0.75rem;
          font-family: 'Special Elite', 'Courier New', monospace;
          line-height: 1.3;
+         color: ${theme.textColor};
        }
 
        .minimal-author-info {
@@ -160,6 +161,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          gap: 0.5rem;
          font-size: 0.9rem;
          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+         color: ${theme.textColor};
        }
 
        .author-name {
@@ -184,8 +186,8 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
        /* Journalist Bio Section - Moved to bottom */
        .journalist-bio {
-         background: #f0f7ff;
-         border-left: 4px solid #2B3990;
+         background: ${theme.bioBgColor};
+         border-left: 4px solid ${theme.linkColor};
          padding: 1.5rem;
          margin: 3rem 0 2rem 0;
          border-radius: 0 8px 8px 0;
@@ -207,22 +209,26 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          font-weight: 600;
          font-size: 18px;
          margin-bottom: 0.25rem;
+         color: ${theme.textColor};
        }
 
        .journalist-meta {
          font-size: 0.875rem;
          margin-bottom: 0.5rem;
+         color: ${theme.textColor};
+         opacity: 0.7;
        }
 
        .bio-text {
          font-size: 14px;
          line-height: 1.5;
+         color: ${theme.textColor};
        }
 
        /* Reader License Story */
        .reader-license-story {
-         background: #ffffff;
-         border: 2px solid #2B3990;
+         background: ${theme.bgColor};
+         border: 2px solid ${theme.linkColor};
          border-radius: 12px;
          padding: 2.5rem;
          margin: 3rem 0;
@@ -232,7 +238,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
          font-size: 28px;
          font-weight: 700;
-         color: #333333;
+         color: ${theme.textColor};
          margin-bottom: 1.5rem;
          text-align: center;
        }
@@ -240,15 +246,15 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        .story-content p {
          font-size: 16px;
          line-height: 1.6;
-         color: #666666;
+         color: ${theme.textColor};
          margin-bottom: 1.5rem;
        }
 
        /* Breadcrumb Enhancement */
        .breadcrumb-nav {
-         background: #ffffff;
+         background: ${theme.bgColor};
          padding: 1rem 0;
-         border-bottom: 1px solid #e8e8e8;
+         border-bottom: 1px solid ${theme.borderColor};
        }
 
        .breadcrumb-container {
@@ -347,7 +353,12 @@ export default function ArticlePage({ params }: ArticlePageProps) {
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (
-             <ArticleContent article={article} />
+             <ArticleContent 
+               article={article}
+               theme={theme}
+               fontSize={fontSize}
+               fontFamily={fontFamily}
+             />
            )}
 
            {/* Journalist Bio Section - ONLY show for non-access state */}
