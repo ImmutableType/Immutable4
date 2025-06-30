@@ -367,7 +367,9 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({
                   marginBottom: '1.5rem', 
                   textAlign: 'justify', 
                   fontStyle: 'italic',
-                  color: theme.textColor
+                  color: theme.textColor,
+                  fontSize: fontSize,
+                  fontFamily: fontFamily
                 }}>
                   {article.summary}
                 </p>
@@ -382,7 +384,10 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({
                 <p key={index} style={{ 
                   marginBottom: '1.5rem', 
                   textAlign: 'justify',
-                  whiteSpace: 'pre-line'
+                  whiteSpace: 'pre-line',
+                  color: theme.textColor,
+                  fontSize: fontSize,
+                  fontFamily: fontFamily
                 }}>
                   {trimmedParagraph}
                 </p>
