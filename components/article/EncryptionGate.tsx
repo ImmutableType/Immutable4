@@ -297,205 +297,211 @@ const EncryptionGate: React.FC<EncryptionGateProps> = ({
   // ✅ IF USER HAS ACCESS - SHOW DECRYPTED CONTENT
   if (accessDetails?.hasAccess && !accessDetails.needsActivation) {
     return (
-      <main style={{ 
-        wordBreak: 'break-word', 
-        overflowWrap: 'break-word',
-        maxWidth: '65ch',
-        margin: '0 auto',
+      <div style={{
         backgroundColor: theme.bgColor,
         color: theme.textColor,
-        padding: '2rem',
-        borderRadius: '8px',
-        fontSize: fontSize,
-        fontFamily: fontFamily
+        minHeight: '100vh'
       }}>
-        {/* Simple Decryption Loading State */}
-        {isDecrypting && (
-          <div style={{
-            padding: '2rem',
-            backgroundColor: '#f4f1e8',
-            borderRadius: '12px',
-            marginBottom: '2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔓</div>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#B3211E' }}>
-              Decrypting your content...
-            </h3>
-            <p style={{ fontSize: '1rem', color: '#666', margin: 0 }}>
-              {accessDetails.accessType === 'nft_owner' ? 'NFT ownership verified' : 'Reader license validated'}
-            </p>
-          </div>
-        )}
-
-        {/* Error Handling for Decryption */}
-        {decryptionError && (
-          <div style={{
-            padding: '1rem',
-            backgroundColor: '#ffebee',
-            color: '#c62828',
-            borderRadius: '8px',
-            marginBottom: '2rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem'
-          }}>
-            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
-            <div>
-              <div style={{ fontWeight: '600' }}>Decryption Error</div>
-              <div style={{ fontSize: '0.9rem' }}>{decryptionError}</div>
-            </div>
-          </div>
-        )}
-
-        {/* ✅ CONTENT DISPLAY with theme styles applied */}
-        <div style={{
-          fontSize: fontSize,
-          fontFamily: fontFamily,
-          lineHeight: '1.8',
+        <main style={{ 
+          wordBreak: 'break-word', 
+          overflowWrap: 'break-word',
+          maxWidth: '65ch',
+          margin: '0 auto',
+          backgroundColor: theme.bgColor,
           color: theme.textColor,
-          wordBreak: 'break-word',
-          overflowWrap: 'break-word'
+          padding: '2rem',
+          borderRadius: '8px',
+          fontSize: fontSize,
+          fontFamily: fontFamily
         }}>
-          {(() => {
-            const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
-            const contentToDisplay = isEncrypted ? decryptedContent : article.content;
-            
-            if (!contentToDisplay) {
-              return article.summary && (
-                <p style={{ 
-                  marginBottom: '1.5rem', 
-                  textAlign: 'justify', 
-                  fontStyle: 'italic',
-                  color: theme.textColor,
-                  fontSize: fontSize,
-                  fontFamily: fontFamily
-                }}>
-                  {article.summary}
-                </p>
-              );
-            }
-            
-            return contentToDisplay.split(/\n\s*\n/).map((paragraph: string, index: number) => {
-              const trimmedParagraph = paragraph.trim();
-              if (!trimmedParagraph) return null;
+          {/* Simple Decryption Loading State */}
+          {isDecrypting && (
+            <div style={{
+              padding: '2rem',
+              backgroundColor: '#f4f1e8',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🔓</div>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#B3211E' }}>
+                Decrypting your content...
+              </h3>
+              <p style={{ fontSize: '1rem', color: '#666', margin: 0 }}>
+                {accessDetails.accessType === 'nft_owner' ? 'NFT ownership verified' : 'Reader license validated'}
+              </p>
+            </div>
+          )}
+
+          {/* Error Handling for Decryption */}
+          {decryptionError && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: '#ffebee',
+              color: '#c62828',
+              borderRadius: '8px',
+              marginBottom: '2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: '600' }}>Decryption Error</div>
+                <div style={{ fontSize: '0.9rem' }}>{decryptionError}</div>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ CONTENT DISPLAY with theme styles applied */}
+          <div style={{
+            fontSize: fontSize,
+            fontFamily: fontFamily,
+            lineHeight: '1.8',
+            color: theme.textColor,
+            wordBreak: 'break-word',
+            overflowWrap: 'break-word'
+          }}>
+            {(() => {
+              const isEncrypted = article.content && article.content.startsWith('ENCRYPTED_V1:');
+              const contentToDisplay = isEncrypted ? decryptedContent : article.content;
               
-              return (
-                <p key={index} style={{ 
-                  marginBottom: '1.5rem', 
-                  textAlign: 'justify',
-                  whiteSpace: 'pre-line',
-                  color: theme.textColor,
-                  fontSize: fontSize,
-                  fontFamily: fontFamily
-                }}>
-                  {trimmedParagraph}
-                </p>
-              );
-            }).filter(Boolean);
-          })()}
-        </div>
+              if (!contentToDisplay) {
+                return article.summary && (
+                  <p style={{ 
+                    marginBottom: '1.5rem', 
+                    textAlign: 'justify', 
+                    fontStyle: 'italic',
+                    color: theme.textColor,
+                    fontSize: fontSize,
+                    fontFamily: fontFamily
+                  }}>
+                    {article.summary}
+                  </p>
+                );
+              }
+              
+              return contentToDisplay.split(/\n\s*\n/).map((paragraph: string, index: number) => {
+                const trimmedParagraph = paragraph.trim();
+                if (!trimmedParagraph) return null;
+                
+                return (
+                  <p key={index} style={{ 
+                    marginBottom: '1.5rem', 
+                    textAlign: 'justify',
+                    whiteSpace: 'pre-line',
+                    color: theme.textColor,
+                    fontSize: fontSize,
+                    fontFamily: fontFamily
+                  }}>
+                    {trimmedParagraph}
+                  </p>
+                );
+              }).filter(Boolean);
+            })()}
+          </div>
 
-        {/* Journalist Bio Section - Show at bottom for all decrypted content */}
-        {journalistInfo && (
-          <div style={{
-            background: theme.bioBgColor,
-            borderLeft: `4px solid ${theme.linkColor}`,
-            padding: '1.5rem',
-            margin: '3rem 0 2rem 0',
-            borderRadius: '0 8px 8px 0'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'flex-start', 
-              marginBottom: '1rem' 
+          {/* Journalist Bio Section - Show at bottom for all decrypted content */}
+          {journalistInfo && (
+            <div style={{
+              background: theme.bioBgColor,
+              borderLeft: `4px solid ${theme.linkColor}`,
+              padding: '1.5rem',
+              margin: '3rem 0 2rem 0',
+              borderRadius: '0 8px 8px 0'
             }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 600,
-                  color: theme.textColor,
-                  fontSize: '18px',
-                  marginBottom: '0.25rem'
-                }}>
-                  {journalistInfo.name}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start', 
+                marginBottom: '1rem' 
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ 
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 600,
+                    color: theme.textColor,
+                    fontSize: '18px',
+                    marginBottom: '0.25rem'
+                  }}>
+                    {journalistInfo.name}
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.875rem', 
+                    color: theme.textColor, 
+                    opacity: 0.7,
+                    marginBottom: '0.5rem' 
+                  }}>
+                    Member since {journalistInfo.memberSince} • {journalistInfo.walletAddress.slice(0, 6)}...{journalistInfo.walletAddress.slice(-4)}
+                  </div>
+                  {journalistInfo.hasProfile && (
+                    <a 
+                      href={journalistInfo.profileUrl}
+                      style={{ 
+                        color: theme.linkColor,
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      View Profile →
+                    </a>
+                  )}
                 </div>
-                <div style={{ 
-                  fontSize: '0.875rem', 
-                  color: theme.textColor, 
-                  opacity: 0.7,
-                  marginBottom: '0.5rem' 
-                }}>
-                  Member since {journalistInfo.memberSince} • {journalistInfo.walletAddress.slice(0, 6)}...{journalistInfo.walletAddress.slice(-4)}
-                </div>
-                {journalistInfo.hasProfile && (
-                  <a 
-                    href={journalistInfo.profileUrl}
-                    style={{ 
-                      color: theme.linkColor,
-                      textDecoration: 'none',
-                      fontSize: '0.875rem',
-                      fontWeight: 500
-                    }}
-                  >
-                    View Profile →
-                  </a>
-                )}
+              </div>
+              <div style={{ 
+                color: theme.textColor, 
+                fontSize: '14px', 
+                lineHeight: '1.5' 
+              }}>
+                {journalistInfo.bio}
               </div>
             </div>
-            <div style={{ 
-              color: theme.textColor, 
-              fontSize: '14px', 
-              lineHeight: '1.5' 
+          )}
+
+          {/* NFT OWNERSHIP BANNER - MOVED TO BOTTOM */}
+          {accessDetails.accessType === 'nft_owner' && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: '#1D7F6E',
+              color: 'white',
+              borderRadius: '8px',
+              marginTop: '2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem'
             }}>
-              {journalistInfo.bio}
-            </div>
-          </div>
-        )}
-
-        {/* NFT OWNERSHIP BANNER - MOVED TO BOTTOM */}
-        {accessDetails.accessType === 'nft_owner' && (
-          <div style={{
-            padding: '1rem',
-            backgroundColor: '#1D7F6E',
-            color: 'white',
-            borderRadius: '8px',
-            marginTop: '2rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem'
-          }}>
-            <span style={{ fontSize: '1.5rem' }}>🎨</span>
-            <div>
-              <div style={{ fontWeight: '600' }}>NFT Owner - Permanent Access</div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>You own this article as an NFT</div>
-            </div>
-          </div>
-        )}
-
-        {/* READER LICENSE BANNER - Also at bottom for consistency */}
-        {accessDetails.accessType !== 'nft_owner' && (
-          <div style={{
-            padding: '1rem',
-            backgroundColor: '#2B3990',
-            color: 'white',
-            borderRadius: '8px',
-            marginTop: '2rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem'
-          }}>
-            <span style={{ fontSize: '1.5rem' }}>✅</span>
-            <div>
-              <div style={{ fontWeight: '600' }}>Reader License Active</div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                {accessDetails.expiryTime ? `Expires: ${new Date(Number(accessDetails.expiryTime) * 1000).toLocaleDateString()}` : '7-day access'}
+              <span style={{ fontSize: '1.5rem' }}>🎨</span>
+              <div>
+                <div style={{ fontWeight: '600' }}>NFT Owner - Permanent Access</div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>You own this article as an NFT</div>
               </div>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+
+          {/* READER LICENSE BANNER - Also at bottom for consistency */}
+          {accessDetails.accessType !== 'nft_owner' && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: '#2B3990',
+              color: 'white',
+              borderRadius: '8px',
+              marginTop: '2rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem'
+            }}>
+              <span style={{ fontSize: '1.5rem' }}>✅</span>
+              <div>
+                <div style={{ fontWeight: '600' }}>Reader License Active</div>
+                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                  {accessDetails.expiryTime ? `Expires: ${new Date(Number(accessDetails.expiryTime) * 1000).toLocaleDateString()}` : '7-day access'}
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     );
   }
 
