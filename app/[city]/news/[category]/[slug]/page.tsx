@@ -36,7 +36,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const [journalistInfo, setJournalistInfo] = useState<JournalistInfo | null>(null);
  const [hasAccess, setHasAccess] = useState(false);
  const [isNFTOwner, setIsNFTOwner] = useState(false);
- const { theme, fontSize, fontFamily } = useReadingPreferences();
+ const { theme, fontSize, fontFamily, preferences } = useReadingPreferences();
  
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
@@ -301,7 +301,12 @@ export default function ArticlePage({ params }: ArticlePageProps) {
        </nav>
 
        {/* Main Article Container */}
-       <div className="article-content-wrapper">
+<div 
+  className="article-content-wrapper"
+  data-theme={preferences.theme}
+  data-font-size={preferences.fontSize}
+  data-font-family={preferences.fontFamily}
+>
          <article>
            {/* Conditional Header - Full header ONLY when content is locked */}
            {!hasAccess && !decryptSuccess ? (
