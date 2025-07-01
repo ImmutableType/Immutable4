@@ -10,8 +10,6 @@ import ArticleHeader from '../../../../../components/article/ArticleHeader';
 import ArticleBreadcrumbs from '../../../../../components/article/ArticleBreadcrumbs';
 import EncryptionGate from '../../../../../components/article/EncryptionGate';
 import ArticleContent from '../../../../../components/article/ArticleContent';
-import ReadingControls from '../../../../../components/article/ReadingControls';
-import { useReadingPreferences } from '../../../../../lib/hooks/useReadingPreferences';
 
 interface ArticlePageProps {
  params: Promise<{
@@ -36,27 +34,7 @@ export default function ArticlePage({ params }: ArticlePageProps) {
  const [journalistInfo, setJournalistInfo] = useState<JournalistInfo | null>(null);
  const [hasAccess, setHasAccess] = useState(false);
  const [isNFTOwner, setIsNFTOwner] = useState(false);
- const { theme, fontSize, fontFamily, preferences } = useReadingPreferences();
-
- const [refreshKey, setRefreshKey] = useState(0);
-// Around line 38, after const { theme, fontSize, fontFamily, preferences } = useReadingPreferences();
-// Force re-render when reading preferences change
-useEffect(() => {
-  const handleStorageChange = () => {
-    // Force a re-render by updating state, NOT reloading
-    setRefreshKey(prev => prev + 1);
-  };
-
-  // Listen for custom event from reading preferences
-  window.addEventListener('readingPreferencesChanged', handleStorageChange);
-  
-  return () => {
-    window.removeEventListener('readingPreferencesChanged', handleStorageChange);
-  };
-}, []);
  
-
-
  // Extract article ID from slug
  const articleId = urlOptimizer.extractIdFromSlug(resolvedParams.slug);
  
@@ -146,14 +124,14 @@ useEffect(() => {
      <style jsx>{`
        .article-container {
          min-height: 100vh;
-         background: ${theme.bgColor};
+         background: #ffffff;
        }
 
        .article-content-wrapper {
          max-width: 65ch;
          margin: 0 auto;
          padding: 2rem 1.5rem;
-         background: ${theme.bgColor};
+         background: #ffffff;
          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
          border-radius: 8px;
          margin-top: 2rem;
@@ -171,7 +149,7 @@ useEffect(() => {
          margin-bottom: 0.75rem;
          font-family: 'Special Elite', 'Courier New', monospace;
          line-height: 1.3;
-         color: ${theme.textColor};
+         color: #333333;
        }
 
        .minimal-author-info {
@@ -180,7 +158,7 @@ useEffect(() => {
          gap: 0.5rem;
          font-size: 0.9rem;
          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-         color: ${theme.textColor};
+         color: #333333;
        }
 
        .author-name {
@@ -205,8 +183,8 @@ useEffect(() => {
 
        /* Journalist Bio Section - Moved to bottom */
        .journalist-bio {
-         background: ${theme.bioBgColor};
-         border-left: 4px solid ${theme.linkColor};
+         background: #f0f7ff;
+         border-left: 4px solid #2B3990;
          padding: 1.5rem;
          margin: 3rem 0 2rem 0;
          border-radius: 0 8px 8px 0;
@@ -228,26 +206,26 @@ useEffect(() => {
          font-weight: 600;
          font-size: 18px;
          margin-bottom: 0.25rem;
-         color: ${theme.textColor};
+         color: #333333;
        }
 
        .journalist-meta {
          font-size: 0.875rem;
          margin-bottom: 0.5rem;
-         color: ${theme.textColor};
+         color: #333333;
          opacity: 0.7;
        }
 
        .bio-text {
          font-size: 14px;
          line-height: 1.5;
-         color: ${theme.textColor};
+         color: #333333;
        }
 
        /* Reader License Story */
        .reader-license-story {
-         background: ${theme.bgColor};
-         border: 2px solid ${theme.linkColor};
+         background: #ffffff;
+         border: 2px solid #2B3990;
          border-radius: 12px;
          padding: 2.5rem;
          margin: 3rem 0;
@@ -257,7 +235,7 @@ useEffect(() => {
          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
          font-size: 28px;
          font-weight: 700;
-         color: ${theme.textColor};
+         color: #333333;
          margin-bottom: 1.5rem;
          text-align: center;
        }
@@ -265,15 +243,15 @@ useEffect(() => {
        .story-content p {
          font-size: 16px;
          line-height: 1.6;
-         color: ${theme.textColor};
+         color: #333333;
          margin-bottom: 1.5rem;
        }
 
        /* Breadcrumb Enhancement */
        .breadcrumb-nav {
-         background: ${theme.bgColor};
+         background: #ffffff;
          padding: 1rem 0;
-         border-bottom: 1px solid ${theme.borderColor};
+         border-bottom: 1px solid #e8e8e8;
        }
 
        .breadcrumb-container {
@@ -320,12 +298,7 @@ useEffect(() => {
        </nav>
 
        {/* Main Article Container */}
-<div 
-  className="article-content-wrapper"
-  data-theme={preferences.theme}
-  data-font-size={preferences.fontSize}
-  data-font-family={preferences.fontFamily}
->
+       <div className="article-content-wrapper">
          <article>
            {/* Conditional Header - Full header ONLY when content is locked */}
            {!hasAccess && !decryptSuccess ? (
@@ -335,54 +308,40 @@ useEffect(() => {
                category={resolvedParams.category}
              />
            ) : (
-             <>
-               {/* Minimal header for clean reading when user has access */}
-               <div className="minimal-header">
-                 <h1 className="minimal-title">{article.title}</h1>
-                 <div className="minimal-author-info">
-                   <span className="author-name">
-                     By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
+             /* Minimal header for clean reading when user has access */
+             <div className="minimal-header">
+               <h1 className="minimal-title">{article.title}</h1>
+               <div className="minimal-author-info">
+                 <span className="author-name">
+                   By {journalistInfo?.name || `Journalist ${article.author?.slice(0, 6)}...`}
+                 </span>
+                 <span className="author-date">
+                   • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
+                     month: 'long', 
+                     day: 'numeric',
+                     year: 'numeric' 
+                   }) : 'Date unknown'}
+                 </span>
+                 {journalistInfo?.hasProfile && (
+                   <span className="verified-badge">
+                     ✓ Verified
                    </span>
-                   <span className="author-date">
-                     • {article.createdAt ? new Date(article.createdAt).toLocaleDateString('en-US', { 
-                       month: 'long', 
-                       day: 'numeric',
-                       year: 'numeric' 
-                     }) : 'Date unknown'}
-                   </span>
-                   {journalistInfo?.hasProfile && (
-                     <span className="verified-badge">
-                       ✓ Verified
-                     </span>
-                   )}
-                 </div>
+                 )}
                </div>
-               
-               {/* READING CONTROLS - RIGHT AFTER MINIMAL HEADER */}
-               <div style={{ marginBottom: '2rem' }}>
-                 <ReadingControls />
-               </div>
-             </>
+             </div>
            )}
 
            {/* EncryptionGate handles ALL content access and purchasing */}
            <EncryptionGate 
-  key={`${preferences.theme}-${preferences.fontSize}-${preferences.fontFamily}-${refreshKey}`}
-  article={article}
-  onDecrypt={handleDecryptSuccess}
-  journalistInfo={journalistInfo}
-  theme={theme}
-  fontSize={fontSize}
-  fontFamily={fontFamily}
-/>
+             article={article}
+             onDecrypt={handleDecryptSuccess}
+             journalistInfo={journalistInfo}
+           />
 
            {/* If content is unlocked and not handled by EncryptionGate, show with ArticleContent */}
            {(article.hasAccess || decryptSuccess) && !article.content?.startsWith('ENCRYPTED_V1:') && (
              <ArticleContent 
                article={article}
-               theme={theme}
-               fontSize={fontSize}
-               fontFamily={fontFamily}
              />
            )}
 

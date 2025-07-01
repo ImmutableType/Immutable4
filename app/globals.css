@@ -158,3 +158,58 @@ button, input, select {
     padding: 1.5rem;
   }
 }
+
+/* Article Reading Themes */
+.article-content-wrapper[data-theme="light"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.article-content-wrapper[data-theme="dark"] {
+  background-color: #121212 !important;
+  color: #e0e0e0 !important;
+}
+
+.article-content-wrapper[data-theme="sepia"] {
+  background-color: #fbf0d9 !important;
+  color: #5f4b32 !important;
+}
+
+.article-content-wrapper[data-theme="high-contrast"] {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Font size controls */
+.article-content-wrapper[data-font-size="small"] {
+  font-size: 0.875rem !important;
+}
+
+.article-content-wrapper[data-font-size="medium"] {
+  font-size: 1rem !important;
+}
+
+.article-content-wrapper[data-font-size="large"] {
+  font-size: 1.125rem !important;
+}
+
+.article-content-wrapper[data-font-size="xlarge"] {
+  font-size: 1.25rem !important;
+}
+
+/* Font family controls */
+.article-content-wrapper[data-font-family="serif"] {
+  font-family: var(--font-body) !important;
+}
+
+.article-content-wrapper[data-font-family="sans"] {
+  font-family: var(--font-ui) !important;
+}
+
+/* Apply to all text elements inside */
+.article-content-wrapper[data-theme="light"] p,
+.article-content-wrapper[data-theme="dark"] p,
+.article-content-wrapper[data-theme="sepia"] p,
+.article-content-wrapper[data-theme="high-contrast"] p {
+  color: inherit !important;
+}
