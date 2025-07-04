@@ -37,7 +37,7 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
         <ChainReactionPanel
           reactions={engagementMetrics.reactions || {}}
           supporters={engagementMetrics.supporters}
-          onReaction={(type, isPowerUp) => onReaction?.(id, type, isPowerUp)}
+          onReaction={(type, isPowerUp) => onReaction?.(id, type, isPowerUp || false)}
         />
       )}
       
@@ -164,4 +164,4 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
   );
 };
 
-export default EngagementPane;
+export default EngagementPane;// Force update: 20250704_150751
