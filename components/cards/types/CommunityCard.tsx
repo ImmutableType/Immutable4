@@ -29,11 +29,6 @@ export interface CommunityCardProps {
   };
   category?: string;
   tags?: string[];
-  voting: {
-    upvotes: number;
-    downvotes: number;
-    percentage?: number;
-  };
   metrics?: {
     reactions?: Record<string, number>;
     supporters?: number;
@@ -69,7 +64,6 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
   location,
   category,
   tags = [],
-  voting,
   metrics,
   distribution,
   contentHash,

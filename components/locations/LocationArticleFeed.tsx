@@ -205,24 +205,14 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             {...commonProps}
             submitter={{
               name: article.authorName || truncateAddress(article.author),
-              id: article.author,
-              stats: {
-                curated: 5,
-                reliability: 85
-              }
+              id: article.author
             }}
             sourceUrl={article.originalUrl || '#'}
             sourceName={article.publicationName || 'External Source'}
             sharedAt={article.createdAt}
-            voting={{
-              upvotes: 8,
-              downvotes: 2,
-              percentage: 80
-            }}
-            distribution={{
-              submitter: 0.045,
-              platform: 0.025,
-              total: 0.070
+            metrics={{
+              reactions: {},
+              supporters: 0
             }}
             contentHash={article.contentHash}
           />
@@ -235,11 +225,7 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             {...commonProps}
             author={{
               name: article.authorName || truncateAddress(article.author),
-              id: article.author,
-              stats: {
-                articlesPublished: 12,
-                credibility: 92
-              }
+              id: article.author
             }}
             originalUrl={article.originalUrl || '#'}
             publicationName={article.publicationName || 'Unknown Publication'}
@@ -247,10 +233,9 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             originalPublishDate={article.originalPublishDate || article.createdAt}
             verifiedAt={article.createdAt}
             portfolioType={article.portfolioType || 'verification'}
-            distribution={{
-              author: 0.045,
-              platform: 0.025,
-              total: 0.070
+            metrics={{
+              reactions: {},
+              supporters: 0
             }}
             contentHash={article.contentHash}
           />
@@ -271,11 +256,7 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             author={{
               name: article.authorName || truncateAddress(article.author),
               id: article.author,
-              type: article.authorType,
-              stats: {
-                written: 8,
-                proposed: 3
-              }
+              type: article.authorType
             }}
             proposer={article.proposalId ? {
               name: "Community Proposal",
@@ -289,11 +270,6 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
               tips: article.readerMetrics.tipAmount,
               reactions: {},
               supporters: 0
-            }}
-            distribution={{
-              author: 0.045,
-              platform: 0.025,
-              proposer: article.proposalId ? 0.030 : 0
             }}
           />
         );
@@ -385,11 +361,7 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             imageUrl={getColorPlaceholder(proposal)}
             proposer={{
               name: proposal.proposerName || truncateAddress(proposal.proposer),
-              id: proposal.proposer,
-              stats: {
-                written: 2,
-                proposed: 5
-              }
+              id: proposal.proposer
             }}
             createdAt={proposal.createdAt}
             location={parseLocation(proposal.location)}
@@ -404,12 +376,7 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
             metrics={{
               reactions: {},
               supporters: 0,
-              journalistInterest: 0
-            }}
-            distribution={{
-              proposer: 0.060,
-              platform: 0.040,
-              futureAuthor: 0
+              journalistInterest: proposal.journalistInterest || 0
             }}
             contentHash=""
             onClick={() => handleArticleClick(proposal)}

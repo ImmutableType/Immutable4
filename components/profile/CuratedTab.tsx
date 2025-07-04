@@ -1,10 +1,12 @@
 // components/profile/CuratedTab.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import CommunityArticleService, { CommunityArticle } from '@/lib/blockchain/contracts/CommunityArticleService';
 import CommunityCard from '@/components/cards/types/CommunityCard';
+import { ChainReactionService, ReactionData } from '@/lib/blockchain/contracts/ChainReactionService';
+import { useWallet } from '@/lib/hooks/useWallet';
 
 interface CuratedTabProps {
   profile: {
@@ -14,11 +16,30 @@ interface CuratedTabProps {
 }
 
 const CONTRACT_ADDRESS = '0xD3d12E3b86Ed9f8Cdd095E0f90EDF7eE61Eb8611';
+const CHAIN_REACTIONS_ADDRESS = '0xBB7B7A498Fc23084A0322A869e2D121966898EE5';
 
 const CuratedTab: React.FC<CuratedTabProps> = ({ profile }) => {
+  const { address, getSigner } = useWallet();
   const [articles, setArticles] = useState<CommunityArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reactionService, setReactionService] = useState<ChainReactionService | null>(null);
+  const [reactionsMap, setReactionsMap] = useState<Map<string, ReactionData>>(new Map());
+  const [isLoadingReactions, setIsLoadingReactions] = useState(false);
+
+  // Initialize ChainReactionService
+  useEffect(() => {
+    const initService = async () => {
+      try {
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const service = new ChainReactionService(CHAIN_REACTIONS_ADDRESS, provider);
+        setReactionService(service);
+      } catch (error) {
+        console.error('Failed to initialize ChainReactionService:', error);
+      }
+    };
+    initService();
+  }, []);
 
   useEffect(() => {
     async function fetchCuratedArticles() {
@@ -57,16 +78,79 @@ const CuratedTab: React.FC<CuratedTabProps> = ({ profile }) => {
     fetchCuratedArticles();
   }, [profile?.walletAddress]);
 
-  // Mock voting handlers (to be implemented with actual voting contract)
-  const handleUpvote = (articleId: string) => {
-    console.log('Upvote article:', articleId);
-    // TODO: Implement actual upvote functionality
-  };
+  // Fetch reactions for all articles
+  useEffect(() => {
+    const fetchReactions = async () => {
+      if (!reactionService || articles.length === 0) return;
+      
+      setIsLoadingReactions(true);
+      try {
+        // Extract numeric IDs - assuming format might be "community_1" or just "1"
+        const contentIds = articles.map(a => {
+          const match = a.id.match(/(\d+)$/);
+          return match ? match[1] : a.id;
+        });
+        
+        // Fetch reactions in batch
+        const reactions = await reactionService.getBatchReactions(contentIds);
+        setReactionsMap(reactions);
+      } catch (error) {
+        console.error('Failed to fetch reactions:', error);
+      } finally {
+        setIsLoadingReactions(false);
+      }
+    };
+    
+    fetchReactions();
+  }, [articles, reactionService]);
 
-  const handleDownvote = (articleId: string) => {
-    console.log('Downvote article:', articleId);
-    // TODO: Implement actual downvote functionality
-  };
+  // Handle reaction
+  const handleReaction = useCallback(async (contentId: string, reactionType: string, isPowerUp: boolean) => {
+    if (!reactionService) {
+      alert('Please wait for the service to initialize');
+      return;
+    }
+
+    const signer = await getSigner();
+    if (!signer) {
+      alert('Please connect your wallet to react');
+      return;
+    }
+
+    try {
+      console.log(`Adding reaction: ${reactionType} (Power-up: ${isPowerUp}) to content ${contentId}`);
+      
+      // Extract numeric ID
+      const match = contentId.match(/(\d+)$/);
+      const numericId = match ? match[1] : contentId;
+      
+      // Send transaction
+      const tx = await reactionService.addReaction(numericId, reactionType, isPowerUp, signer);
+      console.log('Transaction sent:', tx.hash);
+      
+      // Wait for confirmation
+      await tx.wait();
+      console.log('Reaction confirmed!');
+      
+      // Refresh reactions for this content
+      const updatedReactions = await reactionService.getReactions(numericId);
+      setReactionsMap(prev => {
+        const newMap = new Map(prev);
+        newMap.set(contentId, updatedReactions);
+        return newMap;
+      });
+      
+    } catch (error: any) {
+      console.error('Failed to add reaction:', error);
+      if (error.message?.includes('Insufficient EMOJI tokens')) {
+        alert('Insufficient EMOJI tokens. Please reload your EMOJI balance.');
+      } else if (error.message?.includes('user rejected')) {
+        console.log('User rejected transaction');
+      } else {
+        alert('Failed to add reaction. Please try again.');
+      }
+    }
+  }, [reactionService, getSigner]);
 
   if (loading) {
     return (
@@ -171,50 +255,44 @@ const CuratedTab: React.FC<CuratedTabProps> = ({ profile }) => {
         flexDirection: 'column',
         gap: '1.5rem',
       }}>
-        {articles.map((article) => (
-          <CommunityCard
-            key={article.id}
-            id={article.id}
-            title={article.title}
-            summary={article.description}
-            submitter={{
-              name: profile.displayName || `${profile.walletAddress.slice(0, 6)}...${profile.walletAddress.slice(-4)}`,
-              id: profile.walletAddress,
-              stats: {
-                curated: articles.length,
-                location: article.location
-              }
-            }}
-            sourceUrl={article.contentUrl}
-            sourceName={article.sourceDomain}
-            createdAt={new Date(Number(article.timestamp) * 1000).toISOString()}
-            sharedAt={new Date(Number(article.timestamp) * 1000).toISOString()}
-            location={{
-              city: article.location,
-              state: 'FL' // Default for Miami
-            }}
-            category={article.category}
-            tags={article.tags}
-            voting={{
-              upvotes: Math.floor(Math.random() * 50) + 5, // Mock data
-              downvotes: Math.floor(Math.random() * 10) + 1, // Mock data
-              percentage: Math.floor(Math.random() * 30) + 70 // Mock data 70-100%
-            }}
-            metrics={{
-              reactions: {
-                '👍': Math.floor(Math.random() * 20),
-                '🔥': Math.floor(Math.random() * 15),
-                '💯': Math.floor(Math.random() * 10),
-              },
-              supporters: Math.floor(Math.random() * 25) + 5
-            }}
-            distribution={{
-              submitter: 60,
-              platform: 40,
-              total: 100
-            }}
-          />
-        ))}
+        {articles.map((article) => {
+          const reactions = reactionsMap.get(article.id) || {
+            '👍': 0,
+            '👏': 0,
+            '🔥': 0,
+            '🤔': 0,
+            supporters: 0
+          };
+
+          return (
+            <CommunityCard
+              key={article.id}
+              id={article.id}
+              title={article.title}
+              summary={article.description}
+              submitter={{
+                name: profile.displayName || `${profile.walletAddress.slice(0, 6)}...${profile.walletAddress.slice(-4)}`,
+                id: profile.walletAddress
+              }}
+              sourceUrl={article.contentUrl}
+              sourceName={article.sourceDomain}
+              createdAt={new Date(Number(article.timestamp) * 1000).toISOString()}
+              sharedAt={new Date(Number(article.timestamp) * 1000).toISOString()}
+              location={{
+                city: article.location,
+                state: 'FL' // Default for Miami
+              }}
+              category={article.category}
+              tags={article.tags}
+              metrics={{
+                reactions,
+                supporters: reactions.supporters
+              }}
+              contentHash={''}
+              onReaction={handleReaction}
+            />
+          );
+        })}
       </div>
 
       <style jsx>{`
