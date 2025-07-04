@@ -8,6 +8,7 @@ import EncryptedArticleReadService from '@/lib/blockchain/contracts/EncryptedArt
 import ArticleNFTCard from '@/components/cards/types/ArticleNFTCard';
 import { EmojiPurchaseButton } from '@/components/emoji/EmojiPurchaseButton';
 import { EmojiPurchaseModal } from '@/components/emoji/EmojiPurchaseModal';
+import { getAvailabilityCache } from '@/lib/blockchain/services/AvailabilityCache';
 import confetti from 'canvas-confetti';
 
 interface Article {
@@ -18,6 +19,13 @@ interface Article {
   location: string;
   category: string;
   publishedAt: string;
+  nftPrice?: string; // Add NFT price from initial load
+}
+
+interface ArticleAvailability {
+  isAvailable: boolean;
+  availableCount: number;
+  status: 'loading' | 'loaded' | 'error';
 }
 
 export default function MarketplacePage() {
@@ -26,6 +34,7 @@ export default function MarketplacePage() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [availability, setAvailability] = useState<Map<string, ArticleAvailability>>(new Map());
 
   useEffect(() => {
     loadAllArticles();
@@ -61,7 +70,8 @@ export default function MarketplacePage() {
               year: 'numeric',
               month: 'short',
               day: 'numeric'
-            })
+            }),
+            nftPrice: article.nftPrice // Store NFT price from initial load
           });
           
           console.log(`✅ Article ${i} added: ${article.title}`);
@@ -79,12 +89,74 @@ export default function MarketplacePage() {
       
       setArticles(allArticles);
       
+      // Load availability data asynchronously after articles are displayed
+      if (allArticles.length > 0) {
+        loadAvailabilityData(allArticles.map(a => a.id));
+      }
+      
     } catch (error) {
       console.error('❌ Critical error loading marketplace articles:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+
+
+
+
+
+
+  const loadAvailabilityData = async (articleIds: string[]) => {
+    console.log('🔄 Loading availability data for articles...');
+    
+    // Set all to loading state
+    const loadingMap = new Map<string, ArticleAvailability>();
+    articleIds.forEach(id => {
+      loadingMap.set(id, { isAvailable: false, availableCount: 0, status: 'loading' });
+    });
+    setAvailability(loadingMap);
+  
+    try {
+      const cache = getAvailabilityCache();
+      const availabilityData = await cache.getBatchAvailability(articleIds);
+      
+      const updatedMap = new Map<string, ArticleAvailability>();
+      // Fix: Use forEach instead of for...of
+      availabilityData.forEach((data, id) => {
+        updatedMap.set(id, {
+          isAvailable: data.availableCount > 0,
+          availableCount: data.availableCount,
+          status: data.availableCount === -1 ? 'error' : 'loaded'
+        });
+      });
+      
+      setAvailability(updatedMap);
+      console.log('✅ Availability data loaded');
+      
+    } catch (error) {
+      console.error('❌ Error loading availability data:', error);
+      
+      // Set all to error state
+      const errorMap = new Map<string, ArticleAvailability>();
+      articleIds.forEach(id => {
+        errorMap.set(id, { isAvailable: false, availableCount: -1, status: 'error' });
+      });
+      setAvailability(errorMap);
+    }
+  };
+
+
+
+
+
+
+
+
+
+
+
+
 
   const handleCardClick = (articleId: string) => {
     router.push(`/miami/news/general/native_${articleId}`);
@@ -331,6 +403,7 @@ export default function MarketplacePage() {
             <ArticleNFTCard
               key={article.id}
               article={article}
+              availability={availability.get(article.id)}
               onCardClick={handleCardClick}
               showPurchaseButton={true}
             />

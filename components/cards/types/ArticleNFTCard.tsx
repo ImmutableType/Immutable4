@@ -15,6 +15,12 @@ interface ArticleNFTCardProps {
     location: string;
     category: string;
     publishedAt: string;
+    nftPrice?: string; // NFT price from initial load
+  };
+  availability?: {
+    isAvailable: boolean;
+    availableCount: number;
+    status: 'loading' | 'loaded' | 'error';
   };
   onCardClick?: (articleId: string) => void;
   showPurchaseButton?: boolean;
@@ -40,25 +46,19 @@ interface OwnershipState {
 const ARTICLE_CONTRACT_ADDRESS = '0xd99aB3390aAF8BC69940626cdbbBf22F436c6753';
 const AMM_CONTRACT_ADDRESS = '0x4E0f2A3A8AfEd1f86D83AAB1a989E01c316996d2';
 
+// Reader license price range from contract constants
+const READER_LICENSE_MIN = '0.01';
+const READER_LICENSE_MAX = '1.00';
+
 const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({ 
   article, 
+  availability,
   onCardClick,
   showPurchaseButton = true,
   className = ''
 }) => {
   const router = useRouter();
-  const { provider, address } = useWallet(); // ADDED: address
-  const [marketplaceData, setMarketplaceData] = useState<MarketplaceData>({
-    nftCount: 10,
-    nftPrice: '2.5',
-    mintedCount: 0,
-    availableCount: 10,
-    ownerCount: 0,
-    readerCount: 0
-  });
-  const [currentLicensePrice, setCurrentLicensePrice] = useState<string>('0.1');
-  const [isMarketDataLoaded, setIsMarketDataLoaded] = useState(false);
-  const [isLicensePriceLoaded, setIsLicensePriceLoaded] = useState(false);
+  const { provider, address } = useWallet();
   const [isPurchasing, setIsPurchasing] = useState(false);
   
   // ADDED: Ownership state (separate from market data loading)
@@ -118,125 +118,6 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
     }
   };
 
-  // Fetch current reading license price from AMM
-  const fetchCurrentLicensePrice = async (): Promise<string> => {
-    try {
-      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
-      const ammContract = new ethers.Contract(
-        AMM_CONTRACT_ADDRESS,
-        [
-          "function getCurrentPrice(uint256 articleId) view returns (uint256)",
-          "function calculatePurchasePrice(uint256 articleId, uint256 amount) view returns (uint256)"
-        ],
-        provider
-      );
-
-      // Try to get current price for 1 license
-      try {
-        const price = await ammContract.getCurrentPrice(parseInt(article.id));
-        return ethers.formatEther(price);
-      } catch (error) {
-        // Fallback: try calculatePurchasePrice for 1 license
-        try {
-          const price = await ammContract.calculatePurchasePrice(parseInt(article.id), 1);
-          return ethers.formatEther(price);
-        } catch (fallbackError) {
-            console.debug(`Unable to fetch license price for article ${article.id}, using default`);
-          return '0.1'; // Default fallback
-        }
-      }
-    } catch (error) {
-      console.error(`Error fetching license price for article ${article.id}:`, error);
-      return '0.1'; // Default fallback
-    }
-  };
-
-  // Fetch marketplace data for this article
-  const fetchMarketplaceData = async (): Promise<MarketplaceData> => {
-    try {
-      const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
-      
-      // Article contract for NFT data
-      const articleContract = new ethers.Contract(
-        ARTICLE_CONTRACT_ADDRESS,
-        [
-          "event ArticlePublished(uint256 indexed articleId, address indexed author, string title, string location, uint256 nftCount, uint256 nftPrice)",
-          "event NFTMinted(uint256 indexed tokenId, uint256 indexed articleId, address indexed buyer, uint256 editionNumber, uint256 price, uint256 licensesGenerated)"
-        ],
-        provider
-      );
-
-      // AMM contract for license data
-      const ammContract = new ethers.Contract(
-        AMM_CONTRACT_ADDRESS,
-        ["function balanceOf(address, uint256) view returns (uint256)"],
-        provider
-      );
-
-      // Get article publication data
-      const articleFilter = articleContract.filters.ArticlePublished(parseInt(article.id));
-      const articleEvents = await articleContract.queryFilter(articleFilter, 0, 'latest');
-      
-      let nftCount = 0;
-      let nftPrice = '0';
-      
-      if (articleEvents.length > 0) {
-        const event = articleEvents[0] as ethers.EventLog;
-        nftCount = Number(event.args.nftCount);
-        nftPrice = ethers.formatEther(event.args.nftPrice);
-      }
-
-      // Get minted NFTs count
-      const nftFilter = articleContract.filters.NFTMinted(null, parseInt(article.id));
-      const nftEvents = await articleContract.queryFilter(nftFilter, 0, 'latest');
-      const mintedCount = nftEvents.length;
-      
-      // Get unique owners count
-      const uniqueOwners = new Set(nftEvents.map(event => (event as ethers.EventLog).args.buyer));
-      const ownerCount = uniqueOwners.size;
-
-      // For reader count, we'd need to check license balances
-      // This is a simplified approach - in reality we'd need to track all license holders
-      const readerCount = Math.max(ownerCount, 0); // Placeholder logic
-
-      return {
-        nftCount,
-        nftPrice,
-        mintedCount,
-        availableCount: Math.max(nftCount - mintedCount, 0),
-        ownerCount,
-        readerCount
-      };
-    } catch (error) {
-      console.error(`Error fetching marketplace data for article ${article.id}:`, error);
-      // Return default values on error
-      return {
-        nftCount: 10, // Default edition size
-        nftPrice: '2.5', // Default price
-        mintedCount: 0,
-        availableCount: 10,
-        ownerCount: 0,
-        readerCount: 0
-      };
-    }
-  };
-
-  useEffect(() => {
-    const loadData = async () => {
-      // Load marketplace data (UNCHANGED)
-      const marketData = await fetchMarketplaceData();
-      setMarketplaceData(marketData);
-      setIsMarketDataLoaded(true);
-      
-      // Load current license price (UNCHANGED)
-      const licensePrice = await fetchCurrentLicensePrice();
-      setCurrentLicensePrice(licensePrice);
-      setIsLicensePriceLoaded(true);
-    };
-    
-    loadData();
-  }, [article.id]);
-
   // ADDED: Separate effect for ownership (lazy loaded)
   useEffect(() => {
     // Delay ownership check to avoid blocking main render
@@ -291,7 +172,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
   const handleBuyNFT = async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (marketplaceData.availableCount === 0) {
+    if (!availability || !availability.isAvailable) {
       alert('All NFT editions have been sold');
       return;
     }
@@ -308,7 +189,8 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
     }
 
     setIsPurchasing(true);
-    console.log(`🛒 Starting purchase for article ${article.id} at ${marketplaceData.nftPrice} FLOW`);
+    const displayPrice = article.nftPrice || '6'; // Use price from initial load or default
+    console.log(`🛒 Starting purchase for article ${article.id} at ${displayPrice} FLOW`);
 
     try {
       const signer = await provider.getSigner();
@@ -320,7 +202,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
         signer
       );
       
-      const totalPrice = ethers.parseEther(marketplaceData.nftPrice) + ethers.parseEther('1'); // NFT price + 1 FLOW buyer fee
+      const totalPrice = ethers.parseEther(displayPrice) + ethers.parseEther('1'); // NFT price + 1 FLOW buyer fee
       
       console.log('💰 Total transaction cost:', ethers.formatEther(totalPrice), 'FLOW');
       
@@ -333,14 +215,13 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
       await tx.wait();
       console.log('✅ NFT purchased successfully!');
       
-      // Refresh marketplace data (UNCHANGED)
-      const updatedMarketData = await fetchMarketplaceData();
-      setMarketplaceData(updatedMarketData);
-      
       // ADDED: Clear ownership cache and refresh
       const cacheKey = `ownership_${article.id}_${address?.toLowerCase()}`;
       localStorage.removeItem(cacheKey);
       checkOwnership();
+      
+      // Reload availability data
+      window.location.reload();
       
       alert('NFT purchased successfully!');
       
@@ -360,8 +241,6 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
 
   // ADDED: Smart button configuration
   const getButtonConfig = () => {
-
-    
     if (ownership.isOwned) {
       return {
         text: 'Already Owned',
@@ -370,7 +249,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
       };
     }
     
-    if (marketplaceData.availableCount === 0) {
+    if (!availability || !availability.isAvailable) {
       return {
         text: 'Sold Out',
         disabled: true,
@@ -386,22 +265,85 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
       };
     }
     
-    if (!isMarketDataLoaded) {
-      return {
-        text: 'Loading...',
-        disabled: true,
-        backgroundColor: '#9CA3AF'
-      };
-    }
-    
+    const displayPrice = article.nftPrice || '6';
     return {
-      text: `Buy NFT (${(parseFloat(marketplaceData.nftPrice) + 1).toFixed(1)} FLOW)`,
+      text: `Buy NFT (${(parseFloat(displayPrice) + 1).toFixed(1)} FLOW)`,
       disabled: false,
       backgroundColor: 'var(--color-blockchain-blue)'
     };
   };
 
   const buttonConfig = getButtonConfig();
+
+  // Get availability display
+  const getAvailabilityDisplay = () => {
+    if (!availability) {
+      return null;
+    }
+
+    if (availability.status === 'error') {
+      return (
+        <span style={{
+          backgroundColor: '#FEF3C7',
+          color: '#92400E',
+          padding: '4px 12px',
+          borderRadius: '20px',
+          fontSize: '0.75rem',
+          fontWeight: '600',
+          fontFamily: 'var(--font-ui)',
+        }}>
+          ⚠️ Availability Unavailable ATM
+        </span>
+      );
+    }
+
+    if (availability.status === 'loading') {
+      return null; // Show nothing while loading
+    }
+
+    if (availability.isAvailable) {
+      return (
+        <span style={{
+          backgroundColor: 'var(--color-blockchain-blue)',
+          color: 'white',
+          padding: '4px 12px',
+          borderRadius: '20px',
+          fontSize: '0.75rem',
+          fontWeight: '600',
+          fontFamily: 'var(--font-ui)',
+        }}>
+          ✨ Limited Available
+        </span>
+      );
+    } else {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
+          <span style={{
+            backgroundColor: '#DC2626',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            fontFamily: 'var(--font-ui)',
+          }}>
+            🔴 Sold Out
+          </span>
+          <span style={{
+            backgroundColor: 'var(--color-verification-green)',
+            color: 'white',
+            padding: '4px 12px',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: '600',
+            fontFamily: 'var(--font-ui)',
+          }}>
+            ✅ Reader Licenses Available
+          </span>
+        </div>
+      );
+    }
+  };
 
   return (
     <div
@@ -427,7 +369,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
         e.currentTarget.style.borderColor = 'var(--color-digital-silver)';
       }}
     >
-      {/* NFT Edition Header - SWAPPED SIDES & DYNAMIC QUANTITY */}
+      {/* NFT Edition Header - Updated with availability display */}
       <div style={{
         padding: '1rem 1.5rem',
         backgroundColor: 'var(--color-parchment)',
@@ -453,19 +395,7 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
           gap: '1rem',
           alignItems: 'center',
         }}>
-          <span style={{
-            backgroundColor: 'var(--color-blockchain-blue)',
-            color: 'white',
-            padding: '4px 12px',
-            borderRadius: '20px',
-            fontSize: '0.75rem',
-            fontWeight: '600',
-            fontFamily: 'var(--font-ui)',
-          }}>
-            {isMarketDataLoaded ? `${marketplaceData.availableCount} Available` : 'Loading...'}
-          </span>
-          
-        
+          {getAvailabilityDisplay()}
         </div>
       </div>
 
@@ -536,13 +466,12 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
           <span>{article.publishedAt}</span>
         </div>
 
-        {/* Market Information - REAL LICENSE PRICING (UNCHANGED) */}
+        {/* Market Information - Updated with static pricing */}
         <div style={{
           backgroundColor: 'rgba(43, 57, 144, 0.05)',
           padding: '1rem',
           borderRadius: '8px',
           marginBottom: '1.5rem',
-          opacity: (isMarketDataLoaded && isLicensePriceLoaded) ? 1 : 0.7,
         }}>
           <div style={{
             display: 'grid',
@@ -557,14 +486,14 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
                 marginBottom: '0.25rem',
                 fontFamily: 'var(--font-ui)',
               }}>
-                Reading License
+                Reading License Range
               </div>
               <div style={{
                 fontSize: '1rem',
                 fontWeight: '600',
                 color: 'var(--color-verification-green)',
               }}>
-                {isLicensePriceLoaded ? `${parseFloat(currentLicensePrice).toFixed(3)} FLOW` : 'Loading...'}
+                {READER_LICENSE_MIN} - {READER_LICENSE_MAX} FLOW
               </div>
             </div>
             
@@ -575,26 +504,16 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
                 marginBottom: '0.25rem',
                 fontFamily: 'var(--font-ui)',
               }}>
-                Full NFT
+                Mint Price
               </div>
               <div style={{
                 fontSize: '1rem',
                 fontWeight: '600',
                 color: 'var(--color-typewriter-red)',
               }}>
-                {isMarketDataLoaded ? `${marketplaceData.nftPrice} FLOW` : 'Loading...'}
+                {article.nftPrice || '6'} FLOW
               </div>
             </div>
-          </div>
-          
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-around',
-            fontSize: '0.8rem',
-            color: '#666',
-          }}>
-            <span>📖 {marketplaceData.readerCount} readers</span>
-            <span>👥 {marketplaceData.ownerCount} owners</span>
           </div>
         </div>
 
@@ -673,9 +592,6 @@ const ArticleNFTCard: React.FC<ArticleNFTCardProps> = ({
         }}>
           <span>⛓️</span>
           <span>Blockchain Verified & Encrypted</span>
-          {(!isMarketDataLoaded || !isLicensePriceLoaded) && (
-            <span style={{ opacity: 0.5 }}>(Loading pricing...)</span>
-          )}
         </div>
       </div>
     </div>
