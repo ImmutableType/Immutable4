@@ -48,7 +48,6 @@ export interface ArticleCardProps {
   isVerified?: boolean;
   onClick?: () => void;
   className?: string;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
 }
 
 // Create VerificationBadge component for article cards
@@ -73,7 +72,6 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
   isVerified,
   onClick,
   className,
-  onReaction,
 }) => {
   // Format date for display (extracted from the original ArticleCard)
   const formattedDate = new Date(createdAt).toLocaleDateString('en-US', {
@@ -120,8 +118,7 @@ const ArticleCard: React.FC<ArticleCardProps> = ({
     badges,
     actionButtons,
     onClick,
-    className,
-    onReaction
+    className
   };
 
   return <BaseCard {...baseCardProps} />;

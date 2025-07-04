@@ -136,6 +136,20 @@ export function useWallet() {
     setError(null)
   }, [])
 
+  // Get signer if provider exists
+  const getSigner = useCallback(async () => {
+    if (provider && address) {
+      try {
+        const signer = await provider.getSigner();
+        return signer;
+      } catch (error) {
+        console.error('Error getting signer:', error);
+        return null;
+      }
+    }
+    return null;
+  }, [provider, address]);
+
   return {
     provider,
     address,
@@ -144,6 +158,7 @@ export function useWallet() {
     connect,
     connectWallet,
     disconnectWallet,
-    isConnecting
+    isConnecting,
+    getSigner  // ADD THIS
   }
 }

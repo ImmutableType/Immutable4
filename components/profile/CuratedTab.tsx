@@ -213,11 +213,6 @@ const CuratedTab: React.FC<CuratedTabProps> = ({ profile }) => {
               platform: 40,
               total: 100
             }}
-            onUpvote={() => handleUpvote(article.id)}
-            onDownvote={() => handleDownvote(article.id)}
-            onClick={() => {
-              window.open(article.contentUrl, '_blank');
-            }}
           />
         ))}
       </div>

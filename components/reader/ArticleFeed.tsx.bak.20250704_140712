@@ -1,7 +1,6 @@
 // File: components/reader/ArticleFeed.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ethers } from 'ethers';
 import { FeedFilters } from '../../lib/reader/types/feed';
 import { useFeed } from '../../lib/reader/hooks/useFeed';
 import { ArticleCard, ProposalCard } from '../cards';
@@ -11,11 +10,6 @@ import FilterBar from './FilterBar';
 import { getColorPlaceholder } from '../../lib/utils/placeholderUtils';
 import { getArticleCardType } from '../../lib/reader/adapters/articleTransformers';
 import { urlOptimizer } from '../../lib/locations/seo/urlOptimizer';
-import { ChainReactionService, ReactionData } from '../../lib/blockchain/contracts/ChainReactionService';
-import { useWallet } from '../../lib/hooks/useWallet';
-
-// Contract address for ChainReactions
-const CHAIN_REACTIONS_ADDRESS = '0xBB7B7A498Fc23084A0322A869e2D121966898EE5';
 
 // Helper for parsing location
 function parseLocation(locationString: string): { city: string; state: string } | undefined {
@@ -39,11 +33,6 @@ interface ArticleFeedProps {
 
 const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
   const router = useRouter();
-  const { address, getSigner } = useWallet();
-  const [reactionService, setReactionService] = useState<ChainReactionService | null>(null);
-  const [reactionsMap, setReactionsMap] = useState<Map<string, ReactionData>>(new Map());
-  const [isLoadingReactions, setIsLoadingReactions] = useState(false);
-  
   const {
     articles,
     proposals,
@@ -55,108 +44,6 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
     updateFilters
   } = useFeed();
 
-  // Initialize ChainReactionService
-  useEffect(() => {
-    const initService = async () => {
-      try {
-        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
-        const service = new ChainReactionService(CHAIN_REACTIONS_ADDRESS, provider);
-        setReactionService(service);
-      } catch (error) {
-        console.error('Failed to initialize ChainReactionService:', error);
-      }
-    };
-    initService();
-  }, []);
-
-  // Fetch reactions for all content
-  useEffect(() => {
-    const fetchReactions = async () => {
-      if (!reactionService || articles.length === 0) return;
-      
-      setIsLoadingReactions(true);
-      try {
-        // Collect all content IDs
-        const contentIds = [
-          ...articles.map(a => a.id),
-          ...proposals.map(p => p.id)
-        ];
-        
-        // Fetch reactions in batch
-        const reactions = await reactionService.getBatchReactions(contentIds);
-        setReactionsMap(reactions);
-      } catch (error) {
-        console.error('Failed to fetch reactions:', error);
-      } finally {
-        setIsLoadingReactions(false);
-      }
-    };
-    
-    fetchReactions();
-  }, [articles, proposals, reactionService]);
-
-
-
-
-
-
-
-
- // Handle reaction
-const handleReaction = useCallback(async (contentId: string, reactionType: string, isPowerUp: boolean) => {
-  if (!reactionService) {
-    alert('Please wait for the service to initialize');
-    return;
-  }
-
-  const signer = await getSigner();
-  if (!signer) {
-    alert('Please connect your wallet to react');
-    return;
-  }
-
-  try {
-    console.log(`Adding reaction: ${reactionType} (Power-up: ${isPowerUp}) to content ${contentId}`);
-    
-    // Send transaction
-    const tx = await reactionService.addReaction(contentId, reactionType, isPowerUp, signer);
-    console.log('Transaction sent:', tx.hash);
-    
-    // Wait for confirmation
-    await tx.wait();
-    console.log('Reaction confirmed!');
-    
-    // Refresh reactions for this content
-    const updatedReactions = await reactionService.getReactions(contentId);
-    setReactionsMap(prev => {
-      const newMap = new Map(prev);
-      newMap.set(contentId, updatedReactions);
-      return newMap;
-    });
-    
-  } catch (error: any) {
-    console.error('Failed to add reaction:', error);
-    if (error.message?.includes('Insufficient EMOJI tokens')) {
-      alert('Insufficient EMOJI tokens. Please reload your EMOJI balance.');
-    } else if (error.message?.includes('user rejected')) {
-      console.log('User rejected transaction');
-    } else {
-      alert('Failed to add reaction. Please try again.');
-    }
-  }
-}, [reactionService, getSigner]);
-
-
-
-
-
-
-
-
-
-
-
-
   const handleFilterChange = (newFilters: FeedFilters) => {
     updateFilters(newFilters);
   };
@@ -167,12 +54,14 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
       if (geographicUrl) {
         router.push(geographicUrl);
       } else {
+        // Fallback for non-Miami articles or when geographic URL can't be built
         if (onArticleSelect) {
           onArticleSelect(article.id);
         }
       }
     } catch (error) {
       console.error('Error navigating to article:', error);
+      // Fallback to modal if URL generation fails
       if (onArticleSelect) {
         onArticleSelect(article.id);
       }
@@ -182,14 +71,6 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
   // Render individual article based on type
   const renderArticle = (article: any) => {
     const cardType = getArticleCardType(article);
-    const reactions = reactionsMap.get(article.id) || {
-      '👍': 0,
-      '👏': 0,
-      '🔥': 0,
-      '🤔': 0,
-      supporters: 0
-    };
-    
     const commonProps = {
       id: article.id,
       title: article.title,
@@ -199,8 +80,7 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
       location: parseLocation(article.location),
       category: article.category,
       tags: article.tags,
-      onClick: () => handleArticleClick(article),
-      onReaction: handleReaction
+      onClick: () => handleArticleClick(article)
     };
 
     switch (cardType) {
@@ -213,21 +93,17 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
               name: article.authorName || truncateAddress(article.author),
               id: article.author,
               stats: {
-                curated: 5,
-                reliability: 85
+                curated: 5, // Placeholder
+                reliability: 85 // Placeholder
               }
             }}
             sourceUrl={article.originalUrl || '#'}
             sourceName={article.publicationName || 'External Source'}
             sharedAt={article.createdAt}
             voting={{
-              upvotes: 0,
-              downvotes: 0,
-              percentage: 0
-            }}
-            metrics={{
-              reactions,
-              supporters: reactions.supporters
+              upvotes: 8, // Placeholder
+              downvotes: 2, // Placeholder
+              percentage: 80 // Placeholder
             }}
             distribution={{
               submitter: 0.045,
@@ -235,6 +111,8 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
               total: 0.070
             }}
             contentHash={article.contentHash}
+            onUpvote={() => console.log('Upvote', article.id)}
+            onDownvote={() => console.log('Downvote', article.id)}
           />
         );
 
@@ -247,8 +125,8 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
               name: article.authorName || truncateAddress(article.author),
               id: article.author,
               stats: {
-                articlesPublished: 12,
-                credibility: 92
+                articlesPublished: 12, // Placeholder
+                credibility: 92 // Placeholder
               }
             }}
             originalUrl={article.originalUrl || '#'}
@@ -257,10 +135,6 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
             originalPublishDate={article.originalPublishDate || article.createdAt}
             verifiedAt={article.createdAt}
             portfolioType={article.portfolioType || 'verification'}
-            metrics={{
-              reactions,
-              supporters: reactions.supporters
-            }}
             distribution={{
               author: 0.045,
               platform: 0.025,
@@ -272,6 +146,7 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
 
       case 'article':
       default:
+        // Handle encrypted/native articles with access control
         const isEncrypted = article.articleType === 'native';
         const displaySummary = isEncrypted && !article.hasAccess 
           ? article.summary 
@@ -287,8 +162,8 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
               id: article.author,
               type: article.authorType,
               stats: {
-                written: 8,
-                proposed: 3
+                written: 8, // Placeholder
+                proposed: 3 // Placeholder
               }
             }}
             proposer={article.proposalId ? {
@@ -301,8 +176,8 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
               views: article.readerMetrics.viewCount,
               comments: article.readerMetrics.commentCount,
               tips: article.readerMetrics.tipAmount,
-              reactions,
-              supporters: reactions.supporters
+              reactions: {}, // No mock data
+              supporters: 0 // No mock data
             }}
             distribution={{
               author: 0.045,
@@ -359,56 +234,45 @@ const handleReaction = useCallback(async (contentId: string, reactionType: strin
         {filters.contentType !== 'proposals' && articles.map(renderArticle)}
         
         {/* Display proposals if in proposal mode */}
-        {filters.contentType === 'proposals' && proposals.map(proposal => {
-          const reactions = reactionsMap.get(proposal.id) || {
-            '👍': 0,
-            '👏': 0,
-            '🔥': 0,
-            '🤔': 0,
-            supporters: 0
-          };
-          
-          return (
-            <ProposalCard
-              key={proposal.id}
-              id={proposal.id}
-              title={proposal.title}
-              summary={proposal.summary}
-              imageUrl={getColorPlaceholder(proposal)}
-              proposer={{
-                name: proposal.proposerName || truncateAddress(proposal.proposer),
-                id: proposal.proposer,
-                stats: {
-                  written: 2,
-                  proposed: 5
-                }
-              }}
-              createdAt={proposal.createdAt}
-              location={parseLocation(proposal.location)}
-              category={proposal.category}
-              tags={proposal.tags || []}
-              status='active'
-              funding={{
-                amount: proposal.fundingAmount,
-                goal: proposal.fundingGoal,
-                percentage: (proposal.fundingAmount / proposal.fundingGoal) * 100
-              }}
-              metrics={{
-                reactions,
-                supporters: reactions.supporters,
-                journalistInterest: 0
-              }}
-              distribution={{
-                proposer: 0.060,
-                platform: 0.040,
-                futureAuthor: 0
-              }}
-              contentHash=""
-              onClick={() => handleArticleClick(proposal)}
-              onReaction={handleReaction}
-            />
-          );
-        })}
+        {filters.contentType === 'proposals' && proposals.map(proposal => (
+          <ProposalCard
+            key={proposal.id}
+            id={proposal.id}
+            title={proposal.title}
+            summary={proposal.summary}
+            imageUrl={getColorPlaceholder(proposal)}
+            proposer={{
+              name: proposal.proposerName || truncateAddress(proposal.proposer),
+              id: proposal.proposer,
+              stats: {
+                written: 2, // Placeholder
+                proposed: 5 // Placeholder
+              }
+            }}
+            createdAt={proposal.createdAt}
+            location={parseLocation(proposal.location)}
+            category={proposal.category}
+            tags={proposal.tags || []}
+            status='active'
+            funding={{
+              amount: proposal.fundingAmount,
+              goal: proposal.fundingGoal,
+              percentage: (proposal.fundingAmount / proposal.fundingGoal) * 100
+            }}
+            metrics={{
+              reactions: {}, // No mock data
+              supporters: 0, // No mock data
+              journalistInterest: 0 // No mock data
+            }}
+            distribution={{
+              proposer: 0.060,
+              platform: 0.040,
+              futureAuthor: 0
+            }}
+            contentHash=""
+            onClick={() => handleArticleClick(proposal)}
+          />
+        ))}
       </div>
     );
   };

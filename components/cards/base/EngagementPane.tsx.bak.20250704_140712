@@ -2,7 +2,7 @@
 "use client";
 
 import React from 'react';
-import styles from './EngagementPane.module.css';
+import styles from './EngagementPane.module.css'; // Add this import
 import { EngagementPaneProps } from '../../../lib/engagement/types/cardTypes';
 import ChainReactionPanel from '../../engagement/chainReactions/ChainReactionPanel';
 import EmojiEarnings from '../../engagement/revenueDist/EmojiEarnings';
@@ -20,7 +20,6 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
   votingInfo,
   onVoteUp,
   onVoteDown,
-  onReaction,
   className = '',
   children,
 }) => {
@@ -29,15 +28,25 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
 
   return (
     <div className={`${styles.engagementPane} ${typeClass} ${className}`}>
-      {/* Community Voting - REMOVED for non-proposal content */}
-      {/* Voting will only be implemented for proposals in future */}
+      {/* Community Voting (only for community content) - MOVED TO TOP */}
+      {contentType === 'community' && votingInfo && (
+        <CommunityVoting
+          upvotes={votingInfo.upvotes || 0}
+          downvotes={votingInfo.downvotes || 0}
+          percentage={votingInfo.percentage || 0}
+          onVoteUp={onVoteUp}
+          onVoteDown={onVoteDown}
+        />
+      )}
       
       {/* Chain Reactions */}
       {engagementMetrics && (
         <ChainReactionPanel
           reactions={engagementMetrics.reactions || {}}
           supporters={engagementMetrics.supporters}
-          onReaction={(type, isPowerUp) => onReaction?.(id, type, isPowerUp)}
+          onReaction={(type, isPowerUp) => 
+            console.log(`Reaction: ${type}, PowerUp: ${isPowerUp}`)
+          }
         />
       )}
       

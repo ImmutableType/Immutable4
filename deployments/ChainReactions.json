@@ -1,0 +1,9 @@
+{
+    "address": "0xBB7B7A498Fc23084A0322A869e2D121966898EE5",
+    "deployer": "0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2",
+    "emojiToken": "0x572F036576D1D9F41876e714D47f69CEa6933c36",
+    "deploymentTx": "0xd1383c2dd2468b1539ef12246a5ba3478d358027c8583f4068b1643d5354d045",
+    "timestamp": "2025-01-26T00:00:00.000Z",
+    "network": "flowTestnet",
+    "chainId": 545
+  }

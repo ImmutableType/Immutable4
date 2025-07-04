@@ -225,8 +225,6 @@ const LocationArticleFeed: React.FC<LocationArticleFeedProps> = ({
               total: 0.070
             }}
             contentHash={article.contentHash}
-            onUpvote={() => console.log('Upvote', article.id)}
-            onDownvote={() => console.log('Downvote', article.id)}
           />
         );
 

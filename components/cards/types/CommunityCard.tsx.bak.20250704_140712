@@ -46,7 +46,8 @@ export interface CommunityCardProps {
   contentHash?: string;
   onClick?: () => void;
   className?: string;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
+  onUpvote?: () => void;
+  onDownvote?: () => void;
 }
 
 // Create CommunityBadge component
@@ -55,6 +56,13 @@ const CommunityBadge: React.FC = () => (
     Community Curated
   </span>
 );
+
+// Get CSS class based on voting percentage
+const getVotingScoreClass = (percentage: number): string => {
+  if (percentage >= 85) return 'high-score';
+  if (percentage >= 60) return 'medium-score';
+  return 'low-score';
+};
 
 const CommunityCard: React.FC<CommunityCardProps> = ({
   id,
@@ -75,7 +83,8 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
   contentHash,
   onClick,
   className,
-  onReaction,
+  onUpvote,
+  onDownvote,
 }) => {
   // Format date for display
   const formattedDate = `Shared: ${new Date(sharedAt || createdAt).toLocaleDateString('en-US', {
@@ -83,6 +92,12 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
     month: 'short',
     day: 'numeric'
   })}`;
+
+  const votingPercentage = (voting.percentage ?? 
+    (voting.upvotes / (voting.upvotes + voting.downvotes) * 100)) || 0;
+  
+  // Get score class
+  const scoreClass = getVotingScoreClass(votingPercentage);
 
   // Prepare badges
   const badges = [
@@ -115,11 +130,17 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
       supporters: metrics?.supporters
     },
     distribution,
+    votingInfo: {
+      upvotes: voting.upvotes,
+      downvotes: voting.downvotes,
+      percentage: votingPercentage
+    },
     badges,
     actionButtons,
     onClick,
-    className,
-    onReaction
+    onUpvote,
+    onDownvote,
+    className: `${className || ''} ${scoreClass}`
   };
 
   return <BaseCard {...baseCardProps} />;

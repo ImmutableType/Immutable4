@@ -46,7 +46,6 @@ export interface ProposalCardProps {
   contentHash?: string;
   onClick?: () => void;
   className?: string;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
 }
 
 // Create ProposalBadge component
@@ -84,7 +83,6 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
   contentHash,
   onClick,
   className,
-  onReaction,
 }) => {
   // Format date for display
   const formattedDate = `Proposed: ${new Date(createdAt).toLocaleDateString('en-US', {
@@ -134,8 +132,7 @@ const ProposalCard: React.FC<ProposalCardProps> = ({
     badges,
     actionButtons,
     onClick,
-    className,
-    onReaction
+    className
   };
 
   return <BaseCard {...baseCardProps} />;
