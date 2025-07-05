@@ -74,7 +74,8 @@ export interface EngagementPaneProps {
   };
   onVoteUp?: () => void;
   onVoteDown?: () => void;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;  // ADD THIS
+  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
+  pendingReaction?: string | null;  // ADD THIS LINE
   className?: string;
   children?: React.ReactNode;
 }
@@ -122,5 +123,6 @@ export interface BaseCardProps extends CardCommonProps {
   children?: React.ReactNode;
   onUpvote?: () => void;
   onDownvote?: () => void;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;  // ADD THIS
+  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
+  pendingReaction?: string | null;  // ADD THIS LINE
 }

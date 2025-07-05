@@ -35,6 +35,7 @@ const BaseCard: React.FC<BaseCardProps> = ({
   onDownvote,
   // Reaction handler
   onReaction,
+  pendingReaction,
   // Custom rendering
   renderContent,
   renderEngagement,
@@ -68,6 +69,7 @@ const BaseCard: React.FC<BaseCardProps> = ({
     onVoteUp: onUpvote,
     onVoteDown: onDownvote,
     onReaction,
+    pendingReaction,
   };
 
   return (

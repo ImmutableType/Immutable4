@@ -44,7 +44,8 @@ export interface PortfolioCardProps {
   contentHash?: string;
   onClick?: () => void;
   className?: string;
-  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;  // ADD THIS
+  onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
+  pendingReaction?: string | null;
 }
 
 // Create PortfolioBadge component with professional red styling
@@ -75,7 +76,8 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
   contentHash,
   onClick,
   className,
-  onReaction,  // ADD THIS
+  onReaction,
+  pendingReaction,
 }) => {
   // Format dates for display
   const formattedVerifiedDate = `Verified: ${new Date(verifiedAt || createdAt).toLocaleDateString('en-US', {
@@ -130,7 +132,8 @@ const PortfolioCard: React.FC<PortfolioCardProps> = ({
     actionButtons,
     onClick,
     className: `${className || ''} portfolio-card`,
-    onReaction  // ADD THIS
+    onReaction,
+    pendingReaction
   };
 
   return <BaseCard {...baseCardProps} />;

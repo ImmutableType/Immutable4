@@ -42,6 +42,7 @@ export interface CommunityCardProps {
   onClick?: () => void;
   className?: string;
   onReaction?: (contentId: string, reactionType: string, isPowerUp: boolean) => void;
+  pendingReaction?: string | null;
 }
 
 // Create CommunityBadge component
@@ -70,6 +71,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
   onClick,
   className,
   onReaction,
+  pendingReaction,
 }) => {
   // Format date for display
   const formattedDate = `Shared: ${new Date(sharedAt || createdAt).toLocaleDateString('en-US', {
@@ -113,7 +115,8 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
     actionButtons,
     onClick,
     className,
-    onReaction
+    onReaction,
+    pendingReaction
   };
 
   return <BaseCard {...baseCardProps} />;
