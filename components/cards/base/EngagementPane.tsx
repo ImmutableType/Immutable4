@@ -144,11 +144,7 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
             </div>
           )}
           
-          {/* CTA Button based on content type */}
-          {contentType === 'article' && (
-            <button className={styles.ctaButton}>Reload My Emojis</button>
-          )}
-          
+          {/* CTA Button based on content type - REMOVED "Reload My Emojis" */}
           {contentType === 'proposal' && (
             <button className={styles.ctaButton}>Fund This Proposal</button>
           )}
@@ -164,4 +160,4 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
   );
 };
 
-export default EngagementPane;// Force update: 20250704_150751
+export default EngagementPane;

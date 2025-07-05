@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
+import confetti from 'canvas-confetti';
 import { FeedFilters } from '../../lib/reader/types/feed';
 import { useFeed } from '../../lib/reader/hooks/useFeed';
 import { ArticleCard, ProposalCard } from '../cards';
@@ -39,6 +40,56 @@ function extractNumericId(id: string): string {
   return match ? match[1] : id;
 }
 
+// Celebration function for reactions
+const celebrateReaction = (reactionType: string, isPowerUp: boolean) => {
+  // Get emoji element position (approximate center of screen for now)
+  const x = 0.5;
+  const y = 0.5;
+
+  // Emoji-themed colors
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA500'];
+
+  // First burst - emoji shapes
+  const reactionEmoji = confetti.shapeFromText({ text: reactionType, scalar: 2 });
+  confetti({
+    shapes: [reactionEmoji],
+    particleCount: isPowerUp ? 50 : 20,
+    spread: 70,
+    origin: { x, y },
+    scalar: isPowerUp ? 2.5 : 1.5,
+    ticks: 200,
+  });
+
+  // Second burst - colorful particles
+  confetti({
+    particleCount: isPowerUp ? 100 : 50,
+    spread: 60,
+    origin: { x, y },
+    colors: colors,
+    ticks: 200,
+  });
+
+  // Power-up gets extra effects
+  if (isPowerUp) {
+    setTimeout(() => {
+      confetti({
+        particleCount: 30,
+        angle: 60,
+        spread: 45,
+        origin: { x: 0, y: 0.8 },
+        colors: ['#FFD700', '#FFA500'],
+      });
+      confetti({
+        particleCount: 30,
+        angle: 120,
+        spread: 45,
+        origin: { x: 1, y: 0.8 },
+        colors: ['#FFD700', '#FFA500'],
+      });
+    }, 150);
+  }
+};
+
 interface ArticleFeedProps {
  onArticleSelect?: (articleId: string) => void;
 }
@@ -49,6 +100,7 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
  const [reactionService, setReactionService] = useState<ChainReactionService | null>(null);
  const [reactionsMap, setReactionsMap] = useState<Map<string, ReactionData>>(new Map());
  const [isLoadingReactions, setIsLoadingReactions] = useState(false);
+ const [pendingReaction, setPendingReaction] = useState<{ contentId: string; reactionType: string } | null>(null);
  
  const {
    articles,
@@ -137,6 +189,9 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      // Extract numeric ID
      const numericId = extractNumericId(contentId);
      
+     // Set pending state
+     setPendingReaction({ contentId, reactionType });
+     
      // Send transaction
      const tx = await reactionService.addReaction(numericId, reactionType, isPowerUp, signer);
      console.log('Transaction sent:', tx.hash);
@@ -144,6 +199,12 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      // Wait for confirmation
      await tx.wait();
      console.log('Reaction confirmed!');
+     
+     // Celebrate!
+     celebrateReaction(reactionType, isPowerUp);
+     
+     // Clear pending state
+     setPendingReaction(null);
      
      // Refresh reactions for this content
      const updatedReactions = await reactionService.getReactions(numericId);
@@ -155,6 +216,8 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      
    } catch (error: any) {
      console.error('Failed to add reaction:', error);
+     setPendingReaction(null); // Clear pending state on error
+     
      if (error.message?.includes('Insufficient EMOJI tokens')) {
        alert('Insufficient EMOJI tokens. Please reload your EMOJI balance.');
      } else if (error.message?.includes('user rejected')) {
@@ -198,6 +261,11 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      '🤔': 0,
      supporters: 0
    };
+   
+   // Check if this article has a pending reaction
+   const currentPendingReaction = pendingReaction && pendingReaction.contentId === article.id 
+     ? pendingReaction.reactionType 
+     : null;
    
    const commonProps = {
      id: article.id,

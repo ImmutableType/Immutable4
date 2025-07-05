@@ -9,6 +9,7 @@ interface EmojiButtonProps {
   emoji: ReactionType;
   count: number;
   isActive?: boolean;
+  isPending?: boolean;
   onClick?: () => void;
   onLongPress?: () => void;
   className?: string;
@@ -18,6 +19,7 @@ const EmojiButton: React.FC<EmojiButtonProps> = ({
   emoji,
   count,
   isActive = false,
+  isPending = false,
   onClick,
   onLongPress,
   className = '',
@@ -57,12 +59,6 @@ const EmojiButton: React.FC<EmojiButtonProps> = ({
     setIsLongPress(false);
   };
 
-  // Create animation effect when button is clicked
-  const createEmojiAnimation = () => {
-    // This would be implemented with actual animation in a real component
-    console.log(`Animating ${emoji}`);
-  };
-
   return (
     <button 
       className={`${styles.emojiButton} ${isActive ? styles.active : ''} ${isLongPress ? styles.longPress : ''} ${className}`}
@@ -76,9 +72,20 @@ const EmojiButton: React.FC<EmojiButtonProps> = ({
         e.preventDefault();
         e.stopPropagation(); // Also stop propagation on click
       }}
+      style={{
+        animation: isPending ? 'pulse 1s ease-in-out infinite' : undefined,
+        boxShadow: isPending ? '0 0 10px rgba(255, 215, 0, 0.5)' : undefined,
+      }}
     >
       <span>{emoji}</span> {count}
       <div className={styles.powerUp}>+100</div>
+      <style jsx>{`
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
     </button>
   );
 };
