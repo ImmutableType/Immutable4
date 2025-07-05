@@ -39,7 +39,6 @@ const EngagementPane: React.FC<EngagementPaneProps> = ({
           reactions={engagementMetrics.reactions || {}}
           supporters={engagementMetrics.supporters}
           onReaction={(type, isPowerUp) => onReaction?.(id, type, isPowerUp || false)}
-          pendingReaction={pendingReaction}
         />
       )}
       
