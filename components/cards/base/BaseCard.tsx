@@ -73,13 +73,12 @@ const BaseCard: React.FC<BaseCardProps> = ({
   return (
     <div 
       className={`${styles.articleContainer} ${contentType ? styles[contentType + 'Card'] : ''} ${className}`}
-      onClick={onClick}
     >
-      {/* Content Pane (Left) */}
+      {/* Content Pane (Left) - with onClick handler */}
       {renderContent ? (
         renderContent(contentPaneProps)
       ) : (
-        <ContentPane {...contentPaneProps} />
+        <ContentPane {...contentPaneProps} onClick={onClick} />
       )}
 
       {/* Engagement Pane (Right) */}

@@ -5,7 +5,11 @@ import styles from './ContentPane.module.css'; // Add this import
 import { ContentPaneProps } from '../../../lib/engagement/types/cardTypes';
 import LocationTag from '../common/LocationTag';
 
-const ContentPane: React.FC<ContentPaneProps> = ({
+interface ExtendedContentPaneProps extends ContentPaneProps {
+  onClick?: () => void;
+}
+
+const ContentPane: React.FC<ExtendedContentPaneProps> = ({
   id,
   title,
   summary,
@@ -17,9 +21,10 @@ const ContentPane: React.FC<ContentPaneProps> = ({
   badges = [],
   actionButtons = [],
   className = '',
+  onClick,
 }) => {
   return (
-    <div className={`${styles.contentPane} ${className}`}>
+    <div className={`${styles.contentPane} ${className}`} onClick={onClick}>
       {/* Action Icons */}
       {actionButtons.length > 0 && (
         <div className={styles.contentActions}>

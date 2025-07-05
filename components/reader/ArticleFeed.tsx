@@ -33,6 +33,12 @@ function truncateAddress(address: string): string {
  return address.substring(0, 6) + '...' + address.substring(address.length - 4);
 }
 
+// Helper to extract numeric ID
+function extractNumericId(id: string): string {
+  const match = id.match(/(\d+)$/);
+  return match ? match[1] : id;
+}
+
 interface ArticleFeedProps {
  onArticleSelect?: (articleId: string) => void;
 }
@@ -70,36 +76,47 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
  }, []);
 
  // Fetch reactions for all content
- useEffect(() => {
-   const fetchReactions = async () => {
-     if (!reactionService || articles.length === 0) return;
+ const fetchReactions = useCallback(async () => {
+   if (!reactionService || (articles.length === 0 && proposals.length === 0)) return;
+   
+   setIsLoadingReactions(true);
+   try {
+     // Collect all content IDs (numeric only)
+     const contentIds = [
+       ...articles.map(a => extractNumericId(a.id)),
+       ...proposals.map(p => extractNumericId(p.id))
+     ];
      
-     setIsLoadingReactions(true);
-     try {
-       // Collect all content IDs and extract numeric part
-       const contentIds = [
-         ...articles.map(a => {
-           const match = a.id.match(/(\d+)$/);
-           return match ? match[1] : a.id;
-         }),
-         ...proposals.map(p => {
-           const match = p.id.match(/(\d+)$/);
-           return match ? match[1] : p.id;
-         })
-       ];
-       
-       // Fetch reactions in batch
-       const reactions = await reactionService.getBatchReactions(contentIds);
-       setReactionsMap(reactions);
-     } catch (error) {
-       console.error('Failed to fetch reactions:', error);
-     } finally {
-       setIsLoadingReactions(false);
+     // Fetch reactions in batch
+     const reactions = await reactionService.getBatchReactions(contentIds);
+     
+     // Store reactions with numeric IDs as keys
+     setReactionsMap(reactions);
+   } catch (error) {
+     console.error('Failed to fetch reactions:', error);
+   } finally {
+     setIsLoadingReactions(false);
+   }
+ }, [articles, proposals, reactionService]);
+
+ // Fetch reactions when content changes
+ useEffect(() => {
+   fetchReactions();
+ }, [fetchReactions]);
+
+ // Add page visibility handler to refresh when returning to page
+ useEffect(() => {
+   const handleVisibilityChange = () => {
+     if (document.visibilityState === 'visible') {
+       fetchReactions();
      }
    };
-   
-   fetchReactions();
- }, [articles, proposals, reactionService]);
+
+   document.addEventListener('visibilitychange', handleVisibilityChange);
+   return () => {
+     document.removeEventListener('visibilitychange', handleVisibilityChange);
+   };
+ }, [fetchReactions]);
 
  // Handle reaction
  const handleReaction = useCallback(async (contentId: string, reactionType: string, isPowerUp: boolean) => {
@@ -118,8 +135,7 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      console.log(`Adding reaction: ${reactionType} (Power-up: ${isPowerUp}) to content ${contentId}`);
      
      // Extract numeric ID
-     const match = contentId.match(/(\d+)$/);
-     const numericId = match ? match[1] : contentId;
+     const numericId = extractNumericId(contentId);
      
      // Send transaction
      const tx = await reactionService.addReaction(numericId, reactionType, isPowerUp, signer);
@@ -133,7 +149,7 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
      const updatedReactions = await reactionService.getReactions(numericId);
      setReactionsMap(prev => {
        const newMap = new Map(prev);
-       newMap.set(contentId, updatedReactions);
+       newMap.set(numericId, updatedReactions); // Use numeric ID as key
        return newMap;
      });
      
@@ -174,7 +190,8 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
  // Render individual article based on type
  const renderArticle = (article: any) => {
    const cardType = getArticleCardType(article);
-   const reactions = reactionsMap.get(article.id) || {
+   const numericId = extractNumericId(article.id);
+   const reactions = reactionsMap.get(numericId) || {
      '👍': 0,
      '👏': 0,
      '🔥': 0,
@@ -320,7 +337,8 @@ const ArticleFeed: React.FC<ArticleFeedProps> = ({ onArticleSelect }) => {
        
        {/* Display proposals if in proposal mode */}
        {filters.contentType === 'proposals' && proposals.map(proposal => {
-         const reactions = reactionsMap.get(proposal.id) || {
+         const numericId = extractNumericId(proposal.id);
+         const reactions = reactionsMap.get(numericId) || {
            '👍': 0,
            '👏': 0,
            '🔥': 0,

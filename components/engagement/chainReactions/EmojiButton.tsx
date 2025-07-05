@@ -27,13 +27,15 @@ const EmojiButton: React.FC<EmojiButtonProps> = ({
   const longPressDelay = 500; // ms
 
   // Handle mouse events
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Stop event from bubbling up
     longPressTimer.current = setTimeout(() => {
       setIsLongPress(true);
     }, longPressDelay);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation(); // Stop event from bubbling up
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
     }
@@ -70,7 +72,10 @@ const EmojiButton: React.FC<EmojiButtonProps> = ({
       onTouchStart={handleMouseDown}
       onTouchEnd={handleMouseUp}
       onTouchCancel={handleMouseLeave}
-      onClick={(e) => e.preventDefault()} // Prevent default to avoid double firing
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Also stop propagation on click
+      }}
     >
       <span>{emoji}</span> {count}
       <div className={styles.powerUp}>+100</div>
