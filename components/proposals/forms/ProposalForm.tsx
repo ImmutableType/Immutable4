@@ -4,20 +4,30 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MarkdownEditor from './MarkdownEditor';
-import FundingGoalInput from './FundingGoalInput';
 
-// Form steps
-enum FormStep {
-  BasicInfo = 0,
-  DetailedDescription = 1,
-  AdditionalDetails = 2,
-  Preview = 3,
-  Submitting = 4,
-  Success = 5,
-  Error = 6
+interface ProposalFormData {
+  // Basic Information
+  title: string;
+  tldr: string;
+  category: string;
+  location: string;
+  referenceUrls: string[];
+  
+  // Story Details
+  description: string;
+  timeline: string;
+  contentFormat: string;
+  
+  // NFT Configuration
+  fundingGoal: number;
+  nftCount: number;
+  nftPrice: number; // Auto-calculated
+  
+  // Additional Information
+  tags: string[];
+  journalistRequirements: string;
 }
 
-// Categories available
 const categories = [
   'Environment',
   'Business',
@@ -33,67 +43,89 @@ const categories = [
 
 export default function ProposalForm() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<FormStep>(FormStep.BasicInfo);
-  const [formData, setFormData] = useState({
-    title: '',
-    tldr: '', // Short description (TLDR)
-    category: '',
-    location: 'Miami', // Fixed for MVP
-    description: '',
-    timeline: '',
-    tags: [] as string[],
-    contentFormat: '',
-    fundingGoal: 2.0
-  });
-  
-  const [errors, setErrors] = useState({
+  const [formData, setFormData] = useState<ProposalFormData>({
     title: '',
     tldr: '',
     category: '',
+    location: 'Miami',
+    referenceUrls: [],
     description: '',
     timeline: '',
     contentFormat: '',
-    fundingGoal: ''
+    fundingGoal: 100,
+    nftCount: 100,
+    nftPrice: 1, // Will be auto-calculated
+    tags: [],
+    journalistRequirements: ''
   });
   
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [tagInput, setTagInput] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Handle text input changes
+  // Auto-calculate NFT price whenever funding goal or NFT count changes
+  React.useEffect(() => {
+    if (formData.nftCount > 0) {
+      const price = formData.fundingGoal / formData.nftCount;
+      setFormData(prev => ({ ...prev, nftPrice: price }));
+    }
+  }, [formData.fundingGoal, formData.nftCount]);
+
+  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear error when field is changed
-    if (errors[name as keyof typeof errors]) {
+    // Handle number inputs
+    if (name === 'fundingGoal' || name === 'nftCount') {
+      const numValue = parseFloat(value) || 0;
+      setFormData(prev => ({ ...prev, [name]: numValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+    
+    // Clear error when field is modified
+    if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   // Handle markdown editor changes
-  const handleMarkdownChange = (value: string) => {
+  const handleDescriptionChange = (value: string) => {
     setFormData(prev => ({ ...prev, description: value }));
-    
-    // Clear error when description is changed
     if (errors.description) {
       setErrors(prev => ({ ...prev, description: '' }));
     }
   };
 
-  // Handle funding goal changes
-  const handleFundingGoalChange = (value: number) => {
-    setFormData(prev => ({ ...prev, fundingGoal: value }));
+  // Add reference URL
+  const addReferenceUrl = () => {
+    if (urlInput.trim() && formData.referenceUrls.length < 3) {
+      // Basic URL validation
+      try {
+        new URL(urlInput);
+        setFormData(prev => ({
+          ...prev,
+          referenceUrls: [...prev.referenceUrls, urlInput.trim()]
+        }));
+        setUrlInput('');
+      } catch {
+        setErrors(prev => ({ ...prev, referenceUrls: 'Please enter a valid URL' }));
+      }
+    }
   };
 
-  // Handle tag input
-  const handleTagInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTagInput(e.target.value);
+  // Remove reference URL
+  const removeReferenceUrl = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      referenceUrls: prev.referenceUrls.filter((_, i) => i !== index)
+    }));
   };
 
-  // Add tag to the list
+  // Add tag
   const addTag = () => {
-    if (tagInput.trim() !== '' && !formData.tags.includes(tagInput.trim())) {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
       setFormData(prev => ({
         ...prev,
         tags: [...prev.tags, tagInput.trim()]
@@ -102,7 +134,7 @@ export default function ProposalForm() {
     }
   };
 
-  // Remove tag from the list
+  // Remove tag
   const removeTag = (tagToRemove: string) => {
     setFormData(prev => ({
       ...prev,
@@ -110,1065 +142,784 @@ export default function ProposalForm() {
     }));
   };
 
-  // Handle Enter key for tag input
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag();
-    }
-  };
-
-  // Validate form fields for the current step
-  const validateCurrentStep = (): boolean => {
-    let isValid = true;
-    const newErrors = { ...errors };
+  // Validate form
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
     
-    if (currentStep === FormStep.BasicInfo) {
-      // Title validation
-      if (!formData.title.trim()) {
-        newErrors.title = 'Title is required';
-        isValid = false;
-      } else if (formData.title.length > 100) {
-        newErrors.title = 'Title must be 100 characters or less';
-        isValid = false;
+    // Basic Information validation
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (formData.title.length > 100) {
+      newErrors.title = 'Title must be 100 characters or less';
+    }
+    
+    if (!formData.tldr.trim()) {
+      newErrors.tldr = 'Summary is required';
+    } else if (formData.tldr.length > 200) {
+      newErrors.tldr = 'Summary must be 200 characters or less';
+    }
+    
+    if (!formData.category) {
+      newErrors.category = 'Category is required';
+    }
+    
+    // Story Details validation
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    } else {
+      const wordCount = formData.description.trim().split(/\s+/).length;
+      if (wordCount > 200) {
+        newErrors.description = 'Description must be 200 words or less';
       }
-      
-      // TLDR validation
-      if (!formData.tldr.trim()) {
-        newErrors.tldr = 'TLDR is required';
-        isValid = false;
-      } else if (formData.tldr.length > 200) {
-        newErrors.tldr = 'TLDR must be 200 characters or less';
-        isValid = false;
-      }
-      
-      // Category validation
-      if (!formData.category) {
-        newErrors.category = 'Category is required';
-        isValid = false;
-      }
-    } else if (currentStep === FormStep.DetailedDescription) {
-      // Description validation
-      if (!formData.description.trim()) {
-        newErrors.description = 'Description is required';
-        isValid = false;
-      } else {
-        // Word count validation - roughly 200 words
-        const wordCount = formData.description.trim().split(/\s+/).length;
-        if (wordCount > 200) {
-          newErrors.description = 'Description must be 200 words or less';
-          isValid = false;
-        }
-      }
-    } else if (currentStep === FormStep.AdditionalDetails) {
-      // Timeline validation
-      if (!formData.timeline.trim()) {
-        newErrors.timeline = 'Timeline is required';
-        isValid = false;
-      }
-      
-      // Content format validation
-      if (!formData.contentFormat.trim()) {
-        newErrors.contentFormat = 'Content format is required';
-        isValid = false;
-      }
+    }
+    
+    if (!formData.timeline.trim()) {
+      newErrors.timeline = 'Timeline is required';
+    }
+    
+    if (!formData.contentFormat.trim()) {
+      newErrors.contentFormat = 'Content format is required';
+    }
+    
+    // NFT Configuration validation
+    if (formData.fundingGoal < 10 || formData.fundingGoal > 10000) {
+      newErrors.fundingGoal = 'Funding goal must be between 10 and 10,000 FLOW';
+    }
+    
+    if (formData.nftCount < 10 || formData.nftCount > 10000) {
+      newErrors.nftCount = 'NFT count must be between 10 and 10,000';
     }
     
     setErrors(newErrors);
-    return isValid;
-  };
-
-  // Move to the next step
-  const handleNextStep = () => {
-    if (validateCurrentStep()) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  // Move to the previous step
-  const handlePrevStep = () => {
-    setCurrentStep(prev => prev - 1);
+    return Object.keys(newErrors).length === 0;
   };
 
   // Handle form submission
-  const handleSubmit = async () => {
-    try {
-      setCurrentStep(FormStep.Submitting);
-      setIsSubmitting(true);
-      
-      // In a real app, we would upload content to IPFS here
-      // and then mint the proposal on the blockchain
-
-
-
-
-
-      
-    // Placeholder - proposal submission not implemented in production
-const result = { success: false, error: 'Proposal creation not implemented in production' };
-
-
-
-
-
-
-
-
-
-
-      
-      // Show success state
-      setCurrentStep(FormStep.Success);
-      
-      // Redirect after a delay
-      setTimeout(() => {
-        router.push('/news-proposals');
-      }, 3000);
-      
-    } catch (error) {
-      console.error('Error submitting proposal:', error);
-      setSubmissionError('There was an error submitting your proposal. Please try again.');
-      setCurrentStep(FormStep.Error);
-    } finally {
-      setIsSubmitting(false);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      setShowConfirmation(true);
     }
   };
 
-  // Render the current step
-  const renderStep = () => {
-    switch (currentStep) {
-      case FormStep.BasicInfo:
-        return (
-          <div className="form-step">
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '24px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Basic Information
-            </h2>
-            
-            {/* Title Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="title" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Title <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Enter a concise, descriptive title for your proposal"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: errors.title ? '1px solid #B3211E' : '1px solid #D9D9D9',
-                  fontSize: '16px'
-                }}
-              />
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginTop: '4px',
-                fontSize: '14px' 
-              }}>
-                {errors.title && (
-                  <span style={{ color: '#B3211E' }}>{errors.title}</span>
-                )}
-                <span style={{ color: formData.title.length > 100 ? '#B3211E' : '#6c757d' }}>
-                  {formData.title.length}/100
-                </span>
-              </div>
-            </div>
-            
-            {/* TLDR Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="tldr" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                TLDR (Short Description) <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <textarea
-                id="tldr"
-                name="tldr"
-                value={formData.tldr}
-                onChange={handleChange}
-                placeholder="Provide a brief summary of your proposal (200 characters max)"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: errors.tldr ? '1px solid #B3211E' : '1px solid #D9D9D9',
-                  fontSize: '16px',
-                  minHeight: '80px',
-                  resize: 'vertical'
-                }}
-              />
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                marginTop: '4px',
-                fontSize: '14px' 
-              }}>
-                {errors.tldr && (
-                  <span style={{ color: '#B3211E' }}>{errors.tldr}</span>
-                )}
-                <span style={{ color: formData.tldr.length > 200 ? '#B3211E' : '#6c757d' }}>
-                  {formData.tldr.length}/200
-                </span>
-              </div>
-            </div>
-            
-            {/* Category Dropdown */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="category" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Category <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <select
-                id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: errors.category ? '1px solid #B3211E' : '1px solid #D9D9D9',
-                  fontSize: '16px',
-                  backgroundColor: 'white'
-                }}
-              >
-                <option value="">Select a category</option>
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-              {errors.category && (
-                <span style={{ 
-                  color: '#B3211E', 
-                  fontSize: '14px', 
-                  display: 'block', 
-                  marginTop: '4px' 
-                }}>
-                  {errors.category}
-                </span>
-              )}
-            </div>
-            
-            {/* Location Input (Disabled/Fixed for MVP) */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="location" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Location <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                disabled
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: '1px solid #D9D9D9',
-                  fontSize: '16px',
-                  backgroundColor: '#f8f9fa'
-                }}
-              />
-              <span style={{ 
-                fontSize: '14px', 
-                color: '#6c757d', 
-                display: 'block', 
-                marginTop: '4px' 
-              }}>
-                Location is fixed to Miami for the MVP
-              </span>
-            </div>
-            
-            {/* Navigation Buttons */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'flex-end', 
-              marginTop: '32px' 
-            }}>
-              <button
-                onClick={handleNextStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: '#000000',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Next: Detailed Description
-              </button>
-            </div>
-          </div>
-        );
-      
-      case FormStep.DetailedDescription:
-        return (
-          <div className="form-step">
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '24px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Detailed Description
-            </h2>
-            
-            {/* Markdown Editor */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Description <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <p style={{ 
-                fontSize: '14px', 
-                color: '#6c757d', 
-                marginBottom: '12px' 
-              }}>
-                Describe your proposal in detail. What should be investigated? Why is it important? (200 words max)
-              </p>
-              
-              <MarkdownEditor
-                value={formData.description}
-                onChange={handleMarkdownChange}
-                error={errors.description}
-              />
-            </div>
-            
-            {/* Navigation Buttons */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginTop: '32px' 
-            }}>
-              <button
-                onClick={handlePrevStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: 'white',
-                  color: '#000000',
-                  border: '1px solid #D9D9D9',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleNextStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: '#000000',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Next: Additional Details
-              </button>
-            </div>
-          </div>
-        );
-      
-      case FormStep.AdditionalDetails:
-        return (
-          <div className="form-step">
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '24px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Additional Details
-            </h2>
-            
-            {/* Timeline Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="timeline" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Expected Timeline <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="timeline"
-                name="timeline"
-                value={formData.timeline}
-                onChange={handleChange}
-                placeholder="e.g., '2-3 weeks', '1 month', etc."
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: errors.timeline ? '1px solid #B3211E' : '1px solid #D9D9D9',
-                  fontSize: '16px'
-                }}
-              />
-              {errors.timeline && (
-                <span style={{ 
-                  color: '#B3211E', 
-                  fontSize: '14px', 
-                  display: 'block', 
-                  marginTop: '4px' 
-                }}>
-                  {errors.timeline}
-                </span>
-              )}
-            </div>
-            
-            {/* Content Format Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label htmlFor="contentFormat" style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Deliverable Format <span style={{ color: '#B3211E' }}>*</span>
-              </label>
-              <input
-                type="text"
-                id="contentFormat"
-                name="contentFormat"
-                value={formData.contentFormat}
-                onChange={handleChange}
-                placeholder="e.g., 'Written article', 'Photo essay', 'Interview series', etc."
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  border: errors.contentFormat ? '1px solid #B3211E' : '1px solid #D9D9D9',
-                  fontSize: '16px'
-                }}
-              />
-              {errors.contentFormat && (
-                <span style={{ 
-                  color: '#B3211E', 
-                  fontSize: '14px', 
-                  display: 'block', 
-                  marginTop: '4px' 
-                }}>
-                  {errors.contentFormat}
-                </span>
-              )}
-            </div>
-            
-            {/* Tags Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Tags
-              </label>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={handleTagInputChange}
-                  onKeyDown={handleTagKeyDown}
-                  placeholder="Add tags and press Enter"
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '4px',
-                    border: '1px solid #D9D9D9',
-                    fontSize: '16px'
-                  }}
-                />
-                <button
-                  onClick={addTag}
-                  style={{
-                    padding: '10px 16px',
-                    backgroundColor: '#000000',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-              
-              {/* Display selected tags */}
-              {formData.tags.length > 0 && (
-                <div style={{ 
-                  display: 'flex', 
-                  flexWrap: 'wrap', 
-                  gap: '8px', 
-                  marginTop: '12px' 
-                }}>
-                  {formData.tags.map(tag => (
-                    <div 
-                      key={tag}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '4px 12px',
-                        backgroundColor: 'rgba(0,0,0,0.05)',
-                        borderRadius: '16px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      <span>#{tag}</span>
-                      <button
-                        onClick={() => removeTag(tag)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: '#6c757d',
-                          fontSize: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0',
-                          width: '18px',
-                          height: '18px'
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Funding Goal Input */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: '8px', 
-                fontWeight: '500'
-              }}>
-                Funding Goal
-              </label>
-              <FundingGoalInput
-                value={formData.fundingGoal}
-                onChange={handleFundingGoalChange}
-              />
-            </div>
-            
-            {/* Navigation Buttons */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginTop: '32px' 
-            }}>
-              <button
-                onClick={handlePrevStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: 'white',
-                  color: '#000000',
-                  border: '1px solid #D9D9D9',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleNextStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: '#000000',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Preview & Submit
-              </button>
-            </div>
-          </div>
-        );
-      
-      case FormStep.Preview:
-        return (
-          <div className="form-step">
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '24px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Preview Your Proposal
-            </h2>
-            
-            {/* Preview Card */}
-            <div style={{
-              backgroundColor: 'white',
-              padding: '24px',
-              borderRadius: '8px',
-              border: '1px solid #D9D9D9',
-              marginBottom: '24px'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start',
-                marginBottom: '16px'
-              }}>
-                <h3 style={{ 
-                  fontSize: '24px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '8px',
-                  fontFamily: "'Special Elite', monospace"
-                }}>
-                  {formData.title}
-                </h3>
-                <span style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  color: '#1D7F6E',
-                  backgroundColor: 'rgba(29, 127, 110, 0.1)',
-                  border: '1px solid #1D7F6E'
-                }}>
-                  Active
-                </span>
-              </div>
-
-              <p style={{ fontSize: '16px', color: '#6c757d', marginBottom: '16px' }}>
-                Proposed by: 0x1234...5678 • Just now
-              </p>
-
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                <span style={{ 
-                  backgroundColor: 'rgba(0,0,0,0.05)', 
-                  padding: '4px 12px', 
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}>
-                  {formData.category}
-                </span>
-                <span style={{ 
-                  backgroundColor: 'rgba(0,0,0,0.05)', 
-                  padding: '4px 12px', 
-                  borderRadius: '4px',
-                  fontSize: '14px'
-                }}>
-                  {formData.location}
-                </span>
-              </div>
-
-              <p style={{ 
-                fontSize: '18px', 
-                lineHeight: '1.6',
-                fontStyle: 'italic',
-                marginBottom: '16px',
-                padding: '16px',
-                borderLeft: '3px solid #B3211E',
-                backgroundColor: 'rgba(0,0,0,0.02)'
-              }}>
-                {formData.tldr}
-              </p>
-              
-              <div style={{ marginBottom: '24px' }}>
-                <h4 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '12px',
-                  fontFamily: "'Special Elite', monospace"
-                }}>
-                  Description
-                </h4>
-                <div style={{ fontSize: '16px', lineHeight: '1.6' }}>
-                  {formData.description.split('\n').map((line, i) => (
-                    <p key={i} style={{ marginBottom: '12px' }}>{line}</p>
-                  ))}
-                </div>
-              </div>
-              
-              {formData.tags.length > 0 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ 
-                    fontSize: '18px', 
-                    fontWeight: 'bold', 
-                    marginBottom: '12px',
-                    fontFamily: "'Special Elite', monospace"
-                  }}>
-                    Tags
-                  </h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {formData.tags.map(tag => (
-                      <span 
-                        key={tag}
-                        style={{ 
-                          backgroundColor: 'rgba(0,0,0,0.05)', 
-                          padding: '4px 12px', 
-                          borderRadius: '4px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              <div style={{ marginBottom: '24px' }}>
-                <h4 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '12px',
-                  fontFamily: "'Special Elite', monospace"
-                }}>
-                  Timeline
-                </h4>
-                <p>{formData.timeline}</p>
-              </div>
-              
-              <div style={{ marginBottom: '24px' }}>
-                <h4 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '12px',
-                  fontFamily: "'Special Elite', monospace"
-                }}>
-                  Deliverable Format
-                </h4>
-                <p>{formData.contentFormat}</p>
-              </div>
-              
-              <div>
-                <h4 style={{ 
-                  fontSize: '18px', 
-                  fontWeight: 'bold', 
-                  marginBottom: '12px',
-                  fontFamily: "'Special Elite', monospace"
-                }}>
-                  Funding Goal
-                </h4>
-                <p>${formData.fundingGoal.toFixed(1)}</p>
-              </div>
-            </div>
-            
-            {/* Terms Agreement */}
-            <div style={{ 
-              marginBottom: '24px',
-              padding: '16px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(0,0,0,0.02)',
-              border: '1px solid #D9D9D9'
-            }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'flex-start', 
-                gap: '12px', 
-                cursor: 'pointer' 
-              }}>
-                <input 
-                  type="checkbox" 
-                  id="terms" 
-                  style={{ marginTop: '4px' }} 
-                />
-                <div>
-                  <p style={{ marginBottom: '4px', fontWeight: '500' }}>
-                    I agree to the terms and conditions
-                  </p>
-                  <p style={{ fontSize: '14px', color: '#6c757d' }}>
-                    By submitting this proposal, I confirm that all information provided is accurate and that I have the right to publish this content. I understand that the community will be able to vote on and fund this proposal.
-                  </p>
-                </div>
-              </label>
-            </div>
-            
-            {/* Navigation Buttons */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              marginTop: '32px' 
-            }}>
-              <button
-                onClick={handlePrevStep}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: 'white',
-                  color: '#000000',
-                  border: '1px solid #D9D9D9',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleSubmit}
-                style={{
-                  padding: '10px 24px',
-                  backgroundColor: '#B3211E',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  cursor: 'pointer'
-                }}
-              >
-                Submit Proposal
-              </button>
-            </div>
-          </div>
-        );
-      
-      case FormStep.Submitting:
-        return (
-          <div className="form-step" style={{ textAlign: 'center', padding: '48px 0' }}>
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '24px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Submitting Your Proposal
-            </h2>
-            <p style={{ marginBottom: '32px' }}>
-              Please wait while we submit your proposal to the blockchain...
-            </p>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '4px solid rgba(0,0,0,0.1)', 
-              borderTopColor: '#B3211E', 
-              borderRadius: '50%', 
-              margin: '0 auto',
-              animation: 'spin 1s linear infinite'
-            }}></div>
-            
-            <style jsx>{`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}</style>
-          </div>
-        );
-      
-      case FormStep.Success:
-        return (
-          <div className="form-step" style={{ textAlign: 'center', padding: '48px 0' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(29, 127, 110, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px'
-            }}>
-              <span style={{ 
-                fontSize: '48px', 
-                color: '#1D7F6E'
-              }}>
-                ✓
-              </span>
-            </div>
-            
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '16px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Proposal Submitted Successfully!
-            </h2>
-            
-            <p style={{ marginBottom: '32px' }}>
-              Your proposal has been created and is now visible to the community.
-            </p>
-            
-            <p style={{ color: '#6c757d', fontSize: '14px' }}>
-              Redirecting to proposals list...
-            </p>
-          </div>
-        );
-      
-      case FormStep.Error:
-        return (
-          <div className="form-step" style={{ textAlign: 'center', padding: '48px 0' }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(179, 33, 30, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 24px'
-            }}>
-              <span style={{ 
-                fontSize: '48px', 
-                color: '#B3211E'
-              }}>
-                !
-              </span>
-            </div>
-            
-            <h2 style={{ 
-              fontSize: '22px', 
-              fontWeight: 'bold', 
-              marginBottom: '16px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Submission Error
-            </h2>
-            
-            <p style={{ marginBottom: '32px' }}>
-              {submissionError || 'There was an error submitting your proposal. Please try again.'}
-            </p>
-            
-            <button
-              onClick={() => setCurrentStep(FormStep.Preview)}
-              style={{
-                padding: '10px 24px',
-                backgroundColor: '#000000',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '16px',
-                cursor: 'pointer'
-              }}
-            >
-              Back to Preview
-            </button>
-          </div>
-        );
-      
-      default:
-        return null;
-    }
-  };
-
-  // Progress bar steps
-  const steps = [
-    'Basic Info',
-    'Description',
-    'Details',
-    'Review'
-  ];
+  // If showing confirmation, render the confirmation component
+  if (showConfirmation) {
+    return (
+      <ProposalConfirmation 
+        formData={formData}
+        onBack={() => setShowConfirmation(false)}
+        onConfirm={() => {
+          // This will be handled by the next agent
+          console.log('Minting proposal with data:', formData);
+          router.push('/news-proposals');
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="proposal-form">
-      {/* Progress Indicators (not shown for submitting, success, or error states) */}
-      {currentStep < FormStep.Submitting && (
-        <div style={{ marginBottom: '32px' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            position: 'relative'
-          }}>
-            {steps.map((step, index) => (
-              <div 
-                key={index}
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center',
-                  position: 'relative',
-                  zIndex: 2
-                }}
-              >
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: index <= currentStep ? '#000000' : 'white',
-                  border: '2px solid',
-                  borderColor: index <= currentStep ? '#000000' : '#D9D9D9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '8px',
-                  color: index <= currentStep ? 'white' : '#6c757d',
-                  fontWeight: 'bold',
-                  fontSize: '14px'
-                }}>
-                  {index + 1}
-                </div>
-                <span style={{ 
-                  fontSize: '14px',
-                  color: index <= currentStep ? '#000000' : '#6c757d',
-                  fontWeight: index <= currentStep ? '500' : 'normal'
-                }}>
-                  {step}
-                </span>
-              </div>
-            ))}
-            
-            {/* Progress Line */}
-            <div style={{ 
-              position: 'absolute', 
-              top: '16px', 
-              left: '16px', 
-              right: '16px', 
-              height: '2px', 
-              backgroundColor: '#D9D9D9',
-              zIndex: 1
-            }}>
-              <div style={{ 
-                height: '100%', 
-                width: `${(currentStep / (steps.length - 1)) * 100}%`, 
-                backgroundColor: '#000000' 
-              }}></div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Current Step Content */}
+    <form onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto' }}>
+      {/* Basic Information Section */}
       <div style={{
         backgroundColor: 'white',
         padding: '24px',
         borderRadius: '8px',
-        border: '1px solid #D9D9D9'
+        border: '1px solid #D9D9D9',
+        marginBottom: '24px'
       }}>
-        {renderStep()}
+        <h2 style={{ 
+          fontSize: '22px', 
+          fontWeight: 'bold', 
+          marginBottom: '24px',
+          fontFamily: "'Special Elite', monospace"
+        }}>
+          Basic Information
+        </h2>
+        
+        {/* Title */}
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="title" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Title <span style={{ color: '#B3211E' }}>*</span>
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            placeholder="Enter a concise, descriptive title"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '4px',
+              border: errors.title ? '1px solid #B3211E' : '1px solid #D9D9D9',
+              fontSize: '16px'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            {errors.title && <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.title}</span>}
+            <span style={{ color: formData.title.length > 100 ? '#B3211E' : '#6c757d', fontSize: '14px' }}>
+              {formData.title.length}/100
+            </span>
+          </div>
+        </div>
+        
+        {/* TLDR */}
+        <div style={{ marginBottom: '20px' }}>
+          <label htmlFor="tldr" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Summary (TLDR) <span style={{ color: '#B3211E' }}>*</span>
+          </label>
+          <textarea
+            id="tldr"
+            name="tldr"
+            value={formData.tldr}
+            onChange={handleChange}
+            placeholder="Brief summary of your proposal"
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '4px',
+              border: errors.tldr ? '1px solid #B3211E' : '1px solid #D9D9D9',
+              fontSize: '16px',
+              resize: 'vertical'
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+            {errors.tldr && <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.tldr}</span>}
+            <span style={{ color: formData.tldr.length > 200 ? '#B3211E' : '#6c757d', fontSize: '14px' }}>
+              {formData.tldr.length}/200
+            </span>
+          </div>
+        </div>
+        
+        {/* Category and Location */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <label htmlFor="category" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Category <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: errors.category ? '1px solid #B3211E' : '1px solid #D9D9D9',
+                fontSize: '16px',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value="">Select a category</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            {errors.category && (
+              <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.category}</span>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="location" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Location <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <input
+              type="text"
+              id="location"
+              name="location"
+              value={formData.location}
+              disabled
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: '1px solid #D9D9D9',
+                fontSize: '16px',
+                backgroundColor: '#f8f9fa'
+              }}
+            />
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>Fixed to Miami for MVP</span>
+          </div>
+        </div>
+        
+        {/* Reference URLs */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Reference Links (Optional, max 3)
+          </label>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addReferenceUrl())}
+              placeholder="https://example.com"
+              disabled={formData.referenceUrls.length >= 3}
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '4px',
+                border: '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            <button
+              type="button"
+              onClick={addReferenceUrl}
+              disabled={formData.referenceUrls.length >= 3}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: formData.referenceUrls.length >= 3 ? '#D9D9D9' : '#000000',
+                color: formData.referenceUrls.length >= 3 ? '#6c757d' : 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: formData.referenceUrls.length >= 3 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              Add Link
+            </button>
+          </div>
+          {errors.referenceUrls && (
+            <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.referenceUrls}</span>
+          )}
+          {formData.referenceUrls.map((url, index) => (
+            <div key={index} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              marginTop: '8px',
+              padding: '8px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '4px'
+            }}>
+              <span style={{ flex: 1, fontSize: '14px', wordBreak: 'break-all' }}>{url}</span>
+              <button
+                type="button"
+                onClick={() => removeReferenceUrl(index)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#B3211E',
+                  cursor: 'pointer',
+                  fontSize: '18px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Story Details Section */}
+      <div style={{
+        backgroundColor: 'white',
+        padding: '24px',
+        borderRadius: '8px',
+        border: '1px solid #D9D9D9',
+        marginBottom: '24px'
+      }}>
+        <h2 style={{ 
+          fontSize: '22px', 
+          fontWeight: 'bold', 
+          marginBottom: '24px',
+          fontFamily: "'Special Elite', monospace"
+        }}>
+          Story Details
+        </h2>
+        
+        {/* Description */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Description <span style={{ color: '#B3211E' }}>*</span>
+          </label>
+          <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '12px' }}>
+            Describe your proposal in detail. What should be investigated? Why is it important? (200 words max)
+          </p>
+          <MarkdownEditor
+            value={formData.description}
+            onChange={handleDescriptionChange}
+            error={errors.description}
+          />
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            backgroundColor: '#f0f8ff',
+            borderRadius: '4px',
+            fontSize: '14px',
+            color: '#0066cc'
+          }}>
+            <strong>Honor System:</strong> Journalists are trusted to deliver quality work meeting proposer expectations.
+          </div>
+        </div>
+        
+        {/* Timeline and Content Format */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label htmlFor="timeline" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Expected Timeline <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <input
+              type="text"
+              id="timeline"
+              name="timeline"
+              value={formData.timeline}
+              onChange={handleChange}
+              placeholder="e.g., '2-3 weeks'"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: errors.timeline ? '1px solid #B3211E' : '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            {errors.timeline && (
+              <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.timeline}</span>
+            )}
+          </div>
+          
+          <div>
+            <label htmlFor="contentFormat" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Deliverable Format <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <input
+              type="text"
+              id="contentFormat"
+              name="contentFormat"
+              value={formData.contentFormat}
+              onChange={handleChange}
+              placeholder="e.g., 'Written article'"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: errors.contentFormat ? '1px solid #B3211E' : '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            {errors.contentFormat && (
+              <span style={{ color: '#B3211E', fontSize: '14px' }}>{errors.contentFormat}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* NFT Configuration Section */}
+      <div style={{
+        backgroundColor: 'white',
+        padding: '24px',
+        borderRadius: '8px',
+        border: '1px solid #D9D9D9',
+        marginBottom: '24px'
+      }}>
+        <h2 style={{ 
+          fontSize: '22px', 
+          fontWeight: 'bold', 
+          marginBottom: '16px',
+          fontFamily: "'Special Elite', monospace"
+        }}>
+          NFT Funding Configuration
+        </h2>
+        
+        <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '20px' }}>
+          Supporters pre-purchase NFTs to fund this story. Set your funding goal and number of NFTs available.
+        </p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <label htmlFor="fundingGoal" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Funding Goal (FLOW) <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <input
+              type="number"
+              id="fundingGoal"
+              name="fundingGoal"
+              value={formData.fundingGoal}
+              onChange={handleChange}
+              min="10"
+              max="10000"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: errors.fundingGoal ? '1px solid #B3211E' : '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            {errors.fundingGoal && (
+              <span style={{ color: '#B3211E', fontSize: '14px', display: 'block', marginTop: '4px' }}>
+                {errors.fundingGoal}
+              </span>
+            )}
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>Min: 10 FLOW, Max: 10,000 FLOW</span>
+          </div>
+          
+          <div>
+            <label htmlFor="nftCount" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Number of NFTs <span style={{ color: '#B3211E' }}>*</span>
+            </label>
+            <input
+              type="number"
+              id="nftCount"
+              name="nftCount"
+              value={formData.nftCount}
+              onChange={handleChange}
+              min="10"
+              max="10000"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '4px',
+                border: errors.nftCount ? '1px solid #B3211E' : '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            {errors.nftCount && (
+              <span style={{ color: '#B3211E', fontSize: '14px', display: 'block', marginTop: '4px' }}>
+                {errors.nftCount}
+              </span>
+            )}
+            <span style={{ fontSize: '12px', color: '#6c757d' }}>Min: 10, Max: 10,000</span>
+          </div>
+        </div>
+        
+        {/* Price Display */}
+        <div style={{
+          padding: '16px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+            {formData.nftPrice.toFixed(2)} FLOW per NFT
+          </div>
+          <div style={{ fontSize: '16px', color: '#6c757d' }}>
+            {formData.nftCount} NFTs at {formData.nftPrice.toFixed(2)} FLOW each = {formData.fundingGoal} FLOW goal
+          </div>
+        </div>
+      </div>
+
+      {/* Additional Information Section */}
+      <div style={{
+        backgroundColor: 'white',
+        padding: '24px',
+        borderRadius: '8px',
+        border: '1px solid #D9D9D9',
+        marginBottom: '24px'
+      }}>
+        <h2 style={{ 
+          fontSize: '22px', 
+          fontWeight: 'bold', 
+          marginBottom: '24px',
+          fontFamily: "'Special Elite', monospace"
+        }}>
+          Additional Information
+        </h2>
+        
+        {/* Tags */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Tags (Optional)
+          </label>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+              placeholder="Add tags and press Enter"
+              style={{
+                flex: 1,
+                padding: '10px',
+                borderRadius: '4px',
+                border: '1px solid #D9D9D9',
+                fontSize: '16px'
+              }}
+            />
+            <button
+              type="button"
+              onClick={addTag}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#000000',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Add
+            </button>
+          </div>
+          {formData.tags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {formData.tags.map(tag => (
+                <div key={tag} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 12px',
+                  backgroundColor: 'rgba(0,0,0,0.05)',
+                  borderRadius: '16px',
+                  fontSize: '14px'
+                }}>
+                  <span>#{tag}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#6c757d',
+                      fontSize: '16px'
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Journalist Requirements */}
+        <div>
+          <label htmlFor="journalistRequirements" style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Journalist Requirements (Optional)
+          </label>
+          <textarea
+            id="journalistRequirements"
+            name="journalistRequirements"
+            value={formData.journalistRequirements}
+            onChange={handleChange}
+            placeholder="What qualifications or expertise should the journalist have?"
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '4px',
+              border: '1px solid #D9D9D9',
+              fontSize: '16px',
+              resize: 'vertical'
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Submit Button */}
+      <div style={{ textAlign: 'center' }}>
+        <button
+          type="submit"
+          style={{
+            padding: '12px 32px',
+            backgroundColor: '#B3211E',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+        >
+          Review Proposal
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Confirmation Component (inline for now, can be moved to separate file)
+function ProposalConfirmation({ 
+  formData, 
+  onBack, 
+  onConfirm 
+}: { 
+  formData: ProposalFormData;
+  onBack: () => void;
+  onConfirm: () => void;
+}) {
+  const totalCost = 1.0 + formData.nftPrice; // 1 FLOW minting fee + 1 NFT purchase
+  
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '24px',
+        borderRadius: '8px',
+        border: '1px solid #D9D9D9',
+        marginBottom: '24px'
+      }}>
+        <h2 style={{ 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          marginBottom: '24px',
+          fontFamily: "'Special Elite', monospace"
+        }}>
+          Review Your Proposal
+        </h2>
+        
+        {/* Proposal Summary */}
+        <div style={{ marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
+            {formData.title}
+          </h3>
+          
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontStyle: 'italic', color: '#6c757d' }}>{formData.tldr}</p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <span style={{ 
+              backgroundColor: 'rgba(0,0,0,0.05)', 
+              padding: '4px 12px', 
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}>
+              {formData.category}
+            </span>
+            <span style={{ 
+              backgroundColor: 'rgba(0,0,0,0.05)', 
+              padding: '4px 12px', 
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}>
+              {formData.location}
+            </span>
+          </div>
+        </div>
+        
+        {/* NFT Economics */}
+        <div style={{
+          backgroundColor: '#f8f9fa',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '24px'
+        }}>
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: 'bold', 
+            marginBottom: '16px',
+            fontFamily: "'Special Elite', monospace"
+          }}>
+            NFT Pre-Sale Configuration
+          </h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Funding Goal</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold' }}>{formData.fundingGoal} FLOW</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Number of NFTs</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold' }}>{formData.nftCount}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', color: '#6c757d', marginBottom: '4px' }}>Price per NFT</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold' }}>{formData.nftPrice.toFixed(2)} FLOW</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Fee Breakdown */}
+        <div style={{
+          backgroundColor: '#fff5f5',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '24px',
+          border: '1px solid #ffcccc'
+        }}>
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: 'bold', 
+            marginBottom: '16px',
+            fontFamily: "'Special Elite', monospace"
+          }}>
+            Fee Breakdown
+          </h3>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Proposal Minting Fee:</span>
+              <span style={{ fontWeight: 'bold' }}>1.0 FLOW</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Proposer NFT Purchase (1 NFT):</span>
+              <span style={{ fontWeight: 'bold' }}>{formData.nftPrice.toFixed(2)} FLOW</span>
+            </div>
+            <div style={{ 
+              borderTop: '1px solid #ffcccc', 
+              paddingTop: '8px', 
+              marginTop: '8px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              <span>Total Cost:</span>
+              <span style={{ color: '#B3211E' }}>{totalCost.toFixed(2)} FLOW</span>
+            </div>
+          </div>
+          
+          <p style={{ fontSize: '14px', color: '#6c757d', marginTop: '16px' }}>
+            As the proposer, you're required to purchase the first NFT to demonstrate commitment to your proposal.
+          </p>
+        </div>
+        
+        {/* Terms */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
+            <input type="checkbox" style={{ marginTop: '4px' }} />
+            <div>
+              <p style={{ marginBottom: '4px', fontWeight: '500' }}>I agree to the terms and conditions</p>
+              <p style={{ fontSize: '14px', color: '#6c757d' }}>
+                By minting this proposal, I confirm that all information provided is accurate and that I have 
+                the right to publish this content. I understand that I must purchase the first NFT and that 
+                the community will be able to vote on and fund this proposal.
+              </p>
+            </div>
+          </label>
+        </div>
+        
+        {/* Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'white',
+              color: '#000000',
+              border: '1px solid #D9D9D9',
+              borderRadius: '4px',
+              fontSize: '16px',
+              cursor: 'pointer'
+            }}
+          >
+            Back to Edit
+          </button>
+          
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: '12px 32px',
+              backgroundColor: '#B3211E',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
+          >
+            Mint Proposal ({totalCost.toFixed(2)} FLOW)
+          </button>
+        </div>
       </div>
     </div>
   );
