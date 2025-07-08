@@ -4,39 +4,159 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useProposal } from '@/lib/proposals/hooks/useProposal';
-import { ProposalStatus } from '@/lib/blockchain/contracts/ProposalManager';
+import { ethers } from 'ethers';
 import ProposalStatusBadge from '../../../../components/proposals/cards/ProposalStatusBadge';
+
+// Contract ABI - minimal interface for getProposal
+const PROPOSAL_MANAGER_ABI = [
+  {
+    "inputs": [{"internalType": "uint256", "name": "proposalId", "type": "uint256"}],
+    "name": "getProposal",
+    "outputs": [
+      {"internalType": "uint256", "name": "id", "type": "uint256"},
+      {"internalType": "address", "name": "proposer", "type": "address"},
+      {"internalType": "string", "name": "title", "type": "string"},
+      {"internalType": "string", "name": "tldr", "type": "string"},
+      {"internalType": "string", "name": "description", "type": "string"},
+      {"internalType": "string", "name": "category", "type": "string"},
+      {"internalType": "string", "name": "location", "type": "string"},
+      {"internalType": "string[]", "name": "tags", "type": "string[]"},
+      {"internalType": "string", "name": "requirements", "type": "string"},
+      {"internalType": "string", "name": "timeline", "type": "string"},
+      {"internalType": "string[]", "name": "referenceUrls", "type": "string[]"},
+      {"internalType": "uint256", "name": "fundingGoal", "type": "uint256"},
+      {"internalType": "uint256", "name": "nftPrice", "type": "uint256"},
+      {"internalType": "uint256", "name": "nftCount", "type": "uint256"},
+      {"internalType": "uint256", "name": "createdAt", "type": "uint256"},
+      {"internalType": "enum ProposalManager.ProposalStatus", "name": "status", "type": "uint8"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+const PROPOSAL_MANAGER_ADDRESS = '0xF50909f4dfF653ff52D7562B3Dc0b889d040C112';
+
+// Proposal interface matching contract
+interface BlockchainProposal {
+  id: bigint;
+  proposer: string;
+  title: string;
+  tldr: string;
+  description: string;
+  category: string;
+  location: string;
+  tags: string[];
+  requirements: string;
+  timeline: string;
+  referenceUrls: string[];
+  fundingGoal: bigint;
+  nftPrice: bigint;
+  nftCount: bigint;
+  createdAt: bigint;
+  status: number;
+}
+
+// UI Proposal interface
+interface Proposal {
+  id: string;
+  title: string;
+  summary: string;
+  proposer: string;
+  proposerName?: string;
+  createdAt: string;
+  location: string;
+  category: string;
+  status: 'active' | 'funded' | 'cancelled' | 'completed';
+  fundingAmount: number;
+  fundingGoal: number;
+  nftPrice: number;
+  nftCount: number;
+  nftsSold: number;
+  description?: string;
+  tags?: string[];
+  timeline?: string;
+  requirements?: string;
+  referenceUrls?: string[];
+}
 
 export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [id, setId] = useState<string>('');
-  
+
   // Unwrap params
   useEffect(() => {
     params.then(p => setId(p.id));
   }, [params]);
 
-  // Use the custom hook
-  const { proposal, loading, error } = useProposal(id);
+  // Convert status from contract enum to string
+  const getStatusString = (status: number): 'active' | 'funded' | 'cancelled' | 'completed' => {
+    switch (status) {
+      case 0: return 'active';
+      case 1: return 'funded';
+      case 2: return 'cancelled';
+      case 3: return 'completed';
+      default: return 'active';
+    }
+  };
 
-  // Convert status from contract enum to UI string
-  // Convert status from contract enum to UI string
-const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled' => {
-  switch (status) {
-    case ProposalStatus.ACTIVE: return 'active';
-    case ProposalStatus.FUNDED: return 'active'; // Show funded as active
-    case ProposalStatus.CANCELLED: return 'canceled'; // Note: one 'l'
-    case ProposalStatus.PUBLISHED: return 'completed';
-    case ProposalStatus.ASSIGNED: return 'active'; // Show as active when assigned
-    default: return 'active';
-  }
-};
+  useEffect(() => {
+    const fetchProposalFromBlockchain = async () => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Connect to Flow EVM
+        const provider = new ethers.JsonRpcProvider('https://testnet.evm.nodes.onflow.org');
+        const contract = new ethers.Contract(PROPOSAL_MANAGER_ADDRESS, PROPOSAL_MANAGER_ABI, provider);
+
+        // Fetch proposal from blockchain
+        const proposalData = await contract.getProposal(id);
+        
+        // Transform blockchain data to UI format
+        const transformedProposal: Proposal = {
+          id: proposalData.id.toString(),
+          title: proposalData.title,
+          summary: proposalData.tldr,
+          proposer: proposalData.proposer,
+          createdAt: new Date(Number(proposalData.createdAt) * 1000).toISOString(),
+          location: proposalData.location,
+          category: proposalData.category,
+          status: getStatusString(proposalData.status),
+          fundingAmount: 0, // Will be updated when ProposalEscrow is implemented
+          fundingGoal: Number(ethers.formatEther(proposalData.fundingGoal)),
+          nftPrice: Number(ethers.formatEther(proposalData.nftPrice)),
+          nftCount: Number(proposalData.nftCount),
+          nftsSold: 0, // Will be updated when ProposalEscrow is implemented
+          description: proposalData.description,
+          tags: proposalData.tags.filter(tag => tag !== ''), // Filter empty tags
+          timeline: proposalData.timeline,
+          requirements: proposalData.requirements,
+          referenceUrls: proposalData.referenceUrls.filter(url => url !== ''), // Filter empty URLs
+        };
+
+        setProposal(transformedProposal);
+        
+      } catch (err) {
+        console.error('Error fetching proposal from blockchain:', err);
+        setError('Failed to load proposal. The proposal may not exist or there was a network error.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProposalFromBlockchain();
+  }, [id]);
 
   // Format date to readable format
-  const formatDate = (timestamp: number) => {
-    if (!timestamp) return '';
-    const date = new Date(timestamp * 1000);
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
@@ -47,8 +167,10 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
   // Calculate funding progress percentage
   const calculateFundingProgress = () => {
     if (!proposal) return 0;
-    // Since we don't have escrow yet, show 0% progress
-    return 0;
+    return Math.min(
+      Math.round((proposal.fundingAmount / proposal.fundingGoal) * 100),
+      100
+    );
   };
 
   // Truncate ethereum address
@@ -109,7 +231,6 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
   }
 
   const fundingProgress = calculateFundingProgress();
-  const statusString = getUIStatus(proposal.status);
 
   return (
     <div className="proposal-detail-page">
@@ -152,7 +273,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
           }}>
             {proposal.title}
           </h1>
-          <ProposalStatusBadge status={statusString} />
+          <ProposalStatusBadge status={proposal.status} />
         </div>
 
         <p style={{ fontSize: '16px', color: '#6c757d', marginBottom: '16px' }}>
@@ -188,7 +309,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
             borderLeft: '3px solid #B3211E',
             backgroundColor: 'rgba(0,0,0,0.02)'
           }}>
-            {proposal.tldr}
+            {proposal.summary}
           </p>
         </div>
 
@@ -203,7 +324,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
           marginBottom: '24px'
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>0</div>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{proposal.nftsSold}</div>
             <div style={{ fontSize: '14px', color: '#6c757d' }}>NFTs Sold</div>
           </div>
           
@@ -232,7 +353,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
             marginBottom: '8px'
           }}>
             <span style={{ fontWeight: 'bold' }}>Funding Progress</span>
-            <span>0 of {proposal.nftCount} NFTs funded</span>
+            <span>{proposal.nftsSold} of {proposal.nftCount} NFTs funded</span>
           </div>
           <div style={{
             height: '10px',
@@ -275,8 +396,8 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
           )}
         </div>
 
-        {/* Journalist Requirements if available */}
-        {proposal.journalistRequirements && (
+        {/* Requirements if available */}
+        {proposal.requirements && (
           <div style={{ marginTop: '24px' }}>
             <h3 style={{ 
               fontSize: '18px', 
@@ -284,9 +405,9 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
               marginBottom: '12px',
               fontFamily: "'Special Elite', monospace"
             }}>
-              Journalist Requirements
+              Requirements
             </h3>
-            <p>{proposal.journalistRequirements}</p>
+            <p>{proposal.requirements}</p>
           </div>
         )}
 
@@ -305,23 +426,8 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
           </div>
         )}
 
-        {/* Content Format if available */}
-        {proposal.contentFormat && (
-          <div style={{ marginTop: '24px' }}>
-            <h3 style={{ 
-              fontSize: '18px', 
-              fontWeight: 'bold', 
-              marginBottom: '12px',
-              fontFamily: "'Special Elite', monospace"
-            }}>
-              Content Format
-            </h3>
-            <p>{proposal.contentFormat}</p>
-          </div>
-        )}
-
         {/* Reference URLs if available */}
-        {proposal.referenceUrls && proposal.referenceUrls.filter(url => url !== '').length > 0 && (
+        {proposal.referenceUrls && proposal.referenceUrls.length > 0 && (
           <div style={{ marginTop: '24px' }}>
             <h3 style={{ 
               fontSize: '18px', 
@@ -332,7 +438,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
               Reference Links
             </h3>
             <ul style={{ marginLeft: '20px' }}>
-              {proposal.referenceUrls.filter(url => url !== '').map((url, index) => (
+              {proposal.referenceUrls.map((url, index) => (
                 <li key={index}>
                   <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#B3211E' }}>
                     {url}
@@ -344,7 +450,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
         )}
 
         {/* Tags if available */}
-        {proposal.tags && proposal.tags.filter(tag => tag !== '').length > 0 && (
+        {proposal.tags && proposal.tags.length > 0 && (
           <div style={{ marginTop: '24px' }}>
             <h3 style={{ 
               fontSize: '18px', 
@@ -355,7 +461,7 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
               Tags
             </h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {proposal.tags.filter(tag => tag !== '').map((tag, index) => (
+              {proposal.tags.map((tag, index) => (
                 <span 
                   key={index}
                   style={{ 
@@ -419,50 +525,6 @@ const getUIStatus = (status: ProposalStatus): 'active' | 'completed' | 'canceled
           <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '8px', textAlign: 'center' }}>
             ProposalEscrow contract deployment pending
           </p>
-        </div>
-
-        {/* Additional Actions */}
-        <div style={{ 
-          marginTop: '16px',
-          display: 'flex',
-          gap: '16px'
-        }}>
-          <button 
-            style={{
-              flex: 1,
-              padding: '10px',
-              backgroundColor: 'transparent',
-              color: '#2B3990',
-              border: '1px solid #2B3990',
-              borderRadius: '4px',
-              fontSize: '14px',
-              cursor: 'not-allowed',
-              opacity: 0.5
-            }}
-            disabled
-          >
-            Apply as Journalist
-          </button>
-          
-          <button 
-            style={{
-              flex: 1,
-              padding: '10px',
-              backgroundColor: 'transparent',
-              color: '#000000',
-              border: '1px solid #000000',
-              borderRadius: '4px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-            onClick={() => {
-              const url = `${window.location.origin}/news-proposals/${proposal.id}`;
-              navigator.clipboard.writeText(url);
-              alert('Link copied to clipboard!');
-            }}
-          >
-            Share Proposal
-          </button>
         </div>
       </div>
 
