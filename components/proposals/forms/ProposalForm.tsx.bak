@@ -4,9 +4,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import MarkdownEditor from './MarkdownEditor';
-import { useWallet } from '@/lib/hooks/useWallet';
-import { useProposalCreation, TransactionState } from '@/lib/proposals/hooks/useProposalCreation';
-import { CreateProposalParams } from '@/lib/blockchain/contracts/ProposalManager';
 
 interface ProposalFormData {
   // Basic Information
@@ -46,9 +43,6 @@ const categories = [
 
 export default function ProposalForm() {
   const router = useRouter();
-  const { address, isConnected, connectWallet } = useWallet();
-  const { createProposal, transactionState, error: txError, proposalId, reset } = useProposalCreation();
-  
   const [formData, setFormData] = useState<ProposalFormData>({
     title: '',
     tldr: '',
@@ -69,7 +63,6 @@ export default function ProposalForm() {
   const [tagInput, setTagInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Auto-calculate NFT price whenever funding goal or NFT count changes
   React.useEffect(() => {
@@ -78,59 +71,6 @@ export default function ProposalForm() {
       setFormData(prev => ({ ...prev, nftPrice: price }));
     }
   }, [formData.fundingGoal, formData.nftCount]);
-
-  // Handle successful proposal creation
-  React.useEffect(() => {
-    if (transactionState === TransactionState.SUCCESS && proposalId) {
-      router.push(`/news-proposals/${proposalId}`);
-    }
-  }, [transactionState, proposalId, router]);
-
-  // Check wallet connection
-  if (!isConnected) {
-    return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', padding: '40px' }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '40px',
-          borderRadius: '8px',
-          border: '1px solid #D9D9D9'
-        }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: 'bold', 
-            marginBottom: '24px',
-            fontFamily: "'Special Elite', monospace"
-          }}>
-            Connect Your Wallet
-          </h2>
-          <p style={{ marginBottom: '24px', color: '#6c757d' }}>
-            You need to connect your wallet to create a proposal. Make sure you have:
-          </p>
-          <ul style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto 24px' }}>
-            <li>A Profile NFT</li>
-            <li>Either a Membership Token (IT00-IT99) or Publisher Credentials</li>
-            <li>At least 1.0 FLOW for the proposal fee</li>
-          </ul>
-          <button
-            onClick={connectWallet}
-            style={{
-              padding: '12px 32px',
-              backgroundColor: '#B3211E',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
-          >
-            Connect Wallet
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -263,47 +203,17 @@ export default function ProposalForm() {
     }
   };
 
-  // Handle blockchain submission
-  const handleBlockchainSubmit = async () => {
-    if (!termsAccepted) {
-      setErrors({ terms: 'You must accept the terms and conditions' });
-      return;
-    }
-
-    const params: CreateProposalParams = {
-      title: formData.title,
-      tldr: formData.tldr,
-      description: formData.description,
-      category: formData.category,
-      location: formData.location,
-      referenceUrls: formData.referenceUrls,
-      timeline: formData.timeline,
-      contentFormat: formData.contentFormat,
-      journalistRequirements: formData.journalistRequirements,
-      tags: formData.tags,
-      fundingGoal: formData.fundingGoal,
-      nftCount: formData.nftCount,
-      nftPrice: formData.nftPrice
-    };
-    
-    await createProposal(params);
-  };
-
   // If showing confirmation, render the confirmation component
   if (showConfirmation) {
     return (
       <ProposalConfirmation 
         formData={formData}
-        termsAccepted={termsAccepted}
-        setTermsAccepted={setTermsAccepted}
-        transactionState={transactionState}
-        txError={txError}
-        onBack={() => {
-          setShowConfirmation(false);
-          reset();
+        onBack={() => setShowConfirmation(false)}
+        onConfirm={() => {
+          // This will be handled by the next agent
+          console.log('Minting proposal with data:', formData);
+          router.push('/news-proposals');
         }}
-        onConfirm={handleBlockchainSubmit}
-        errors={errors}
       />
     );
   }
@@ -825,27 +735,17 @@ export default function ProposalForm() {
   );
 }
 
-// Confirmation Component with blockchain integration
+// Confirmation Component (inline for now, can be moved to separate file)
 function ProposalConfirmation({ 
   formData, 
-  termsAccepted,
-  setTermsAccepted,
-  transactionState,
-  txError,
   onBack, 
-  onConfirm,
-  errors
+  onConfirm 
 }: { 
   formData: ProposalFormData;
-  termsAccepted: boolean;
-  setTermsAccepted: (value: boolean) => void;
-  transactionState: TransactionState;
-  txError: string | null;
   onBack: () => void;
   onConfirm: () => void;
-  errors: Record<string, string>;
 }) {
-  const isProcessing = transactionState === TransactionState.CONFIRMING || transactionState === TransactionState.PENDING;
+  const totalCost = 1.0 + formData.nftPrice; // 1 FLOW minting fee + 1 NFT purchase
   
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -864,43 +764,6 @@ function ProposalConfirmation({
         }}>
           Review Your Proposal
         </h2>
-        
-        {/* Transaction Status */}
-        {transactionState !== TransactionState.IDLE && (
-          <div style={{
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '24px',
-            backgroundColor: 
-              transactionState === TransactionState.ERROR ? '#fff5f5' :
-              transactionState === TransactionState.SUCCESS ? '#f0fff4' :
-              '#f0f8ff',
-            border: `1px solid ${
-              transactionState === TransactionState.ERROR ? '#ffcccc' :
-              transactionState === TransactionState.SUCCESS ? '#b3e6cc' :
-              '#cce7ff'
-            }`
-          }}>
-            {transactionState === TransactionState.CONFIRMING && (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Please confirm in your wallet...</p>
-                <p style={{ fontSize: '14px', color: '#6c757d' }}>Check your wallet for the transaction approval request.</p>
-              </div>
-            )}
-            {transactionState === TransactionState.PENDING && (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>Creating proposal...</p>
-                <p style={{ fontSize: '14px', color: '#6c757d' }}>Please wait while your proposal is being created on the blockchain.</p>
-              </div>
-            )}
-            {transactionState === TransactionState.ERROR && (
-              <div>
-                <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#B3211E' }}>Transaction Failed</p>
-                <p style={{ fontSize: '14px', color: '#B3211E' }}>{txError || 'An error occurred while creating your proposal.'}</p>
-              </div>
-            )}
-          </div>
-        )}
         
         {/* Proposal Summary */}
         <div style={{ marginBottom: '32px' }}>
@@ -978,13 +841,17 @@ function ProposalConfirmation({
             marginBottom: '16px',
             fontFamily: "'Special Elite', monospace"
           }}>
-            Proposal Creation Fee
+            Fee Breakdown
           </h3>
           
           <div style={{ marginBottom: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Proposal Creation Fee:</span>
+              <span>Proposal Minting Fee:</span>
               <span style={{ fontWeight: 'bold' }}>1.0 FLOW</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Proposer NFT Purchase (1 NFT):</span>
+              <span style={{ fontWeight: 'bold' }}>{formData.nftPrice.toFixed(2)} FLOW</span>
             </div>
             <div style={{ 
               borderTop: '1px solid #ffcccc', 
@@ -996,43 +863,34 @@ function ProposalConfirmation({
               fontWeight: 'bold'
             }}>
               <span>Total Cost:</span>
-              <span style={{ color: '#B3211E' }}>1.0 FLOW</span>
+              <span style={{ color: '#B3211E' }}>{totalCost.toFixed(2)} FLOW</span>
             </div>
           </div>
           
           <p style={{ fontSize: '14px', color: '#6c757d', marginTop: '16px' }}>
-            Note: You'll be redirected to fund your proposal after creation. The first NFT purchase demonstrates your commitment to the proposal.
+            As the proposer, you're required to purchase the first NFT to demonstrate commitment to your proposal.
           </p>
         </div>
         
         {/* Terms */}
         <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
-              checked={termsAccepted}
-              onChange={(e) => setTermsAccepted(e.target.checked)}
-              disabled={isProcessing}
-              style={{ marginTop: '4px' }} 
-            />
+            <input type="checkbox" style={{ marginTop: '4px' }} />
             <div>
               <p style={{ marginBottom: '4px', fontWeight: '500' }}>I agree to the terms and conditions</p>
               <p style={{ fontSize: '14px', color: '#6c757d' }}>
-                By creating this proposal, I confirm that all information provided is accurate and that I have 
-                the right to publish this content. I understand that the community will be able to vote on and fund this proposal.
+                By minting this proposal, I confirm that all information provided is accurate and that I have 
+                the right to publish this content. I understand that I must purchase the first NFT and that 
+                the community will be able to vote on and fund this proposal.
               </p>
             </div>
           </label>
-          {errors.terms && (
-            <span style={{ color: '#B3211E', fontSize: '14px', marginLeft: '28px' }}>{errors.terms}</span>
-          )}
         </div>
         
         {/* Actions */}
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <button
             onClick={onBack}
-            disabled={isProcessing}
             style={{
               padding: '12px 24px',
               backgroundColor: 'white',
@@ -1040,8 +898,7 @@ function ProposalConfirmation({
               border: '1px solid #D9D9D9',
               borderRadius: '4px',
               fontSize: '16px',
-              cursor: isProcessing ? 'not-allowed' : 'pointer',
-              opacity: isProcessing ? 0.5 : 1
+              cursor: 'pointer'
             }}
           >
             Back to Edit
@@ -1049,7 +906,6 @@ function ProposalConfirmation({
           
           <button
             onClick={onConfirm}
-            disabled={isProcessing || !termsAccepted}
             style={{
               padding: '12px 32px',
               backgroundColor: '#B3211E',
@@ -1058,11 +914,10 @@ function ProposalConfirmation({
               borderRadius: '4px',
               fontSize: '16px',
               fontWeight: 'bold',
-              cursor: isProcessing || !termsAccepted ? 'not-allowed' : 'pointer',
-              opacity: isProcessing || !termsAccepted ? 0.5 : 1
+              cursor: 'pointer'
             }}
           >
-            {isProcessing ? 'Processing...' : 'Create Proposal (1.0 FLOW)'}
+            Mint Proposal ({totalCost.toFixed(2)} FLOW)
           </button>
         </div>
       </div>
