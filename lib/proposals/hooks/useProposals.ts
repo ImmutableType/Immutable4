@@ -39,25 +39,30 @@ export function useProposals(): UseProposalsReturn {
 
       // Get total proposals
       const total = await proposalManager.getTotalProposals();
-      setTotalProposals(Number(total));
+      const totalCount = Number(total);
+      setTotalProposals(totalCount);
+      
+      console.log('Total proposals:', totalCount);
 
-      if (Number(total) === 0) {
+      if (totalCount === 0) {
         setProposals([]);
         return;
       }
 
       // Fetch proposals (limit to 20 for now)
-      const proposalsToFetch = Math.min(Number(total), 20);
+      const proposalsToFetch = Math.min(totalCount, 20);
       const proposalPromises = [];
 
-      // Fetch in reverse order (newest first)
-      for (let i = Number(total); i > Number(total) - proposalsToFetch; i--) {
+      // Fetch from 1 to totalCount (proposals are 1-indexed)
+      for (let i = totalCount; i >= Math.max(1, totalCount - proposalsToFetch + 1); i--) {
+        console.log(`Fetching proposal ${i}`);
         proposalPromises.push(fetchProposalWithFunding(i, proposalManager, proposalEscrow));
       }
 
       const fetchedProposals = await Promise.all(proposalPromises);
       const validProposals = fetchedProposals.filter(p => p !== null) as Proposal[];
       
+      console.log('Valid proposals fetched:', validProposals.length);
       setProposals(validProposals);
     } catch (err) {
       console.error('Error fetching proposals:', err);
@@ -73,13 +78,18 @@ export function useProposals(): UseProposalsReturn {
     proposalEscrow: ProposalEscrow
   ): Promise<Proposal | null> => {
     try {
-      // Get proposal data - ensure we're passing a clean integer string
-      const proposalId = Math.floor(id).toString();
+      // Ensure we're passing a clean string representation of the integer
+      const proposalId = id.toString();
+      console.log(`Fetching proposal data for ID: ${proposalId}`);
+      
       const proposalData = await proposalManager.getProposal(proposalId);
       
       if (!proposalData) {
+        console.log(`No data found for proposal ${proposalId}`);
         return null;
       }
+
+      console.log(`Proposal ${proposalId} data:`, proposalData);
 
       // Get funding data
       let fundingData: FundingInfo | null = null;
@@ -87,11 +97,15 @@ export function useProposals(): UseProposalsReturn {
       
       try {
         isInitialized = await proposalEscrow.isFundingInitialized(proposalId);
+        console.log(`Proposal ${proposalId} funding initialized:`, isInitialized);
+        
         if (isInitialized) {
           fundingData = await proposalEscrow.getFundingInfo(proposalId);
+          console.log(`Proposal ${proposalId} funding data:`, fundingData);
         }
-      } catch {
-        // Funding might not be initialized
+      } catch (err) {
+        console.log(`Error fetching funding data for proposal ${proposalId}:`, err);
+        // Continue without funding data
       }
 
       // Use default values if no funding data
@@ -113,7 +127,7 @@ export function useProposals(): UseProposalsReturn {
       // Calculate vote count (using NFTs sold as proxy for engagement)
       const voteCount = Number(nftsSold) * 10; // Arbitrary multiplier for display
 
-      return {
+      const proposal: Proposal = {
         id: proposalId,
         title: proposalData.title,
         summary: proposalData.tldr,
@@ -134,6 +148,9 @@ export function useProposals(): UseProposalsReturn {
         contentFormat: proposalData.contentFormat,
         updates: []
       };
+
+      console.log(`Successfully processed proposal ${proposalId}`);
+      return proposal;
     } catch (err) {
       console.error(`Error fetching proposal ${id}:`, err);
       return null;
