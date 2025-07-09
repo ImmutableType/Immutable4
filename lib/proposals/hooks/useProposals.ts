@@ -73,8 +73,9 @@ export function useProposals(): UseProposalsReturn {
     proposalEscrow: ProposalEscrow
   ): Promise<Proposal | null> => {
     try {
-      // Get proposal data - convert number to string for the contract call
-      const proposalData = await proposalManager.getProposal(id.toString());
+      // Get proposal data - ensure we're passing a clean integer string
+      const proposalId = Math.floor(id).toString();
+      const proposalData = await proposalManager.getProposal(proposalId);
       
       if (!proposalData) {
         return null;
@@ -85,9 +86,9 @@ export function useProposals(): UseProposalsReturn {
       let isInitialized = false;
       
       try {
-        isInitialized = await proposalEscrow.isFundingInitialized(id.toString());
+        isInitialized = await proposalEscrow.isFundingInitialized(proposalId);
         if (isInitialized) {
-          fundingData = await proposalEscrow.getFundingInfo(id.toString());
+          fundingData = await proposalEscrow.getFundingInfo(proposalId);
         }
       } catch {
         // Funding might not be initialized
@@ -113,7 +114,7 @@ export function useProposals(): UseProposalsReturn {
       const voteCount = Number(nftsSold) * 10; // Arbitrary multiplier for display
 
       return {
-        id: id.toString(),
+        id: proposalId,
         title: proposalData.title,
         summary: proposalData.tldr,
         proposer: proposalData.proposer,

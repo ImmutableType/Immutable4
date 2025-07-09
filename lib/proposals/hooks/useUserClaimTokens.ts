@@ -49,7 +49,14 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
       const proposalManager = new ProposalManager(ProposalManagerDeployment.address, currentProvider);
 
       // Get user's ClaimToken balance
-      const balance = await claimToken.balanceOf(address);
+      let balance;
+      try {
+        balance = await claimToken.balanceOf(address);
+      } catch (err) {
+        console.log('Error getting ClaimToken balance:', err);
+        setClaimableArticles([]);
+        return;
+      }
       
       if (Number(balance) === 0) {
         setClaimableArticles([]);
@@ -59,19 +66,35 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
       // Get token IDs owned by user
       const tokenPromises = [];
       for (let i = 0; i < Number(balance); i++) {
-        tokenPromises.push(claimToken.tokenOfOwnerByIndex(address, i));
+        tokenPromises.push(
+          claimToken.tokenOfOwnerByIndex(address, i).catch(err => {
+            console.error(`Error getting token at index ${i}:`, err);
+            return null;
+          })
+        );
       }
       
-      const tokenIds = await Promise.all(tokenPromises);
+      const tokenIds = (await Promise.all(tokenPromises)).filter(id => id !== null);
+
+      if (tokenIds.length === 0) {
+        setClaimableArticles([]);
+        return;
+      }
 
       // Group by proposal ID
       const proposalMap = new Map<number, number[]>();
       
       for (const tokenId of tokenIds) {
-        const proposalId = await claimToken.getProposalId(Number(tokenId));
-        const tokens = proposalMap.get(proposalId) || [];
-        tokens.push(Number(tokenId));
-        proposalMap.set(proposalId, tokens);
+        if (tokenId === null) continue;
+        
+        try {
+          const proposalId = await claimToken.getProposalId(Number(tokenId));
+          const tokens = proposalMap.get(proposalId) || [];
+          tokens.push(Number(tokenId));
+          proposalMap.set(proposalId, tokens);
+        } catch (err) {
+          console.error(`Error getting proposal ID for token ${tokenId}:`, err);
+        }
       }
 
       // Fetch proposal details
@@ -101,7 +124,8 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
       setClaimableArticles(claimables);
     } catch (err) {
       console.error('Error fetching claim tokens:', err);
-      setError('Failed to load claimable articles');
+      // Don't show error to user if they just don't have tokens
+      setError(null);
     } finally {
       setLoading(false);
     }
