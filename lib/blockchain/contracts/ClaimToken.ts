@@ -2,6 +2,13 @@
 import { ethers } from 'ethers';
 import ClaimTokenABI from './ClaimToken.abi.json';
 
+export interface TokenData {
+  proposalId: bigint;
+  nftAllocation: bigint;
+  originalFunder: string;
+  mintedAt: bigint;
+}
+
 export class ClaimToken {
   private contract: ethers.Contract;
 
@@ -13,17 +20,11 @@ export class ClaimToken {
     return await this.contract.balanceOf(owner);
   }
 
-  async tokenOfOwnerByIndex(owner: string, index: number): Promise<bigint> {
-    return await this.contract.tokenOfOwnerByIndex(owner, index);
+  async ownerOf(tokenId: number): Promise<string> {
+    return await this.contract.ownerOf(tokenId);
   }
 
-  async getProposalId(tokenId: number): Promise<number> {
-    const result = await this.contract.getProposalId(tokenId);
-    return Number(result);
-  }
-
-  async getNftAllocation(tokenId: number): Promise<number> {
-    const result = await this.contract.getNftAllocation(tokenId);
-    return Number(result);
+  async getTokenData(tokenId: number): Promise<TokenData> {
+    return await this.contract.getTokenData(tokenId);
   }
 }

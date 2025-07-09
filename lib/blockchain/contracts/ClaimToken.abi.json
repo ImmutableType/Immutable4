@@ -7,26 +7,28 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {"internalType": "address", "name": "owner", "type": "address"},
-        {"internalType": "uint256", "name": "index", "type": "uint256"}
+      "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+      "name": "ownerOf",
+      "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
+      "name": "getTokenData",
+      "outputs": [
+        {
+          "components": [
+            {"internalType": "uint256", "name": "proposalId", "type": "uint256"},
+            {"internalType": "uint256", "name": "nftAllocation", "type": "uint256"},
+            {"internalType": "address", "name": "originalFunder", "type": "address"},
+            {"internalType": "uint256", "name": "mintedAt", "type": "uint256"}
+          ],
+          "internalType": "struct ClaimToken.TokenData",
+          "name": "",
+          "type": "tuple"
+        }
       ],
-      "name": "tokenOfOwnerByIndex",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
-      "name": "getProposalId",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [{"internalType": "uint256", "name": "tokenId", "type": "uint256"}],
-      "name": "getNftAllocation",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
       "stateMutability": "view",
       "type": "function"
     }

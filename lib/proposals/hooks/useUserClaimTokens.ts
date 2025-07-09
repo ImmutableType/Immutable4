@@ -58,42 +58,39 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
         return;
       }
       
+      console.log(`User has ${balance} ClaimTokens`);
+      
       if (Number(balance) === 0) {
         setClaimableArticles([]);
         return;
       }
 
-      // Get token IDs owned by user
-      const tokenPromises = [];
-      for (let i = 0; i < Number(balance); i++) {
-        tokenPromises.push(
-          claimToken.tokenOfOwnerByIndex(address, i).catch(err => {
-            console.error(`Error getting token at index ${i}:`, err);
-            return null;
-          })
-        );
-      }
+      // Since we can't enumerate tokens, we'll need to check token IDs sequentially
+      // This is not ideal but works for MVP
+      const proposalMap = new Map<number, { tokens: number[], allocation: number }>();
+      const maxTokenId = 100; // Check first 100 token IDs (adjust as needed)
       
-      const tokenIds = (await Promise.all(tokenPromises)).filter(id => id !== null);
-
-      if (tokenIds.length === 0) {
-        setClaimableArticles([]);
-        return;
-      }
-
-      // Group by proposal ID
-      const proposalMap = new Map<number, number[]>();
-      
-      for (const tokenId of tokenIds) {
-        if (tokenId === null) continue;
-        
+      for (let tokenId = 1; tokenId <= maxTokenId; tokenId++) {
         try {
-          const proposalId = await claimToken.getProposalId(Number(tokenId));
-          const tokens = proposalMap.get(proposalId) || [];
-          tokens.push(Number(tokenId));
-          proposalMap.set(proposalId, tokens);
+          // Check if user owns this token
+          const owner = await claimToken.ownerOf(tokenId);
+          
+          if (owner.toLowerCase() === address.toLowerCase()) {
+            console.log(`User owns token ${tokenId}`);
+            
+            // Get token data
+            const tokenData = await claimToken.getTokenData(tokenId);
+            const proposalId = Number(tokenData.proposalId);
+            const allocation = Number(tokenData.nftAllocation);
+            
+            const existing = proposalMap.get(proposalId) || { tokens: [], allocation: 0 };
+            existing.tokens.push(tokenId);
+            existing.allocation += allocation;
+            proposalMap.set(proposalId, existing);
+          }
         } catch (err) {
-          console.error(`Error getting proposal ID for token ${tokenId}:`, err);
+          // Token doesn't exist or other error, continue
+          continue;
         }
       }
 
@@ -103,7 +100,7 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
       // Convert Map entries to array for iteration
       const entries = Array.from(proposalMap.entries());
       
-      for (const [proposalId, tokens] of entries) {
+      for (const [proposalId, data] of entries) {
         try {
           const proposal = await proposalManager.getProposal(proposalId.toString());
           
@@ -111,9 +108,9 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
             claimables.push({
               proposalId: proposalId.toString(),
               proposalTitle: proposal.title,
-              nftCount: tokens.length,
+              nftCount: data.allocation, // Use allocation instead of token count
               isPublished: proposal.status === ProposalStatus.PUBLISHED,
-              tokenIds: tokens
+              tokenIds: data.tokens
             });
           }
         } catch (err) {
@@ -121,6 +118,7 @@ export function useUserClaimTokens(): UseUserClaimTokensReturn {
         }
       }
 
+      console.log('Claimable articles:', claimables);
       setClaimableArticles(claimables);
     } catch (err) {
       console.error('Error fetching claim tokens:', err);
