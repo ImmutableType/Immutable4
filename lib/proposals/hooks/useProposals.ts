@@ -112,9 +112,42 @@ export function useProposals(): UseProposalsReturn {
       const totalFunded = fundingData?.totalFunded || '0';
       const nftsSold = fundingData?.nftsSold || 0;
 
-      // Convert to UI format
-      const fundingGoalInFlow = parseFloat(ethers.formatEther(proposalData.fundingGoal));
-      const fundingAmountInFlow = parseFloat(ethers.formatEther(totalFunded));
+      // Convert to UI format - handle the fundingGoal conversion carefully
+      let fundingGoalInFlow = 0;
+      let fundingAmountInFlow = 0;
+      
+      try {
+        // Ensure fundingGoal is a string that represents a valid BigNumber in wei
+        const fundingGoalString = proposalData.fundingGoal.toString();
+        console.log(`Funding goal raw value: ${fundingGoalString}`);
+        
+        // If it contains a decimal, it might already be in FLOW
+        if (fundingGoalString.includes('.')) {
+          // It's already in FLOW, just parse it
+          fundingGoalInFlow = parseFloat(fundingGoalString);
+        } else {
+          // It's in wei, convert to FLOW
+          fundingGoalInFlow = parseFloat(ethers.formatEther(fundingGoalString));
+        }
+        
+        // Convert funded amount
+        fundingAmountInFlow = parseFloat(ethers.formatEther(totalFunded));
+      } catch (err) {
+        console.error(`Error converting funding amounts for proposal ${proposalId}:`, err);
+        console.error('fundingGoal value:', proposalData.fundingGoal);
+        console.error('totalFunded value:', totalFunded);
+        
+        // Try alternative parsing
+        try {
+          // If the value is already a number in FLOW (like 101.0)
+          fundingGoalInFlow = Number(proposalData.fundingGoal);
+          fundingAmountInFlow = totalFunded ? Number(totalFunded) : 0;
+        } catch (err2) {
+          console.error('Alternative parsing also failed:', err2);
+          fundingGoalInFlow = 0;
+          fundingAmountInFlow = 0;
+        }
+      }
       
       // Map status
       let uiStatus: 'active' | 'completed' | 'canceled' = 'active';

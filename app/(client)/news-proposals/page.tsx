@@ -19,6 +19,16 @@ export default function NewsProposalsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Page state:', {
+      proposals: proposals.length,
+      loading,
+      error,
+      totalProposals
+    });
+  }, [proposals, loading, error, totalProposals]);
+
   // Filter proposals based on category
   const filteredProposals = categoryFilter
     ? proposals.filter(p => p.category === categoryFilter)
@@ -140,7 +150,7 @@ export default function NewsProposalsPage() {
         }}>
           Connect your wallet to participate in the governance of community journalism.
           {totalProposals > 0 && (
-            <span style={{ fontWeight: '500' }}> Currently {totalProposals} proposals on-chain.</span>
+            <span style={{ fontWeight: '500' }}> Currently {totalProposals} proposal{totalProposals > 1 ? 's' : ''} on-chain.</span>
           )}
         </p>
       </div>
@@ -253,13 +263,35 @@ export default function NewsProposalsPage() {
               Retry
             </button>
           </div>
-        ) : filteredProposals.length === 0 ? (
+        ) : totalProposals === 0 ? (
+          // Only show "no proposals" if totalProposals is actually 0
           <div style={{ textAlign: 'center', padding: '32px' }}>
-            <p>
-              {categoryFilter 
-                ? `No ${categoryFilter} proposals found. Try selecting a different category.`
-                : 'No proposals found. Be the first to create one!'}
+            <p>No proposals have been created yet. Be the first to create one!</p>
+          </div>
+        ) : proposals.length === 0 && totalProposals > 0 ? (
+          // Show loading error if we know proposals exist but couldn't fetch them
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p style={{ color: '#B3211E', marginBottom: '16px' }}>
+              Failed to load proposals. We know there are {totalProposals} proposal{totalProposals > 1 ? 's' : ''} on-chain but couldn't fetch them.
             </p>
+            <button
+              onClick={refetch}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#000',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        ) : filteredProposals.length === 0 && categoryFilter ? (
+          // Category filter with no results
+          <div style={{ textAlign: 'center', padding: '32px' }}>
+            <p>No {categoryFilter} proposals found. Try selecting a different category.</p>
           </div>
         ) : viewMode === 'grid' ? (
           <div style={{
@@ -292,7 +324,7 @@ export default function NewsProposalsPage() {
         )}
 
         {/* Load More Button (if there are more proposals) */}
-        {!loading && totalProposals > proposals.length && (
+        {!loading && proposals.length > 0 && totalProposals > proposals.length && (
           <div style={{ textAlign: 'center', marginTop: '32px' }}>
             <p style={{ marginBottom: '16px', color: '#6c757d' }}>
               Showing {proposals.length} of {totalProposals} proposals
