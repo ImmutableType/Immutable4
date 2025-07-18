@@ -1,4 +1,4 @@
-// lib/blockchain/contracts/ReaderLicenseAMMService.ts (ENHANCED - NFT + READER LICENSE DETECTION)
+// lib/blockchain/contracts/ReaderLicenseAMMService.ts (FIXED - BURNED LICENSE LOGIC)
 import { ethers } from 'ethers';
 
 export interface LicenseInfo {
@@ -147,11 +147,9 @@ export class ReaderLicenseAMMService {
       console.log('🔍 NFT ownership result:', { ownsNFT, nftCount: nftCount.toString() });
       
       if (ownsNFT) {
-        // For now, return a placeholder token ID since we don't need the exact token ID for decryption
-        // In the future, we could implement a method to find the specific token ID
         return {
           ownsNFT: true,
-          nftTokenId: 'nft_owner' // Placeholder - NFT owners get permanent access
+          nftTokenId: `nft_owner_${articleId}` // Deterministic token ID for NFT owners
         };
       }
       
@@ -162,16 +160,47 @@ export class ReaderLicenseAMMService {
     }
   }
 
-  // ✅ COMPLETELY REWRITTEN: Check access with NFT priority
+  // ✅ FIXED: Smart access token generation (handles burned licenses)
+  async getAccessTokenId(articleId: string | number, userAddress: string): Promise<string> {
+    try {
+      console.log('🔍 Getting access token ID for article:', articleId, 'user:', userAddress);
+      
+      // First check: Do they have active access from burned license?
+      const hasActiveAccess = await this.hasActiveAccess(articleId, userAddress);
+      
+      if (hasActiveAccess) {
+        // They burned their license - create a synthetic token ID for decryption
+        const syntheticTokenId = `burned_license_${articleId}_${userAddress.slice(-6)}`;
+        console.log('✅ Active access found (burned license) - using synthetic token ID:', syntheticTokenId);
+        return syntheticTokenId;
+      }
+      
+      // Second check: Do they have an unburned license?
+      const balance = await this.ammContract.balanceOf(userAddress);
+      if (balance > BigInt(0)) {
+        // They have an unburned license - get the real token ID
+        const tokenId = await this.ammContract.tokenOfOwnerByIndex(userAddress, BigInt(0));
+        console.log('✅ Unburned license found - using real token ID:', tokenId.toString());
+        return tokenId.toString();
+      }
+      
+      throw new Error('No access found - neither burned license nor unburned license available');
+    } catch (error) {
+      console.error('❌ Error getting access token ID:', error);
+      throw error;
+    }
+  }
+
+  // ✅ COMPLETELY REWRITTEN: Check access with proper burned license handling
   async getAccessDetails(articleId: string | number, userAddress: string): Promise<LicenseAccess> {
     try {
       console.log('🔍 Checking access for article:', articleId, 'user:', userAddress);
       
-      // Step 1: Check NFT ownership first (highest priority)
+      // Step 1: Check NFT ownership first (highest priority - permanent access)
       const nftOwnership = await this.checkNFTOwnership(articleId, userAddress);
       
       if (nftOwnership.ownsNFT) {
-        console.log('✅ NFT ownership detected - granting immediate access');
+        console.log('✅ NFT ownership detected - granting permanent access');
         return {
           hasAccess: true,
           accessType: 'nft_owner',
@@ -180,35 +209,29 @@ export class ReaderLicenseAMMService {
         };
       }
       
-      // Step 2: Check reader license access (if no NFT)
-      console.log('🔍 No NFT found, checking reader license access...');
-      const hasLicenseAccess = await this.hasActiveAccess(articleId, userAddress);
+      // Step 2: Check if they have active access (burned license)
+      console.log('🔍 No NFT found, checking for active reader license access...');
+      const hasActiveAccess = await this.hasActiveAccess(articleId, userAddress);
       
-      if (hasLicenseAccess) {
-        console.log('✅ Active reader license found');
+      if (hasActiveAccess) {
+        console.log('✅ Active reader license access found (burned license)');
         
-        // Get license token ID for decryption
-        try {
-          const tokenId = await this.getUserLicenseTokenId(userAddress);
-          const accessInfo = await this.getAccessInfo(articleId, userAddress);
-          
-          return {
-            hasAccess: true,
-            accessType: 'reader_license',
-            tokenId,
-            expiryTime: accessInfo?.expiryTime,
-            needsActivation: false
-          };
-        } catch (tokenError) {
-          console.error('❌ Error getting license token ID:', tokenError);
-          return {
-            hasAccess: false,
-            accessType: 'none'
-          };
-        }
+        // Create synthetic token ID for burned license
+        const syntheticTokenId = `burned_license_${articleId}_${userAddress.slice(-6)}`;
+        
+        // Get access info for expiry time
+        const accessInfo = await this.getAccessInfo(articleId, userAddress);
+        
+        return {
+          hasAccess: true,
+          accessType: 'reader_license',
+          tokenId: syntheticTokenId,
+          expiryTime: accessInfo?.expiryTime,
+          needsActivation: false
+        };
       }
       
-      // Step 3: Check if user has unburned reader licenses that need activation
+      // Step 3: Check if they have unburned reader licenses (needs activation)
       console.log('🔍 No active access, checking for unburned reader licenses...');
       const licenseBalance = await this.getLicenseBalance(articleId, userAddress);
       
@@ -216,15 +239,19 @@ export class ReaderLicenseAMMService {
         console.log('✅ Unburned reader license found - needs activation');
         
         try {
-          const tokenId = await this.getUserLicenseTokenId(userAddress);
-          return {
-            hasAccess: true,
-            accessType: 'reader_license',
-            tokenId,
-            needsActivation: true
-          };
+          // Get real token ID for unburned license
+          const balance = await this.ammContract.balanceOf(userAddress);
+          if (balance > BigInt(0)) {
+            const realTokenId = await this.ammContract.tokenOfOwnerByIndex(userAddress, BigInt(0));
+            return {
+              hasAccess: true,
+              accessType: 'reader_license',
+              tokenId: realTokenId.toString(),
+              needsActivation: true
+            };
+          }
         } catch (tokenError) {
-          console.error('❌ Error getting license token ID for activation:', tokenError);
+          console.error('❌ Error getting real token ID for activation:', tokenError);
         }
       }
       
@@ -445,8 +472,10 @@ export class ReaderLicenseAMMService {
     }
   }
 
-  // ✅ EXISTING METHODS FOR READER LICENSES
+  // ✅ DEPRECATED BUT KEPT FOR BACKWARD COMPATIBILITY
+  // Note: This method is problematic for burned licenses but kept to avoid breaking existing code
   async getUserLicenseTokenId(userAddress: string): Promise<string> {
+    console.warn('⚠️ getUserLicenseTokenId() is deprecated - use getAccessTokenId() instead');
     try {
       const balance = await this.ammContract.balanceOf(userAddress);
       
