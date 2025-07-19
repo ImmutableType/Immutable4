@@ -1,3 +1,321 @@
+```markdown
+# ImmutableType App Architecture v5.7
+December 20, 2024, 3:45 PM
+
+Note: This document updates Architecture v5.6 with the complete implementation of the ProposalManager System, including smart contracts, funding mechanisms, and claim token infrastructure. This is now the governing version of the architecture documentation.
+
+## Recent Architectural Updates
+
+### ProposalManager System Complete ✅
+
+The ProposalManager system has been successfully implemented and deployed, providing decentralized journalism funding through NFT pre-sales. This represents a major milestone in the ImmutableType platform evolution.
+
+#### System Overview
+The ProposalManager enables community-driven journalism where:
+- Community members propose stories they want to see written
+- Proposals are funded through NFT pre-sales at fixed prices
+- Funders receive ClaimToken NFTs as receipts
+- Journalists apply to write funded stories (coming next)
+- Published articles become NFTs that funders can claim
+
+## ProposalManager System Architecture
+
+### Smart Contract Infrastructure
+
+#### Deployed Contracts on Flow EVM Testnet
+
+```
+ProposalManager.sol     | 0xF50909f4dfF653ff52D7562B3Dc0b889d040C112
+├── Purpose: Core proposal creation and lifecycle management
+├── Fee: 1.0 FLOW per proposal creation
+├── Storage: All proposal data on-chain (no IPFS)
+└── Access: Requires ProfileNFT + (MembershipToken OR PublisherCredentials)
+
+ProposalEscrow.sol      | 0x8D2109678cD73948C8287778E71069Efe7873B7C
+├── Purpose: Handles all funding transactions and escrow logic
+├── Features: 20% oversubscription, withdrawal penalties
+├── Integration: Mints ClaimToken NFTs to funders
+└── Limitation: 1 NFT per wallet (MVP constraint)
+
+ClaimToken.sol          | 0xa3F17736f9A69a5E19219F4A9ed4E62BF9B6537D
+├── Purpose: ERC721 receipt tokens for proposal funders
+├── Properties: Transferable (can sell funding spots)
+├── Lifecycle: Burns when claiming article NFTs
+└── Data: Stores proposalId and NFT allocation
+```
+
+### Data Flow Architecture
+
+```
+┌─────────────────────────── PROPOSAL CREATION FLOW ───────────────────────────┐
+│                                                                               │
+│  User → ProposalForm → ProposalManager.createProposal() → On-chain Storage   │
+│    ↓                           ↓                               ↓              │
+│  Pays 1 FLOW fee        Validates rights              Returns proposalId      │
+│    +                    - Geographic check                    ↓               │
+│  Must buy 1 NFT        - Token verification         Redirect to detail page  │
+│                        - Rate limiting                                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────── FUNDING FLOW ─────────────────────────────────────┐
+│                                                                               │
+│  Funder → Proposal Detail → ProposalEscrow.contributeFunding() → ClaimToken  │
+│     ↓            ↓                    ↓                             ↓         │
+│  Views goal   Checks status    Accepts payment              Mints NFT receipt │
+│     &            ↓                    ↓                             ↓         │
+│  Progress    If not init'd    Updates funding               Tracks allocation │
+│              Initialize first   total & count                                 │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────── FUTURE: CLAIMING FLOW ────────────────────────────────┐
+│                                                                               │
+│  ClaimToken Holder → Article Published → NFTClaimManager → Article NFT       │
+│         ↓                    ↓                ↓                 ↓             │
+│  Checks ownership    Verifies mapping   Immediate refund   Burns ClaimToken  │
+│                                         pattern                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Business Logic Implementation
+
+#### Proposal Creation Rules
+```typescript
+interface ProposalCreationRules {
+  // Access Control
+  requiredTokens: "ProfileNFT + (MembershipToken OR PublisherCredentials)";
+  
+  // Geographic Validation
+  allowedLocations: ["Miami", "Miami-Dade", "Florida", "United States"];
+  
+  // Rate Limiting
+  dailyLimit: 50;        // Per wallet address
+  weeklyLimit: 100;      // Per wallet address
+  
+  // Economic Rules
+  creationFee: "1.0 FLOW";
+  proposerStake: "1 NFT at calculated price";
+  stakeLocked: true;     // Cannot be withdrawn
+}
+```
+
+#### Funding Mechanics
+```typescript
+interface FundingRules {
+  // NFT Configuration
+  priceCalculation: "fundingGoal / nftCount";
+  minimumNFTs: 10;
+  maximumNFTs: 10000;
+  
+  // Contribution Limits
+  perWalletLimit: 1;     // MVP constraint
+  oversubscription: 1.2; // 120% of goal allowed
+  
+  // Withdrawal Rules
+  gracePeriod: "48 hours after funding";
+  withdrawalPenalty: "10% to treasury";
+  antiSabotage: "Max 3 grace period resets";
+  
+  // Payment Distribution (Future)
+  platformFee: "5%";
+  proposerBonus: "5%";
+  journalistPayment: "90%";
+}
+```
+
+### Technical Implementation Details
+
+#### Smart Contract Interfaces
+
+**ProposalManager.sol**
+```solidity
+contract ProposalManager {
+    struct Proposal {
+        uint256 id;
+        address proposer;
+        string title;
+        string tldr;
+        string description;
+        string category;
+        string location;
+        string[] referenceUrls;    // 0-3 URLs for context
+        string timeline;
+        string contentFormat;
+        string journalistRequirements;
+        string[] tags;
+        uint256 fundingGoal;
+        uint256 nftCount;
+        uint256 nftPrice;         // Auto-calculated
+        uint256 createdAt;
+        ProposalStatus status;
+    }
+    
+    enum ProposalStatus {
+        ACTIVE,     // Accepting funding
+        FUNDED,     // Goal reached
+        ASSIGNED,   // Journalist selected
+        PUBLISHED,  // Article delivered
+        CANCELLED   // Cancelled by proposer
+    }
+    
+    // Core Functions
+    function createProposal(...) external payable returns (uint256);
+    function getProposal(uint256 id) external view returns (Proposal);
+    function updateStatus(uint256 id, ProposalStatus status) external;
+    function getTotalProposals() external view returns (uint256);
+}
+```
+
+**ProposalEscrow.sol**
+```solidity
+contract ProposalEscrow {
+    struct FundingData {
+        uint256 totalFunded;
+        uint256 nftsSold;
+        bool initialized;
+        bool fundingComplete;
+        mapping(address => uint256) contributions;
+    }
+    
+    // Core Functions
+    function initializeFunding(uint256 proposalId) external;
+    function contributeFunding(uint256 proposalId, uint256 quantity) external payable;
+    function withdrawFunding(uint256 proposalId) external;
+    function getFundingData(uint256 proposalId) external view returns (...);
+}
+```
+
+### Frontend Integration Architecture
+
+#### Service Layer
+```typescript
+// Contract Services
+lib/blockchain/contracts/
+├── ProposalManager.ts      // Contract wrapper service
+├── ProposalEscrow.ts       // Funding service
+└── ClaimToken.ts           // Token queries
+
+// React Hooks
+lib/proposals/hooks/
+├── useProposalCreation.ts  // Create proposals
+├── useProposalFunding.ts   // Fund proposals
+└── useProposalDetail.ts    // Fetch proposal data
+```
+
+#### UI Components
+```typescript
+// Proposal Creation
+components/proposals/forms/
+├── ProposalForm.tsx        // Single-page form with NFT config
+└── ProposalConfirmation.tsx // Fee breakdown display
+
+// Proposal Display
+app/(client)/news-proposals/
+├── page.tsx                // Landing page (needs update)
+├── create/page.tsx         // Creation flow
+└── [id]/page.tsx          // Detail page with funding
+```
+
+### Transaction Evidence
+
+#### First Successful Implementation
+```
+Proposal Creation TX:    0x8b358fefe0685e4e1a4db8669cee03e2c42691f625c7bba07c36da9520773169
+├── Method: createProposal()
+├── Fee Paid: 1.0 FLOW
+├── Result: Proposal #1 created
+
+Funding Initialization:  0x206297896c4dc4a1682555736faa0ff090403001d0b752634afd785e4314a9b2
+├── Method: initializeFunding()
+├── Proposer: 0x9402F9f20b4a27b55B1cC6cf015D98f764814fb2
+└── Result: Funding pool ready
+
+First Funding TX:        0x8c114bb89fc659468455bd95ae23f504827d632f5553bcd193cdaa5b635381a7
+├── Method: contributeFunding()
+├── Amount: 1.0 FLOW
+├── Result: ClaimToken #1 minted
+└── Funder: Received NFT receipt
+```
+
+### MVP Limitations & Future Enhancements
+
+#### Current Limitations
+1. **Single NFT Price**: EncryptedArticles.sol only supports one price tier
+2. **1 NFT Per Wallet**: Temporary constraint until contract upgrade
+3. **Manual Delivery**: Proposer must confirm article delivery
+4. **No Direct Claiming**: Uses immediate refund pattern workaround
+
+#### Planned Enhancements
+1. **JournalistAssignment.sol**: Automated journalist selection
+2. **ProposalAward.sol**: Soulbound NFTs for assigned journalists
+3. **NFTClaimManager.sol**: Streamlined claiming process
+4. **VoteToken.sol**: Democratic journalist selection
+5. **Multi-tier Pricing**: Different NFT price levels
+6. **Automated Verification**: On-chain delivery confirmation
+
+### Security Considerations
+
+1. **Access Control**: Multi-token verification prevents spam
+2. **Rate Limiting**: Prevents proposal flooding
+3. **Geographic Rights**: Enforces location-based permissions
+4. **Escrow Safety**: Funds locked until conditions met
+5. **Anti-Gaming**: Proposer stake cannot be withdrawn
+
+### Integration with Existing Systems
+
+#### Dependencies
+```
+ProfileNFT (0x0c4141ec0d87fA1B7820E5AF277024251d392F05)
+├── Required for proposal creation
+└── Used for identity verification
+
+MembershipTokens (0xC90bE82B23Dca9453445b69fB22D5A90402654b2)
+├── Grants geographic rights
+└── Miami token = Miami/FL/USA proposals
+
+PublisherCredentials (0x8b351Bc93799898a201E796405dBC30Aad49Ee21)
+├── Alternative to membership token
+└── For verified journalists
+
+EncryptedArticles (0xd99aB3390aAF8BC69940626cdbbBf22F436c6753)
+├── Will mint final article NFTs
+└── Constraint: Single price only
+```
+
+### Deployment & Operational Status
+
+#### System Health
+- **Contracts**: ✅ All deployed and verified
+- **Permissions**: ✅ All contracts connected
+- **UI Integration**: ✅ Creation and funding working
+- **First Proposal**: ✅ Successfully funded
+- **Treasury**: ✅ Receiving fees correctly
+
+#### Next Implementation Priority
+1. Update `/news-proposals` landing page with real data
+2. Add claim notifications for ClaimToken holders
+3. Deploy JournalistAssignment contract
+4. Integrate publishing with ProposalAward NFTs
+
+### Testing Checklist
+- [x] Create proposal with all fields
+- [x] Pay 1 FLOW fee successfully
+- [x] Initialize funding pool
+- [x] Contribute funding and receive ClaimToken
+- [x] View real-time funding progress
+- [ ] Multiple funders on same proposal
+- [ ] 120% oversubscription limit
+- [ ] Withdrawal with penalty (UI not built)
+
+---
+
+**Last Updated**: December 20, 2024, 3:45 PM
+**Version**: 5.7
+**Status**: ProposalManager system fully deployed with funding mechanism operational
+**Major Achievement**: First decentralized journalism funding on Flow EVM blockchain
+```
+END Proposal manager systme update 
+
+
 ```
 
 ## Project Update for DevOps & Architecture.md  V5.7
