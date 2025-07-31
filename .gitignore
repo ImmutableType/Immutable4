@@ -1,6 +1,5 @@
 .env
 node_modules
-
 # Build outputs
 .next/
 artifacts/
@@ -8,13 +7,29 @@ cache/
 admin/artifacts/
 admin/cache/
 tsconfig.tsbuildinfo
-
 # Dependencies
 node_modules/
-
 # Environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Token monitoring data - PRIVATE
+token-monitoring/
+token-monitoring/data/
+token-monitoring/reports/
+token-monitoring/scripts/
+token-monitoring/**/*
+
+# Token holder data files
+*.csv
+*-holders-*.json
+*-airdrop-*.json
+FROTH-holders-latest.json
+WFLOW-holders-latest.json
+FLOW-holders-latest.json
+
+# Monitoring logs
+monitoring.log
