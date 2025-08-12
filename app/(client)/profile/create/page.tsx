@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@/lib/hooks/useWallet';
 import { useHasMembershipToken } from '@/lib/hooks/useHasMembershipToken';
 import { useHasPublisherToken } from '@/lib/hooks/useHasPublisherToken';
+import { useHasBuffaflowToken } from '@/lib/hooks/useHasBuffaflowToken';
 import { useProfileNFT } from '@/lib/profile/hooks/useProfileNFT';
 
 
@@ -14,6 +15,7 @@ export default function CreateProfilePage() {
   const { isConnected, address } = useWallet();
   const { hasMembershipToken, membershipTokenId, isLoading: membershipLoading } = useHasMembershipToken();
   const { hasPublisherToken } = useHasPublisherToken();
+  const { hasToken: hasBuffaflowToken, tokenBalance, nftCount, isLoading: buffaflowLoading } = useHasBuffaflowToken();
   const { createProfile, hasProfile, isLoading: profileLoading } = useProfileNFT();
   
   const [formData, setFormData] = useState({
@@ -109,8 +111,8 @@ export default function CreateProfilePage() {
     );
   }
   
-  // Gate 2: Check membership token while loading
-  if (membershipLoading) {
+  // Gate 2: Check tokens while loading
+  if (membershipLoading || buffaflowLoading) {
     return (
       <div style={{
         maxWidth: '600px',
@@ -118,13 +120,13 @@ export default function CreateProfilePage() {
         textAlign: 'center',
         padding: '2rem'
       }}>
-        <p>Checking membership status...</p>
+        <p>Checking token status...</p>
       </div>
     );
   }
   
-  // Gate 3: Require membership token
-  if (!hasMembershipToken) {
+  // Gate 3: Require membership token OR buffaflow token
+  if (!hasMembershipToken && !hasBuffaflowToken) {
     return (
       <div style={{
         maxWidth: '600px',
@@ -136,19 +138,22 @@ export default function CreateProfilePage() {
           fontFamily: 'var(--font-headlines)',
           fontSize: '2rem',
           marginBottom: '1rem',
-        }}>Membership Required</h2>
+        }}>Access Required</h2>
         <p style={{
           fontSize: '1rem',
           lineHeight: '1.5',
           color: 'var(--color-black)',
           opacity: 0.8,
           marginBottom: '1rem'
-        }}>You need an ImmutableType membership token (IT00-IT99) to create a profile.</p>
-        <p style={{
-          fontSize: '0.9rem',
-          color: 'var(--color-black)',
-          opacity: 0.6,
-        }}>Membership tokens are currently distributed by the admin.</p>
+        }}>You need either:</p>
+        <ul style={{
+          textAlign: 'left',
+          maxWidth: '400px',
+          margin: '0 auto 1rem auto'
+        }}>
+          <li>ImmutableType membership token (IT00-IT99), OR</li>
+          <li>100+ $BUFFAFLOW tokens for unverified access</li>
+        </ul>
       </div>
     );
   }
@@ -233,7 +238,7 @@ export default function CreateProfilePage() {
         Create your on-chain profile NFT to start publishing and engaging with content.
       </p>
       
-      {membershipTokenId && (
+      {(membershipTokenId || hasBuffaflowToken) && (
         <div style={{
           backgroundColor: 'var(--color-parchment)',
           padding: '1rem',
@@ -244,7 +249,10 @@ export default function CreateProfilePage() {
           gap: '0.5rem'
         }}>
           <span style={{ fontSize: '1.5rem' }}>✓</span>
-          <span>Membership Token: {membershipTokenId}</span>
+          {hasMembershipToken && <span>Verified Member: {membershipTokenId}</span>}
+          {!hasMembershipToken && hasBuffaflowToken && (
+            <span>Unverified Member: {tokenBalance} $BUFFAFLOW ({nftCount} NFTs)</span>
+          )}
           {hasPublisherToken && <span style={{ marginLeft: 'auto' }}>Publisher ✓</span>}
         </div>
       )}
