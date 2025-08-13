@@ -354,6 +354,53 @@ useEffect(() => {
             </nav>
           </div>
 
+
+
+
+          {/* Featured Location Section above My Dashboard */}
+<div style={{ 
+  padding: '16px', 
+  borderBottom: '1px solid #D9D9D9'
+}}>
+  <h2 style={{ 
+    fontSize: '16px', 
+    fontWeight: 'bold', 
+    marginBottom: '12px',
+    fontFamily: "'Special Elite', monospace"
+  }}>
+    Featured Location
+  </h2>
+  <ul style={{ 
+    listStyle: 'none', 
+    padding: 0, 
+    margin: 0
+  }}>
+    <li>
+      <Link 
+        href="/locations/florida/miami" 
+        style={{ 
+          textDecoration: 'none',
+          color: '#000000',
+          padding: '8px',
+          borderRadius: '4px',
+          display: 'block'
+        }}
+        className="nav-item"
+        onMouseOver={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
+      >
+        Miami
+      </Link>
+    </li>
+  </ul>
+</div>
+
+
+
           {/* MOVED: Featured Location Section above My Dashboard */}
           <div style={{ 
             padding: '16px', 
@@ -395,6 +442,59 @@ useEffect(() => {
               </li>
             </ul>
           </div>
+
+
+
+
+{/* Community Section - NEW */}
+<div style={{ 
+  padding: '16px', 
+  borderBottom: '1px solid #D9D9D9'
+}}>
+  <h2 style={{ 
+    fontSize: '16px', 
+    fontWeight: 'bold', 
+    marginBottom: '12px',
+    fontFamily: "'Special Elite', monospace"
+  }}>
+    Community
+  </h2>
+  <ul style={{ 
+    listStyle: 'none', 
+    padding: 0, 
+    margin: 0
+  }}>
+    <li>
+      <Link 
+        href="/moonbuffaflow" 
+        style={{ 
+          textDecoration: 'none',
+          color: pathname?.includes('/moonbuffaflow') ? '#B3211E' : '#000000',
+          fontWeight: pathname?.includes('/moonbuffaflow') ? 'bold' : 'normal',
+          padding: '8px',
+          borderRadius: '4px',
+          backgroundColor: pathname?.includes('/moonbuffaflow') ? 'rgba(0, 0, 0, 0.05)' : 'transparent',
+          display: 'block'
+        }}
+        className="nav-item"
+        onMouseOver={(e) => {
+          if (!pathname?.includes('/moonbuffaflow')) {
+            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+          }
+        }}
+        onMouseOut={(e) => {
+          if (!pathname?.includes('/moonbuffaflow')) {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }
+        }}
+      >
+        MoonBuffaFLOW
+      </Link>
+    </li>
+  </ul>
+</div>
+
+
 
 
           {/* Decentralized Journalism Section */}

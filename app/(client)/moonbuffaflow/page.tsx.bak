@@ -1,0 +1,200 @@
+// app/(client)/moonbuffaflow/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+// Generate array of 156 NFTs
+const NFT_COLLECTION = Array.from({ length: 156 }, (_, i) => ({
+  tokenId: i,
+  imageUrl: `https://bafybeigaxhfmetbogj6s2gz3rjdiburtg6pfrbj2la5igl2skgkn2pz7te.ipfs.w3s.link/${i}.PNG`,
+  status: 'unknown' as 'unknown' | 'available' | 'burned' | 'pooled' | 'owned'
+}));
+
+export default function MoonBuffaFlowPage() {
+  const [selectedNFT, setSelectedNFT] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  return (
+    <div style={{ 
+      padding: '2rem', 
+      maxWidth: '1400px', 
+      margin: '0 auto',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    }}>
+      {/* Header Section */}
+      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+        <h1 style={{ 
+          fontSize: '2.5rem', 
+          fontFamily: "'Special Elite', monospace",
+          marginBottom: '0.5rem'
+        }}>
+          MoonBuffaFLOW
+        </h1>
+        <p style={{ fontSize: '1.125rem', color: '#666' }}>
+          156 Unique Buffalo NFTs on Flow Blockchain
+        </p>
+        
+        {/* Collection Info */}
+        <div style={{ 
+          marginTop: '2rem', 
+          padding: '1rem',
+          background: '#f5f5f5',
+          borderRadius: '8px',
+          maxWidth: '600px',
+          margin: '2rem auto'
+        }}>
+          <p style={{ margin: '0.5rem 0' }}>
+            <strong>Total Supply:</strong> 156
+          </p>
+          <p style={{ margin: '0.5rem 0' }}>
+            <strong>Blockchain:</strong> Flow EVM
+          </p>
+          <p style={{ margin: '0.5rem 0', wordBreak: 'break-all' }}>
+            <strong>Contract:</strong> 0xc8654A7a...FA3b4798
+          </p>
+        </div>
+      </div>
+
+      {/* NFT Grid */}
+      <div style={{ 
+        display: 'grid',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(80px, 1fr))',
+        gap: isMobile ? '1rem' : '0.5rem',
+        maxWidth: isMobile ? '100%' : '1200px',
+        margin: '0 auto'
+      }}>
+        {NFT_COLLECTION.map(nft => (
+          <NFTCard 
+            key={nft.tokenId} 
+            nft={nft} 
+            isMobile={isMobile}
+            onClick={() => setSelectedNFT(nft.tokenId)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// NFT Card Component
+function NFTCard({ 
+  nft, 
+  isMobile, 
+  onClick 
+}: { 
+  nft: typeof NFT_COLLECTION[0], 
+  isMobile: boolean,
+  onClick: () => void 
+}) {
+  const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <Link href={`/moonbuffaflow/${nft.tokenId}`}>
+      <div
+        style={{
+          position: 'relative',
+          cursor: 'pointer',
+          borderRadius: isMobile ? '8px' : '4px',
+          overflow: 'hidden',
+          background: '#f5f5f5',
+          aspectRatio: '1',
+          transition: 'transform 0.2s',
+        }}
+        onMouseOver={(e) => {
+          if (!isMobile) {
+            e.currentTarget.style.transform = 'scale(1.1)';
+            e.currentTarget.style.zIndex = '10';
+          }
+        }}
+        onMouseOut={(e) => {
+          if (!isMobile) {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.zIndex = '1';
+          }
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          onClick();
+        }}
+      >
+        {/* Loading State */}
+        {isLoading && !imageError && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 1.5s infinite',
+          }} />
+        )}
+
+        {/* Image or Error State */}
+        {imageError ? (
+          <BuffaNoLoad tokenId={nft.tokenId} />
+        ) : (
+          <img
+            src={nft.imageUrl}
+            alt={`MoonBuffa #${nft.tokenId}`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: isLoading ? 'none' : 'block'
+            }}
+            onError={() => setImageError(true)}
+            onLoad={() => setIsLoading(false)}
+          />
+        )}
+
+        {/* Token ID */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: isMobile ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.7)',
+          color: isMobile ? '#333' : 'white',
+          padding: isMobile ? '0.5rem' : '0.25rem',
+          fontSize: isMobile ? '0.875rem' : '0.75rem',
+          textAlign: 'center',
+          fontWeight: 500
+        }}>
+          #{nft.tokenId}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// BuffaNoLoad Component
+function BuffaNoLoad({ tokenId }: { tokenId: number }) {
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#f0f0f0',
+      color: '#999'
+    }}>
+      <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🦬</div>
+      <div style={{ fontSize: '0.75rem' }}>BuffaNOLOAD</div>
+      <div style={{ fontSize: '0.625rem', marginTop: '0.25rem' }}>#{tokenId}</div>
+    </div>
+  );
+}
